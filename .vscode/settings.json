@@ -1,10 +1,10 @@
 {
-	"editor.defaultFormatter": "dprint.dprint",
-	"dprint.path": "node_modules/dprint/dprint",
-	"typescript.preferences.importModuleSpecifierEnding": "js",
-	"typescript.tsdk": "node_modules\\typescript\\lib",
-	"rust-analyzer.linkedProjects": [
-		"taurpc/Cargo.toml",
-		"example/src-tauri/Cargo.toml"
-	]
+  "editor.defaultFormatter": "dprint.dprint",
+  "dprint.path": "node_modules/dprint/dprint",
+  "typescript.preferences.importModuleSpecifierEnding": "js",
+  "typescript.tsdk": "node_modules\\typescript\\lib",
+  "rust-analyzer.linkedProjects": [
+    "taurpc/Cargo.toml",
+    "example/src-tauri/Cargo.toml"
+  ]
 }
