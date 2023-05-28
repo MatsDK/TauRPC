@@ -1,0 +1,8 @@
+[package]
+name = "taurpc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ts-rs = "6.2"
+serde = { version = "1", features = ["derive"] }
