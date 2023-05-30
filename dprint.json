@@ -1,6 +1,6 @@
 {
   "incremental": true,
-  "lineWidth": 100,
+  "lineWidth": 80,
   "typescript": {
     "quoteStyle": "preferSingle",
     "semiColons": "asi"

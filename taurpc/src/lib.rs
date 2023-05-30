@@ -1,39 +1,44 @@
-use serde::Serialize;
-use std::io;
-use ts_rs::TS;
+use tauri::{Invoke, Runtime};
 
-#[derive(TS, Serialize)]
-#[ts(export_to = "../../types/")]
-struct User {
-    user_id: i32,
-    first_name: String,
-    last_name: String,
+pub use serde::Serialize;
+pub use ts_rs::TS;
+
+pub use taurpc_macros::{procedures, rpc_struct};
+
+pub trait TauRpcHandler {
+    fn generate_ts_types();
+
+    fn handle_incoming_request(self);
 }
 
-#[derive(Serialize, TS)]
-#[serde(tag = "procedure", content = "data")]
-#[ts(export_to = "../../types/index.ts")]
-enum ComplexEnum {
-    A((String,)),
-    B((String, u32)),
-    U { name: String },
-    V((User,)),
-}
+// #[derive(TS, Serialize)]
+// #[ts(export_to = "../../types/")]
+// struct User {
+//     user_id: i32,
+//     first_name: String,
+//     last_name: String,
+// }
 
-pub fn create_example_defs() -> io::Result<()> {
-    <User as TS>::export().unwrap();
-    <ComplexEnum as TS>::export().unwrap();
-    Ok(())
-}
+// #[derive(Serialize, TS)]
+// #[serde(tag = "procedure", content = "data")]
+// #[ts(export_to = "../../types/index.ts")]
+// enum ComplexEnum {
+//     A((String,)),
+//     B((String, u32)),
+//     U { name: String },
+//     V((User,)),
+// }
 
-trait Api {
-    fn test(input1: String, user: User) -> Result<String, ()>;
-}
+pub fn create_rpc_handler<H, R>(procedures: H) -> impl Fn(Invoke<R>) + Send + Sync + 'static
+where
+    H: TauRpcHandler + Send + Sync + 'static + Clone,
+    R: Runtime,
+{
+    H::generate_ts_types();
 
-struct ApiImpl;
-
-impl Api for ApiImpl {
-    fn test(input1: String, user: User) -> Result<String, ()> {
-        Ok(String::from("test"))
+    move |invoke: Invoke<R>| {
+        procedures.clone().handle_incoming_request();
+        let cmd = invoke.message.command();
+        println!("{cmd}");
     }
 }
