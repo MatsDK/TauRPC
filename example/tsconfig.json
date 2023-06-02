@@ -4,7 +4,6 @@
     "ignoreDeprecations": "5.0",
     "target": "ESNext",
     "useDefineForClassFields": true,
-    "moduleResolution": "nodenext",
     "module": "ESNext",
     "resolveJsonModule": true,
     "baseUrl": ".",

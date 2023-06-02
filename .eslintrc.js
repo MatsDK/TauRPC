@@ -20,25 +20,33 @@ const config = {
     ],
   },
   rules: {
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': [
+      'warn', // or "error"
+      {
+        'argsIgnorePattern': '^_',
+        'varsIgnorePattern': '^_',
+        'caughtErrorsIgnorePattern': '^_',
+      },
+    ],
     // 'dprint/dprint': [
     // 	'error',
     // 	{
     // 		config: {},
     // 	},
     // ],
-    '@typescript-eslint/no-unused-vars': [
-      'error',
-      {
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-        caughtErrorsIgnorePattern: '^_',
-      },
-    ],
   },
   plugins: [
     '@typescript-eslint',
   ],
-  ignorePatterns: ['node_modules', 'dist', 'taurpc', 'target', 'test'],
+  ignorePatterns: [
+    'node_modules',
+    'dist',
+    'taurpc',
+    'target',
+    'test',
+    'example',
+  ],
 }
 
 module.exports = config

@@ -10,22 +10,22 @@ struct User {
 
 #[taurpc::procedures]
 trait Api {
-    fn test(input1: String, user: User) -> User;
+    fn test();
 
-    fn test_event(input1: Option<String>, user: u128) -> String;
+    fn test_event(input1: String, user: u8) -> String;
 }
 
 #[derive(Clone)]
 struct ApiImpl;
 
 impl Api for ApiImpl {
-    fn test(self, input1: String, user: User) -> User {
-        println!("{input1}");
-        user
+    fn test(self) {
+        println!("called `test`");
     }
 
-    fn test_event(self, input1: Option<String>, user: u128) -> String {
-        input1.unwrap()
+    fn test_event(self, input1: String, user: u8) -> String {
+        println!("called `test_event` {}, {}", input1, user);
+        input1
     }
 }
 

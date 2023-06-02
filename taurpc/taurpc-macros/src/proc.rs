@@ -9,6 +9,8 @@ use syn::{
     parse_macro_input, FnArg, Ident, Pat, PatType, ReturnType, Token, Visibility,
 };
 
+use crate::parse_args;
+
 pub struct Procedures {
     pub ident: Ident,
     pub methods: Vec<RpcMethod>,
@@ -89,6 +91,7 @@ pub struct ProceduresGenerator<'a> {
     pub inputs_ident: &'a Ident,
     pub vis: Visibility,
     pub methods: &'a [RpcMethod],
+    pub method_names: &'a [Ident],
     pub struct_idents: &'a [Ident],
 }
 
@@ -109,6 +112,7 @@ impl<'a> ProceduresGenerator<'a> {
                  args,
              }| {
                 quote! {
+                    #[allow(non_camel_case_types)]
                     fn #ident(self, #( #args ),*) #output;
                 }
             },
@@ -145,7 +149,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(taurpc::TS, taurpc::Serialize)]
-            #[serde(tag = "proc_name", content = "output_ty")]
+            #[serde(tag = "proc_name", content = "input_type")]
             #vis enum #inputs_ident {
                 #( #inputs ),*
             }
@@ -154,24 +158,55 @@ impl<'a> ProceduresGenerator<'a> {
 
     fn rest(&self) -> TokenStream2 {
         let ProceduresGenerator {
+            trait_ident,
             handler_ident,
             vis,
             inputs_ident,
             struct_idents,
+            method_names,
+            methods,
             ..
         } = self;
 
         let path = generate_export_path();
 
+        let procedure_handlers = method_names.iter().zip(methods.iter()).map(
+            |(
+                proc_name,
+                RpcMethod {
+                    ident: method_ident,
+                    output,
+                    args,
+                },
+            )| {
+                let args = parse_args(args, &format_ident!("message")).unwrap();
+                println!("{:?}", args);
+                quote! { stringify!(#proc_name) => {
+                    #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*);
+                    println!("Called: {:?}", stringify!(#proc_name));
+                    resolver.respond(Ok(String::from("test_response")));
+                }}
+            },
+        );
+
         quote! {
+
             #[derive(Clone)]
             #vis struct #handler_ident<P> {
                 methods: P,
             }
 
-            impl<P> taurpc::TauRpcHandler for #handler_ident<P> {
-                fn handle_incoming_request(self) {
-                    println!("handle incoming event");
+            impl<P: #trait_ident, R: tauri::Runtime> taurpc::TauRpcHandler<R> for #handler_ident<P> {
+                fn handle_incoming_request(self, invoke: tauri::Invoke<R>) {
+                    #[allow(unused_variables)]
+                    let ::tauri::Invoke { message, resolver } = invoke;
+
+                    match message.command() {
+                        #( #procedure_handlers ),*
+                        _ => {
+                            resolver.reject(format!("command {} not found", message.command()))
+                        }
+                    }
                 }
 
                 fn generate_ts_types() {
@@ -179,14 +214,21 @@ impl<'a> ProceduresGenerator<'a> {
 
                     #(
                         let decl = <#struct_idents as taurpc::TS>::decl();
-                        ts_types.push_str(&format!("{}\n", decl));
+                        ts_types.push_str(&format!("export {}\n", decl));
                     )*
 
                     let input_enum_decl = <#inputs_ident as taurpc::TS>::decl();
-                    ts_types.push_str(&input_enum_decl);
+                    ts_types.push_str(&format!("export {}", input_enum_decl));
 
                     // Export to .ts file in `node_modules/.taurpc`
                     let path = std::path::Path::new(#path);
+                    if let Some(parent) = path.parent() {
+                        std::fs::create_dir_all(parent).unwrap();
+                    }
+                    std::fs::write(path, &ts_types).unwrap();
+
+                    // FOR TESTING IN DEV
+                    let path = std::path::Path::new("H:\\p\\2022-2023\\TauRPC\\node_modules\\.taurpc/index.ts");
                     if let Some(parent) = path.parent() {
                         std::fs::create_dir_all(parent).unwrap();
                     }
