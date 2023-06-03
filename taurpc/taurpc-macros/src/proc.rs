@@ -248,13 +248,6 @@ impl<'a> ProceduresGenerator<'a> {
                         std::fs::create_dir_all(parent).unwrap();
                     }
                     std::fs::write(path, &ts_types).unwrap();
-
-                    // FOR TESTING IN DEV
-                    let path = std::path::Path::new("H:\\p\\2022-2023\\TauRPC\\node_modules\\.taurpc/index.ts");
-                    if let Some(parent) = path.parent() {
-                        std::fs::create_dir_all(parent).unwrap();
-                    }
-                    std::fs::write(path, &ts_types).unwrap();
                 }
             }
         }

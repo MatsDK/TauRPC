@@ -63,11 +63,10 @@ pub(crate) fn parse_args(args: &Vec<PatType>, message: &Ident) -> syn::Result<Ve
         .collect()
 }
 
-/// Transform a [`FnArg`] into a command argument.
 fn parse_arg(command: &Ident, arg: &PatType, message: &Ident) -> syn::Result<TokenStream2> {
     let key = parse_arg_key(arg)?;
 
-    // also catch self arguments that use FnArg::Typed syntax
+    // catch self arguments that use FnArg::Typed syntax
     if key == "self" {
         return Err(syn::Error::new(
             key.span(),

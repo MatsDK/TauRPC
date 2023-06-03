@@ -1,7 +1,15 @@
 [package]
 name = "taurpc"
+authors = ["MatsDK"]
 version = "0.1.0"
 edition = "2021"
+description = "A type-safe RPC layer for tauri commands"
+documentation = "https://docs.rs/taurpc"
+homepage = "https://github.com/MatsDK/TauRPC"
+repository = "https://github.com/MatsDK/TauRPC"
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+categories = ["tauri"]
 
 [workspace]
 members = [
@@ -9,7 +17,7 @@ members = [
 ]
 
 [dependencies]
-taurpc-macros = { path = "./taurpc-macros" }
+taurpc-macros = { path = "./taurpc-macros", version = "0.1.0" }
 
 ts-rs = "6.2"
 tauri = { version = "1.3" }
