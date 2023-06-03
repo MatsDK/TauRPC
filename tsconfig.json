@@ -8,9 +8,16 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
     "noEmit": true,
     "isolatedModules": true
   },
-  "include": ["src", ".eslintrc.js"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src",
+    ".eslintrc.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

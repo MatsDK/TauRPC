@@ -1,6 +1,6 @@
 import { createTauRPCProxy } from '../../../src'
-// import { createTauRPCProxy } from "taurpc"
+// import { createTauRPCProxy } from 'taurpc'
 
-const taurpc = createTauRPCProxy()
+const taurpc = await createTauRPCProxy()
 
 export { taurpc }

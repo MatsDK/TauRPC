@@ -1,15 +1,13 @@
-use std::{env, path::PathBuf};
-
-use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
+use std::{collections::HashMap, env};
 use syn::{
     braced, parenthesized,
     parse::{self, Parse, ParseStream},
-    parse_macro_input, FnArg, Ident, Pat, PatType, ReturnType, Token, Visibility,
+    FnArg, Ident, Pat, PatType, ReturnType, Token, Visibility,
 };
 
-use crate::parse_args;
+use crate::{parse_arg_key, parse_args};
 
 pub struct Procedures {
     pub ident: Ident,
@@ -36,6 +34,13 @@ impl Parse for Procedures {
                 Err(syn::Error::new(
                     procedure.ident.span(),
                     format!("method name conflicts with generated fn `{ident}::into_handler`"),
+                ))?;
+            }
+
+            if procedure.ident == "setup" {
+                Err(syn::Error::new(
+                    procedure.ident.span(),
+                    format!("method name `setup` is not allowed in `{ident}`"),
                 ))?;
             }
         }
@@ -131,8 +136,6 @@ impl<'a> ProceduresGenerator<'a> {
 
     fn input_enum(&self) -> TokenStream2 {
         let ProceduresGenerator {
-            trait_ident,
-            handler_ident,
             methods,
             vis,
             inputs_ident,
@@ -156,7 +159,7 @@ impl<'a> ProceduresGenerator<'a> {
         }
     }
 
-    fn rest(&self) -> TokenStream2 {
+    fn procedures_handler(&self) -> TokenStream2 {
         let ProceduresGenerator {
             trait_ident,
             handler_ident,
@@ -170,6 +173,10 @@ impl<'a> ProceduresGenerator<'a> {
 
         let path = generate_export_path();
 
+        let invoke = format_ident!("__tauri__invoke__");
+        let message = format_ident!("__tauri__message__");
+        let resolver = format_ident!("__tauri__resolver__");
+
         let procedure_handlers = method_names.iter().zip(methods.iter()).map(
             |(
                 proc_name,
@@ -179,15 +186,26 @@ impl<'a> ProceduresGenerator<'a> {
                     args,
                 },
             )| {
-                let args = parse_args(args, &format_ident!("message")).unwrap();
-                println!("{:?}", args);
+                let args = parse_args(args, &message).unwrap();
                 quote! { stringify!(#proc_name) => {
-                    #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*);
-                    println!("Called: {:?}", stringify!(#proc_name));
-                    resolver.respond(Ok(String::from("test_response")));
+                    let response = #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*);
+                    #resolver.respond(Ok(response));
                 }}
             },
         );
+
+        let mut args_map = HashMap::new();
+        methods.iter().for_each(|RpcMethod { args, ident, .. }| {
+            let args = args
+                .iter()
+                .map(parse_arg_key)
+                .map(|r| r.unwrap())
+                .collect::<Vec<_>>();
+
+            args_map.insert(ident.to_string(), args);
+        });
+
+        let serialized_args_map = serde_json::to_string(&args_map).unwrap();
 
         quote! {
 
@@ -197,16 +215,20 @@ impl<'a> ProceduresGenerator<'a> {
             }
 
             impl<P: #trait_ident, R: tauri::Runtime> taurpc::TauRpcHandler<R> for #handler_ident<P> {
-                fn handle_incoming_request(self, invoke: tauri::Invoke<R>) {
+                fn handle_incoming_request(self, #invoke: tauri::Invoke<R>) {
                     #[allow(unused_variables)]
-                    let ::tauri::Invoke { message, resolver } = invoke;
+                    let ::tauri::Invoke { message: #message, resolver: #resolver} = #invoke;
 
-                    match message.command() {
+                    match #message.command() {
                         #( #procedure_handlers ),*
                         _ => {
-                            resolver.reject(format!("command {} not found", message.command()))
+                            #resolver.reject(format!("message {} not found", #message.command()))
                         }
                     }
+                }
+
+                fn setup() -> String {
+                    #serialized_args_map.to_string()
                 }
 
                 fn generate_ts_types() {
@@ -218,7 +240,7 @@ impl<'a> ProceduresGenerator<'a> {
                     )*
 
                     let input_enum_decl = <#inputs_ident as taurpc::TS>::decl();
-                    ts_types.push_str(&format!("export {}", input_enum_decl));
+                    ts_types.push_str(&format!("export {}\n", input_enum_decl));
 
                     // Export to .ts file in `node_modules/.taurpc`
                     let path = std::path::Path::new(#path);
@@ -243,7 +265,7 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
         tokens.extend(vec![
             self.procedures_trait(),
-            self.rest(),
+            self.procedures_handler(),
             self.input_enum(),
         ])
     }

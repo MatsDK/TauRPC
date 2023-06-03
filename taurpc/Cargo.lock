@@ -2657,6 +2657,8 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
+ "serde",
+ "serde_json",
  "syn 2.0.18",
 ]
 
