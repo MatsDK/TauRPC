@@ -60,5 +60,6 @@ const handleProxyCall = async (
   }
 }
 
-export * from '../node_modules/.taurpc'
+// export * from '../node_modules/.taurpc'
+export * from '.taurpc'
 export { createTauRPCProxy }

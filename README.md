@@ -12,6 +12,7 @@ First, add the crate to your dependencies:
 
 [dependencies]
 taurpc = "0.1.0"
+ts-rs = "6.2"
 ```
 
 Then, declare and implement your RPC methods.
@@ -24,6 +25,7 @@ trait Api {
     fn hello_world();
 }
 
+#[derive(Clone)]
 struct ApiImpl;
 impl Api for ApiImpl {
     fn hello_world(self) {
@@ -55,6 +57,25 @@ taurpc.hello_world()
 ```
 
 The types for taurpc are generated once you start your application, run `pnpm tauri dev`. If the types are not picked up by the LSP, you may have to restart typescript to reload the types.
+You can find a complete example (using Svelte) [here](https://github.com/MatsDK/TauRPC/tree/main/example).
+
+# Using structs
+
+If you want to you structs for the inputs/outputs of procedures, you should always add `#[taurpc::rpc_struct]` to make sure the coresponding ts types are generated.
+
+```rust
+#[taurpc::rpc_struct]
+struct User {
+    user_id: u32,
+    first_name: String,
+    last_name: String,
+}
+
+#[taurpc::procedures]
+trait Api {
+    fn get_user() -> User;
+}
+```
 
 # Features
 

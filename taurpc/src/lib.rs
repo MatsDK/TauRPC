@@ -22,6 +22,7 @@ pub trait TauRpcHandler<R: Runtime> {
 ///     fn hello_world();
 /// }
 ///
+/// #[derive(Clone)]
 /// struct ApiImpl;
 /// impl Api for ApiImpl {
 ///     fn hello_world(self) {
