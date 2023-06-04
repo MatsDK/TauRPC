@@ -57,8 +57,11 @@
       "cjs"
     ],
     "dts": {
-      "resolve": false
+      "resolve": true
     },
+    "external": [
+      ".taurpc"
+    ],
     "splitting": true,
     "clean": true
   },
