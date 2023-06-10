@@ -29,12 +29,6 @@ const config = {
         'caughtErrorsIgnorePattern': '^_',
       },
     ],
-    // 'dprint/dprint': [
-    // 	'error',
-    // 	{
-    // 		config: {},
-    // 	},
-    // ],
   },
   plugins: [
     '@typescript-eslint',
@@ -44,7 +38,6 @@ const config = {
     'dist',
     'taurpc',
     'target',
-    'test',
     'example',
   ],
 }

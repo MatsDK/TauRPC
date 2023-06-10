@@ -40,7 +40,7 @@ impl Parse for Procedures {
             if procedure.ident == "setup" {
                 Err(syn::Error::new(
                     procedure.ident.span(),
-                    format!("method name `setup` is not allowed in `{ident}`"),
+                    format!("method name `setup` in `{ident}` conflicts with internal method"),
                 ))?;
             }
         }
@@ -94,6 +94,7 @@ pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
     pub handler_ident: &'a Ident,
     pub inputs_ident: &'a Ident,
+    pub outputs_ident: &'a Ident,
     pub vis: Visibility,
     pub methods: &'a [RpcMethod],
     pub method_names: &'a [Ident],
@@ -155,6 +156,31 @@ impl<'a> ProceduresGenerator<'a> {
             #[serde(tag = "proc_name", content = "input_type")]
             #vis enum #inputs_ident {
                 #( #inputs ),*
+            }
+        }
+    }
+
+    fn output_enum(&self) -> TokenStream2 {
+        let ProceduresGenerator {
+            methods,
+            vis,
+            outputs_ident,
+            ..
+        } = self;
+
+        let outputs = methods.iter().map(|RpcMethod { ident, output, .. }| {
+            // TODO: handle Option<T>, Result<T, E>
+
+            quote! {
+                #ident(output)
+            }
+        });
+
+        quote! {
+            #[derive(taurpc::TS, taurpc::Serialize)]
+            #[serde(tag = "proc_name", content = "output_type")]
+            #vis enum #outputs_ident {
+                #( #outputs ),*
             }
         }
     }
@@ -260,6 +286,7 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
             self.procedures_trait(),
             self.procedures_handler(),
             self.input_enum(),
+            self.output_enum(),
         ])
     }
 }

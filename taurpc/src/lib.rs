@@ -13,7 +13,8 @@ pub trait TauRpcHandler<R: Runtime> {
     fn handle_incoming_request(self, invoke: Invoke<R>);
 }
 
-/// Accepts procedure resolver struct for which `taurpc::procedures` is implemented.
+/// Creates a handler that allows your RPCs to be called from the frontend with the coresponding
+/// types. Accepts a struct in which your `taurpc::procedures` trait is implemented.
 ///
 ///  # Examples
 /// ```rust
