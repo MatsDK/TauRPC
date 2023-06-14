@@ -37,8 +37,8 @@ pub fn procedures(_attr: TokenStream, item: TokenStream) -> TokenStream {
     ProceduresGenerator {
         trait_ident: ident,
         handler_ident: &format_ident!("TauRpc{}Handler", ident),
-        inputs_ident: &format_ident!("TauRpc{}Inputs", ident),
-        outputs_ident: &format_ident!("TauRpc{}Outputs", ident),
+        inputs_ident: &format_ident!("TauRpcApiInputs"),
+        outputs_ident: &format_ident!("TauRpcApiOutputs"),
         methods,
         method_names: &methods
             .iter()

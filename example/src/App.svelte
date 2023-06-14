@@ -1,13 +1,9 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    import { taurpc } from "./lib/rpc";
-
-    onMount(() => {
-        call_backend();
-    });
+    import { taurpc } from "./lib/rpc.ts";
 
     const call_backend = async () => {
-        const res = await taurpc.test_event("hello world", 0);
+        const res = await taurpc.test_event("hello world2", 0);
+        
         console.log(res);
     };
 </script>

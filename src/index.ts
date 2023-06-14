@@ -1,4 +1,4 @@
-import { type TauRpcApiInputs } from '.taurpc'
+import type { TauRpcApiInputs, TauRpcApiOutputs } from '.taurpc'
 import { invoke } from '@tauri-apps/api'
 
 type Procedures = TauRpcApiInputs['proc_name']
@@ -8,7 +8,11 @@ type FnInput<T extends Procedures> = Extract<
   { proc_name: T }
 >['input_type']
 
-type FnOutput<T extends Procedures> = void
+// type FnOutput<T extends Procedures> = void
+type FnOutput<T extends Procedures> = Extract<
+  TauRpcApiOutputs,
+  { proc_name: T }
+>['output_type']
 
 type Fn<T extends Procedures> = FnInput<T> extends null
   ? (() => Promise<FnOutput<T>>)
@@ -53,13 +57,16 @@ const handleProxyCall = async (
   }
 
   try {
-    const response = await invoke(`TauRPC__${path}`, args_object)
-    return response
+    const response: { output_type: string; proc_name: string } = await invoke(
+      `TauRPC__${path}`,
+      args_object,
+    )
+    return response['output_type']
   } catch (error) {
     console.error(error)
   }
 }
 
-export * from '../node_modules/.taurpc'
-// export * from '.taurpc'
+// export * from '../node_modules/.taurpc'
+export * from '.taurpc'
 export { createTauRPCProxy }

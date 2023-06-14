@@ -170,9 +170,13 @@ impl<'a> ProceduresGenerator<'a> {
 
         let outputs = methods.iter().map(|RpcMethod { ident, output, .. }| {
             // TODO: handle Option<T>, Result<T, E>
+            let output_ty = match output {
+                ReturnType::Default => quote!(()),
+                ReturnType::Type(_, ty) => ty.into_token_stream(),
+            };
 
             quote! {
-                #ident(output)
+                #ident(#output_ty)
             }
         });
 
@@ -194,6 +198,7 @@ impl<'a> ProceduresGenerator<'a> {
             struct_idents,
             method_names,
             methods,
+            outputs_ident,
             ..
         } = self;
 
@@ -208,14 +213,16 @@ impl<'a> ProceduresGenerator<'a> {
                 proc_name,
                 RpcMethod {
                     ident: method_ident,
-                    output,
                     args,
+                    ..
                 },
             )| {
                 let args = parse_args(args, &message).unwrap();
+
                 quote! { stringify!(#proc_name) => {
                     let response = #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*);
-                    #resolver.respond(Ok(response));
+                    let out = #outputs_ident::#method_ident(response);
+                    #resolver.respond(Ok(out));
                 }}
             },
         );
@@ -267,6 +274,9 @@ impl<'a> ProceduresGenerator<'a> {
 
                     let input_enum_decl = <#inputs_ident as taurpc::TS>::decl();
                     ts_types.push_str(&format!("export {}\n", input_enum_decl));
+
+                    let output_enum_decl = <#outputs_ident as taurpc::TS>::decl();
+                    ts_types.push_str(&format!("export {}\n", output_enum_decl));
 
                     // Export to .ts file in `node_modules/.taurpc`
                     let path = std::path::Path::new(#path);
