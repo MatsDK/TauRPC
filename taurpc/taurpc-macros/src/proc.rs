@@ -2,17 +2,23 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use std::{collections::HashMap, env};
 use syn::{
-    braced, parenthesized,
+    braced,
+    ext::IdentExt,
+    parenthesized,
     parse::{self, Parse, ParseStream},
-    FnArg, Ident, Pat, PatType, ReturnType, Token, Visibility,
+    spanned::Spanned,
+    FnArg, Generics, Ident, Pat, PatType, ReturnType, Token, Type, Visibility,
 };
 
 use crate::{parse_arg_key, parse_args};
+
+const RESERVED_ARGS: &'static [&'static str] = &["window", "state", "app_handle"];
 
 pub struct Procedures {
     pub ident: Ident,
     pub methods: Vec<RpcMethod>,
     pub vis: Visibility,
+    pub generics: Generics,
 }
 
 impl Parse for Procedures {
@@ -20,6 +26,8 @@ impl Parse for Procedures {
         let vis = input.parse()?;
         <Token![trait]>::parse(input)?;
         let ident: Ident = input.parse()?;
+
+        let generics: Generics = input.parse()?;
 
         let content;
         braced!(content in input);
@@ -49,6 +57,7 @@ impl Parse for Procedures {
             ident,
             methods,
             vis,
+            generics,
         })
     }
 }
@@ -57,6 +66,7 @@ pub struct RpcMethod {
     pub ident: Ident,
     pub output: ReturnType,
     pub args: Vec<PatType>,
+    pub generics: Generics,
 }
 
 impl Parse for RpcMethod {
@@ -65,6 +75,7 @@ impl Parse for RpcMethod {
         <Token![fn]>::parse(input)?;
 
         let ident: Ident = input.parse()?;
+        let generics: Generics = input.parse()?;
 
         let content;
         parenthesized!(content in input);
@@ -72,10 +83,13 @@ impl Parse for RpcMethod {
         let mut args = Vec::new();
         for arg in content.parse_terminated(FnArg::parse, Token![,])? {
             match arg {
-                FnArg::Typed(p) if matches!(*p.pat, Pat::Ident(_)) => args.push(p),
-                _ => {
-                    eprintln!("Not supported")
+                FnArg::Typed(pat_ty) if matches!(*pat_ty.pat, Pat::Ident(_)) => {
+                    args.push(pat_ty);
                 }
+                err => Err(syn::Error::new(
+                    err.span(),
+                    "only named arguments are allowed",
+                ))?,
             }
         }
 
@@ -86,6 +100,7 @@ impl Parse for RpcMethod {
             ident,
             output,
             args,
+            generics,
         })
     }
 }
@@ -99,6 +114,7 @@ pub struct ProceduresGenerator<'a> {
     pub methods: &'a [RpcMethod],
     pub method_names: &'a [Ident],
     pub struct_idents: &'a [Ident],
+    pub generics: Generics,
 }
 
 impl<'a> ProceduresGenerator<'a> {
@@ -108,6 +124,7 @@ impl<'a> ProceduresGenerator<'a> {
             handler_ident,
             methods,
             vis,
+            generics,
             ..
         } = self;
 
@@ -116,16 +133,17 @@ impl<'a> ProceduresGenerator<'a> {
                  ident,
                  output,
                  args,
+                 generics,
              }| {
                 quote! {
                     #[allow(non_camel_case_types)]
-                    fn #ident(self, #( #args ),*) #output;
+                    fn #ident #generics(self, #( #args ),*) #output;
                 }
             },
         );
 
         quote! {
-            #vis trait #trait_ident: Sized {
+            #vis trait #trait_ident #generics: Sized {
                 #( #types_and_fns )*
 
                 fn into_handler(self) -> #handler_ident<Self> {
@@ -144,7 +162,21 @@ impl<'a> ProceduresGenerator<'a> {
         } = self;
 
         let inputs = methods.iter().map(|RpcMethod { ident, args, .. }| {
-            let types = args.iter().map(|PatType { ty, .. }| ty);
+            let types = args
+                .iter()
+                .filter_map(|PatType { ty, pat, .. }| match &mut pat.as_ref() {
+                    Pat::Ident(pat_ident) => {
+                        let arg_name = pat_ident.ident.unraw().to_string();
+                        if RESERVED_ARGS.iter().any(|&s| s == arg_name) {
+                            return None;
+                        }
+                        Some(ty)
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            println!("{:?}", types);
 
             quote! {
                 #ident(( #( #types ),* ))
@@ -231,6 +263,13 @@ impl<'a> ProceduresGenerator<'a> {
         methods.iter().for_each(|RpcMethod { args, ident, .. }| {
             let args = args
                 .iter()
+                .filter(|PatType { pat, .. }| match &mut pat.as_ref() {
+                    Pat::Ident(pat_ident) => {
+                        let arg_name = pat_ident.ident.unraw().to_string();
+                        !RESERVED_ARGS.iter().any(|&s| s == arg_name)
+                    }
+                    _ => false,
+                })
                 .map(parse_arg_key)
                 .map(|r| r.unwrap())
                 .collect::<Vec<_>>();

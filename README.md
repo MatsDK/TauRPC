@@ -81,10 +81,10 @@ trait Api {
 
 - [x] Basic inputs
 - [x] Struct inputs
-- [ ] State extractors
+- [ ] Sharing state
 - [ ] Renaming methods
 - [ ] Merging routers
 - [ ] Custom error handling
-- [ ] Typed outputs
+- [x] Typed outputs
 - [ ] Async methods
 - [ ] Calling the frontend

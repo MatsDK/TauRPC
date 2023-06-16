@@ -30,6 +30,7 @@ pub fn procedures(_attr: TokenStream, item: TokenStream) -> TokenStream {
         ref ident,
         ref methods,
         vis,
+        generics,
     } = parse_macro_input!(item as Procedures);
 
     let struct_idents = STRUCT_NAMES.lock().unwrap();
@@ -49,6 +50,7 @@ pub fn procedures(_attr: TokenStream, item: TokenStream) -> TokenStream {
             .map(|name| format_ident!("{}", name))
             .collect::<Vec<_>>(),
         vis,
+        generics,
     }
     .into_token_stream()
     .into()
