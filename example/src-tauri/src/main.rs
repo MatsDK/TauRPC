@@ -1,7 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::{Arc, Mutex};
-
+use std::sync::Mutex;
 use tauri::{Manager, Runtime};
 
 #[taurpc::rpc_struct]
@@ -29,9 +28,8 @@ struct ApiImpl;
 impl Api for ApiImpl {
     fn test_state(self, input: String, state: tauri::State<GlobalState>) {
         let mut data = state.lock().unwrap();
-        println!("{:?}", data);
         *data = input;
-        println!("called `test`");
+        println!("{:?}", data);
     }
 
     fn test_window<R: Runtime>(self, window: tauri::Window<R>) {
@@ -43,8 +41,7 @@ impl Api for ApiImpl {
         println!("{:?}, {:?}", app_dir, app_handle.package_info());
     }
 
-    fn test_event(self, input1: String, user: u8) -> Option<User> {
-        println!("called `test_event` {}, {}", input1, user);
+    fn test_event(self, input1: String, _user: u8) -> Option<User> {
         Some(User {
             first_name: input1.clone(),
             last_name: input1,
@@ -54,7 +51,7 @@ impl Api for ApiImpl {
     }
 }
 
-type GlobalState = Arc<Mutex<String>>;
+type GlobalState = Mutex<String>;
 
 fn main() {
     tauri::Builder::default()
@@ -64,7 +61,7 @@ fn main() {
             app.get_window("main").unwrap().open_devtools();
             Ok(())
         })
-        .manage(Arc::new(Mutex::new(String::from("default value"))))
+        .manage(Mutex::new("some state value".to_string()))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

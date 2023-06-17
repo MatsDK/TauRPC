@@ -7,7 +7,7 @@ use syn::{
     parenthesized,
     parse::{self, Parse, ParseStream},
     spanned::Spanned,
-    FnArg, Generics, Ident, Pat, PatType, ReturnType, Token, Type, Visibility,
+    FnArg, Generics, Ident, Pat, PatType, ReturnType, Token, Visibility,
 };
 
 use crate::{parse_arg_key, parse_args};
@@ -83,6 +83,7 @@ impl Parse for RpcMethod {
         let mut args = Vec::new();
         for arg in content.parse_terminated(FnArg::parse, Token![,])? {
             match arg {
+                // TODO: allow other Pat variants
                 FnArg::Typed(pat_ty) if matches!(*pat_ty.pat, Pat::Ident(_)) => {
                     args.push(pat_ty);
                 }
@@ -176,8 +177,6 @@ impl<'a> ProceduresGenerator<'a> {
                 })
                 .collect::<Vec<_>>();
 
-            println!("{:?}", types);
-
             quote! {
                 #ident(( #( #types ),* ))
             }
@@ -186,6 +185,7 @@ impl<'a> ProceduresGenerator<'a> {
         quote! {
             #[derive(taurpc::TS, taurpc::Serialize)]
             #[serde(tag = "proc_name", content = "input_type")]
+            #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
                 #( #inputs ),*
             }
@@ -215,6 +215,7 @@ impl<'a> ProceduresGenerator<'a> {
         quote! {
             #[derive(taurpc::TS, taurpc::Serialize)]
             #[serde(tag = "proc_name", content = "output_type")]
+            #[allow(non_camel_case_types)]
             #vis enum #outputs_ident {
                 #( #outputs ),*
             }

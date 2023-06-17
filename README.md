@@ -77,11 +77,53 @@ trait Api {
 }
 ```
 
+# Accessing managed state
+
+You can use Tauri's managed state within your commands, along the `state` argument, you can also use the `window` and `app_handle` arguments. [Tauri docs](https://tauri.app/v1/guides/features/command/#accessing-the-window-in-commands)
+
+If you want your state to be mutable, you need to use a container that enables interior mutability, like a [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html).
+
+```rust
+// src-tauri/src/main.rs
+
+use std::sync::Mutex;
+use tauri::{Manager, Runtime, State, Window};
+
+type MyState = Mutex<String>;
+
+#[taurpc::procedures]
+trait Api {
+    fn method_with_state(state: State<MyState>);
+
+    fn method_with_window<R: Runtime>(window: Window<R>);
+}
+
+#[derive(Clone)]
+struct ApiImpl;
+impl Api for ApiImpl {
+    fn with_state(self, state: State<MyState>) {
+        // ...
+    }
+
+    fn with_window<R: Runtime>(self, window: Window<R>) {
+        // ...
+    }
+}
+
+fn main() {
+    tauri::Builder::default()
+        .invoke_handler(taurpc::create_rpc_handler(ApiImpl.into_handler()))
+        .manage(Mutex::new("some state value".to_string()))
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+```
+
 # Features
 
 - [x] Basic inputs
 - [x] Struct inputs
-- [ ] Sharing state
+- [x] Sharing state
 - [ ] Renaming methods
 - [ ] Merging routers
 - [ ] Custom error handling
