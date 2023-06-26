@@ -6,11 +6,12 @@ use syn::{
     ext::IdentExt,
     parenthesized,
     parse::{self, Parse, ParseStream},
+    parse_quote,
     spanned::Spanned,
-    FnArg, Generics, Ident, Pat, PatType, ReturnType, Token, Visibility,
+    FnArg, Generics, Ident, Pat, PatType, ReturnType, Token, Type, Visibility,
 };
 
-use crate::{parse_arg_key, parse_args};
+use crate::{method_fut_ident, parse_arg_key, parse_args};
 
 const RESERVED_ARGS: &'static [&'static str] = &["window", "state", "app_handle"];
 
@@ -71,7 +72,7 @@ pub struct RpcMethod {
 
 impl Parse for RpcMethod {
     fn parse(input: ParseStream) -> parse::Result<Self> {
-        // <Token![async]>::parse(input)?;
+        <Token![async]>::parse(input)?;
         <Token![fn]>::parse(input)?;
 
         let ident: Ident = input.parse()?;
@@ -128,6 +129,7 @@ impl<'a> ProceduresGenerator<'a> {
             generics,
             ..
         } = self;
+        let unit_type: &Type = &parse_quote!(());
 
         let types_and_fns = methods.iter().map(
             |RpcMethod {
@@ -136,9 +138,21 @@ impl<'a> ProceduresGenerator<'a> {
                  args,
                  generics,
              }| {
+                let ty_doc = format!("The response future returned by [`{trait_ident}::{ident}`].");
+                let future_type_ident = method_fut_ident(ident);
+
+                let output_ty: &Type = match output {
+                    ReturnType::Type(_, ref ty) => ty,
+                    ReturnType::Default => unit_type,
+                };
+
                 quote! {
+                    #[doc = #ty_doc]
+                    type #future_type_ident: std::future::Future<Output = Result<#output_ty, tauri::InvokeError>> + Send;
+                    // type #future_type_ident: std::future::Future<Output = #output_ty>;
+
                     #[allow(non_camel_case_types)]
-                    fn #ident #generics(self, #( #args ),*) #output;
+                    fn #ident #generics(self, #( #args ),*) -> Self::#future_type_ident;
                 }
             },
         );
@@ -207,9 +221,15 @@ impl<'a> ProceduresGenerator<'a> {
                 ReturnType::Type(_, ty) => ty.into_token_stream(),
             };
 
+            let future_ident = method_fut_ident(ident);
+
             quote! {
                 #ident(#output_ty)
             }
+
+            // quote! {
+            //     #ident(<S as #trait_ident>::#future_ident)
+            // }
         });
 
         quote! {
@@ -253,9 +273,21 @@ impl<'a> ProceduresGenerator<'a> {
                 let args = parse_args(args, &message).unwrap();
 
                 quote! { stringify!(#proc_name) => {
-                    let response = #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*);
-                    let out = #outputs_ident::#method_ident(response);
-                    #resolver.respond(Ok(out));
+                    // Should return future return type of methods
+
+                    // let response = #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*);
+                    // let out = #outputs_ident::#method_ident(response);
+                    // Ok(out)
+
+                    #resolver.respond_async(
+                        #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*)
+                    )
+                    // #resolver.respond_async_serialized(async move {
+                    //     let result = #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*);
+                    //     // let kind = (&result).async_kind();
+                    //     // kind.future(result).await
+                    //     std::future::ready(serde_json::to_value(result.await).map_err(tauri::InvokeError::from_serde_json)).await
+                    // });
                 }}
             },
         );
@@ -287,7 +319,7 @@ impl<'a> ProceduresGenerator<'a> {
                 methods: P,
             }
 
-            impl<P: #trait_ident, R: tauri::Runtime> taurpc::TauRpcHandler<R> for #handler_ident<P> {
+            impl<P: #trait_ident + ::core::marker::Send, R: tauri::Runtime> taurpc::TauRpcHandler<R> for #handler_ident<P> {
                 fn handle_incoming_request(self, #invoke: tauri::Invoke<R>) {
                     #[allow(unused_variables)]
                     let ::tauri::Invoke { message: #message, resolver: #resolver} = #invoke;

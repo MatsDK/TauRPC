@@ -3,12 +3,16 @@
 
     let value = "";
     const call_backend = async () => {
-        const res = await taurpc.test_event("hello world2", 0);
+        const res = await taurpc.test_io({
+            first_name: "foo",
+            last_name: "bar",
+            uid: 0,
+        });
         console.log(res);
 
-        await taurpc.test_state(value);
-        await taurpc.test_window();
-        await taurpc.test_app_handl();
+        await taurpc.update_state(value);
+        await taurpc.get_window();
+        await taurpc.get_app_handle();
     };
 </script>
 

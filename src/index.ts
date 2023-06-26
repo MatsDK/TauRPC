@@ -8,7 +8,6 @@ type FnInput<T extends Procedures> = Extract<
   { proc_name: T }
 >['input_type']
 
-// type FnOutput<T extends Procedures> = void
 type FnOutput<T extends Procedures> = Extract<
   TauRpcApiOutputs,
   { proc_name: T }
@@ -67,6 +66,6 @@ const handleProxyCall = async (
   }
 }
 
-// export * from '../node_modules/.taurpc'
-export * from '.taurpc'
+export * from '../node_modules/.taurpc'
+// export * from '.taurpc'
 export { createTauRPCProxy }

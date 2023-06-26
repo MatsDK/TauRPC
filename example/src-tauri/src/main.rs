@@ -1,59 +1,62 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Mutex;
+use std::{sync::Mutex, time::Duration};
 use tauri::{Manager, Runtime};
+use tokio::time::sleep;
 
 #[taurpc::rpc_struct]
 struct User {
-    user_id: i32,
+    uid: i32,
     first_name: String,
     last_name: String,
-    test: Vec<String>,
 }
 
 #[taurpc::procedures]
 trait Api {
-    fn test_state(input: String, state: tauri::State<GlobalState>);
+    async fn update_state(new_value: String, state: tauri::State<GlobalState>);
 
-    fn test_window<R: Runtime>(window: tauri::Window<R>);
+    async fn get_window<R: Runtime>(window: tauri::Window<R>);
 
-    fn test_app_handl<R: Runtime>(app_handle: tauri::AppHandle<R>);
+    async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
 
-    fn test_event(input1: String, user: u8) -> Option<User>;
+    async fn test_io(user: User) -> Option<User>;
+
+    async fn with_sleep();
 }
 
 #[derive(Clone)]
 struct ApiImpl;
 
+#[taurpc::resolvers]
 impl Api for ApiImpl {
-    fn test_state(self, input: String, state: tauri::State<GlobalState>) {
+    async fn update_state(self, new_value: String, state: tauri::State<GlobalState>) {
         let mut data = state.lock().unwrap();
-        *data = input;
+        *data = new_value;
         println!("{:?}", data);
     }
 
-    fn test_window<R: Runtime>(self, window: tauri::Window<R>) {
+    async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
         println!("{}", window.label());
     }
 
-    fn test_app_handl<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
+    async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
         let app_dir = app_handle.path_resolver().app_config_dir();
         println!("{:?}, {:?}", app_dir, app_handle.package_info());
     }
 
-    fn test_event(self, input1: String, _user: u8) -> Option<User> {
-        Some(User {
-            first_name: input1.clone(),
-            last_name: input1,
-            test: vec![],
-            user_id: 0,
-        })
+    async fn test_io(self, user: User) -> Option<User> {
+        Some(user)
+    }
+
+    async fn with_sleep(self) {
+        sleep(Duration::from_millis(100)).await;
     }
 }
 
 type GlobalState = Mutex<String>;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     tauri::Builder::default()
         .invoke_handler(taurpc::create_rpc_handler(ApiImpl.into_handler()))
         .setup(|app| {

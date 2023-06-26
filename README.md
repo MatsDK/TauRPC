@@ -128,5 +128,5 @@ fn main() {
 - [ ] Merging routers
 - [ ] Custom error handling
 - [x] Typed outputs
-- [ ] Async methods
+- [ ] Async methods - [async traits👀](https://blog.rust-lang.org/inside-rust/2023/05/03/stabilizing-async-fn-in-trait.html)
 - [ ] Calling the frontend

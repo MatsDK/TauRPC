@@ -1,9 +1,9 @@
 use tauri::{Invoke, Runtime};
 
-pub use serde::Serialize;
+pub use serde::{Deserialize, Serialize};
 pub use ts_rs::TS;
 
-pub use taurpc_macros::{procedures, rpc_struct};
+pub use taurpc_macros::{procedures, resolvers, rpc_struct};
 
 pub trait TauRpcHandler<R: Runtime> {
     fn generate_ts_types();
