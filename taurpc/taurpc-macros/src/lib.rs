@@ -43,6 +43,7 @@ pub fn procedures(_attr: TokenStream, item: TokenStream) -> TokenStream {
         handler_ident: &format_ident!("TauRpc{}Handler", ident),
         inputs_ident: &format_ident!("TauRpcApiInputs"),
         outputs_ident: &format_ident!("TauRpcApiOutputs"),
+        outputs_futures_ident: &format_ident!("TauRpcApiOutputFutures"),
         methods,
         method_names: &methods
             .iter()
@@ -96,7 +97,7 @@ fn transform_method(method: &mut ImplItemFn) -> ImplItemType {
 
     method.sig.output = parse_quote! {
         -> ::core::pin::Pin<Box<
-                dyn ::core::future::Future<Output = Result<#ret, tauri::InvokeError>> + ::core::marker::Send
+                dyn ::core::future::Future<Output = #ret> + ::core::marker::Send
             >>
     };
 
@@ -108,7 +109,7 @@ fn transform_method(method: &mut ImplItemFn) -> ImplItemType {
 
     // generate and return type declaration for return type.
     let t = parse_quote! {
-        type #fut_ident = ::core::pin::Pin<Box<dyn ::core::future::Future<Output = Result<#ret, tauri::InvokeError>> + ::core::marker::Send>>;
+        type #fut_ident = ::core::pin::Pin<Box<dyn ::core::future::Future<Output = #ret> + ::core::marker::Send>>;
     };
 
     t

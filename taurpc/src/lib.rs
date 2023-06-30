@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use tauri::{Invoke, Runtime};
 
 pub use serde::{Deserialize, Serialize};
@@ -6,11 +8,13 @@ pub use ts_rs::TS;
 pub use taurpc_macros::{procedures, resolvers, rpc_struct};
 
 pub trait TauRpcHandler<R: Runtime> {
+    type Resp: Serialize;
+
+    fn handle_incoming_request(self, invoke: Invoke<R>);
+
     fn generate_ts_types();
 
     fn setup() -> String;
-
-    fn handle_incoming_request(self, invoke: Invoke<R>);
 }
 
 /// Creates a handler that allows your RPCs to be called from the frontend with the coresponding
@@ -47,9 +51,7 @@ where
 
         match cmd {
             "TauRPC__setup" => invoke.resolver.respond(Ok(H::setup())),
-            _ => {
-                procedures.clone().handle_incoming_request(invoke);
-            }
+            _ => procedures.clone().handle_incoming_request(invoke),
         }
     }
 }

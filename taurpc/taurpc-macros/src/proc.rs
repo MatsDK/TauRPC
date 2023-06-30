@@ -112,6 +112,7 @@ pub struct ProceduresGenerator<'a> {
     pub handler_ident: &'a Ident,
     pub inputs_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
+    pub outputs_futures_ident: &'a Ident,
     pub vis: Visibility,
     pub methods: &'a [RpcMethod],
     pub method_names: &'a [Ident],
@@ -148,7 +149,7 @@ impl<'a> ProceduresGenerator<'a> {
 
                 quote! {
                     #[doc = #ty_doc]
-                    type #future_type_ident: std::future::Future<Output = Result<#output_ty, tauri::InvokeError>> + Send;
+                    type #future_type_ident: std::future::Future<Output = #output_ty> + Send;
                     // type #future_type_ident: std::future::Future<Output = #output_ty>;
 
                     #[allow(non_camel_case_types)]
@@ -221,15 +222,9 @@ impl<'a> ProceduresGenerator<'a> {
                 ReturnType::Type(_, ty) => ty.into_token_stream(),
             };
 
-            let future_ident = method_fut_ident(ident);
-
             quote! {
                 #ident(#output_ty)
             }
-
-            // quote! {
-            //     #ident(<S as #trait_ident>::#future_ident)
-            // }
         });
 
         quote! {
@@ -239,6 +234,54 @@ impl<'a> ProceduresGenerator<'a> {
             #vis enum #outputs_ident {
                 #( #outputs ),*
             }
+        }
+    }
+
+    fn output_futures(&self) -> TokenStream2 {
+        let ProceduresGenerator {
+            methods,
+            trait_ident,
+            vis,
+            outputs_futures_ident,
+            outputs_ident,
+            ..
+        } = self;
+
+        let outputs = methods.iter().map(|RpcMethod { ident, .. }| {
+            let future_ident = method_fut_ident(ident);
+
+            quote! {
+                #ident(<P as #trait_ident>::#future_ident)
+            }
+        });
+
+        let method_idents = methods.iter().map(|RpcMethod { ident, .. }| ident);
+
+        quote! {
+            #[allow(non_camel_case_types)]
+            #vis enum #outputs_futures_ident<P: #trait_ident> {
+                #( #outputs ),*
+            }
+
+            impl<P: #trait_ident> std::future::Future for #outputs_futures_ident<P> {
+                type Output = #outputs_ident;
+
+                fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>)
+                    -> std::task::Poll<#outputs_ident>
+                {
+                    unsafe {
+                        match std::pin::Pin::get_unchecked_mut(self) {
+                            #(
+                                #outputs_futures_ident::#method_idents(resp) =>
+                                    std::pin::Pin::new_unchecked(resp)
+                                        .poll(cx)
+                                        .map(#outputs_ident::#method_idents),
+                            )*
+                        }
+                    }
+                }
+            }
+
         }
     }
 
@@ -252,6 +295,7 @@ impl<'a> ProceduresGenerator<'a> {
             method_names,
             methods,
             outputs_ident,
+            outputs_futures_ident,
             ..
         } = self;
 
@@ -273,21 +317,11 @@ impl<'a> ProceduresGenerator<'a> {
                 let args = parse_args(args, &message).unwrap();
 
                 quote! { stringify!(#proc_name) => {
-                    // Should return future return type of methods
-
-                    // let response = #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*);
-                    // let out = #outputs_ident::#method_ident(response);
-                    // Ok(out)
-
-                    #resolver.respond_async(
-                        #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*)
+                    #outputs_futures_ident::#method_ident(
+                        #trait_ident::#method_ident(
+                            self.methods, #( #args.unwrap() ),*
+                        )
                     )
-                    // #resolver.respond_async_serialized(async move {
-                    //     let result = #trait_ident::#method_ident(self.methods, #( #args.unwrap() ),*);
-                    //     // let kind = (&result).async_kind();
-                    //     // kind.future(result).await
-                    //     std::future::ready(serde_json::to_value(result.await).map_err(tauri::InvokeError::from_serde_json)).await
-                    // });
                 }}
             },
         );
@@ -319,17 +353,26 @@ impl<'a> ProceduresGenerator<'a> {
                 methods: P,
             }
 
-            impl<P: #trait_ident + ::core::marker::Send, R: tauri::Runtime> taurpc::TauRpcHandler<R> for #handler_ident<P> {
+            use ::tauri::command::private::*;
+            impl<P: #trait_ident + Send + 'static, R: tauri::Runtime> taurpc::TauRpcHandler<R> for #handler_ident<P> {
+                type Resp = #outputs_ident;
+
                 fn handle_incoming_request(self, #invoke: tauri::Invoke<R>) {
                     #[allow(unused_variables)]
-                    let ::tauri::Invoke { message: #message, resolver: #resolver} = #invoke;
+                    let ::tauri::Invoke { message: #message, resolver: #resolver } = #invoke;
 
-                    match #message.command() {
-                        #( #procedure_handlers ),*
-                        _ => {
-                            #resolver.reject(format!("message {} not found", #message.command()))
-                        }
-                    }
+                    #resolver.respond_async_serialized(async move {
+                        let result: #outputs_futures_ident<P> = match #message.command() {
+                            #( #procedure_handlers ),*
+                            _ => {
+                                // #resolver.reject(format!("message {} not found", #message.command()));
+                                return Err(tauri::InvokeError::from("message not found"));
+                            }
+                        };
+
+                        let kind = (&result).async_kind();
+                        kind.future(result).await
+                    });
                 }
 
                 fn setup() -> String {
@@ -369,6 +412,7 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
             self.procedures_handler(),
             self.input_enum(),
             self.output_enum(),
+            self.output_futures(),
         ])
     }
 }

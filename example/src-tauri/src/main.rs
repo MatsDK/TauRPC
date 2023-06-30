@@ -1,6 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{sync::Mutex, time::Duration};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use tauri::{Manager, Runtime};
 use tokio::time::sleep;
 
@@ -10,10 +13,9 @@ struct User {
     first_name: String,
     last_name: String,
 }
-
 #[taurpc::procedures]
 trait Api {
-    async fn update_state(new_value: String, state: tauri::State<GlobalState>);
+    async fn update_state(new_value: String);
 
     async fn get_window<R: Runtime>(window: tauri::Window<R>);
 
@@ -25,14 +27,17 @@ trait Api {
 }
 
 #[derive(Clone)]
-struct ApiImpl;
+struct ApiImpl {
+    state: GlobalState,
+}
 
 #[taurpc::resolvers]
 impl Api for ApiImpl {
-    async fn update_state(self, new_value: String, state: tauri::State<GlobalState>) {
-        let mut data = state.lock().unwrap();
+    async fn update_state(self, new_value: String) {
+        let mut data = self.state.lock().unwrap();
+        println!("Before {:?}", data);
         *data = new_value;
-        println!("{:?}", data);
+        println!("After {:?}", data);
     }
 
     async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
@@ -49,16 +54,21 @@ impl Api for ApiImpl {
     }
 
     async fn with_sleep(self) {
-        sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(2000)).await;
     }
 }
 
-type GlobalState = Mutex<String>;
+type GlobalState = Arc<Mutex<String>>;
 
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
-        .invoke_handler(taurpc::create_rpc_handler(ApiImpl.into_handler()))
+        .invoke_handler(taurpc::create_rpc_handler(
+            ApiImpl {
+                state: Arc::new(Mutex::new("some state value".to_string())),
+            }
+            .into_handler(),
+        ))
         .setup(|app| {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();
