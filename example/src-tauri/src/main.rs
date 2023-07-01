@@ -74,7 +74,6 @@ async fn main() {
             app.get_window("main").unwrap().open_devtools();
             Ok(())
         })
-        .manage(Mutex::new("some state value".to_string()))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

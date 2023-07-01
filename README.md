@@ -5,14 +5,16 @@ The TS types corresponding to your pre-defined Rust backend API are generated on
 
 # Usage🔧
 
-First, add the crate to your dependencies:
+First, add the following crates to your `Cargo.toml`:
 
 ```toml
 # src-tauri/Cargo.toml
 
 [dependencies]
 taurpc = "0.1.0"
+
 ts-rs = "6.2"
+tokio = { version = "1", features = ["full"] }
 ```
 
 Then, declare and implement your RPC methods.
@@ -22,17 +24,18 @@ Then, declare and implement your RPC methods.
 
 #[taurpc::procedures]
 trait Api {
-    fn hello_world();
+    async fn hello_world();
 }
 
 #[derive(Clone)]
 struct ApiImpl;
 impl Api for ApiImpl {
-    fn hello_world(self) {
+    async fn hello_world(self) {
         println!("Hello world");
     }
 }
 
+#[tokio::main]
 fn main() {
     tauri::Builder::default()
         .invoke_handler(taurpc::create_rpc_handler(ApiImpl.into_handler()))
@@ -53,10 +56,11 @@ Now you can call your backend with types from inside typescript frontend files.
 import { createTauRPCProxy } from 'taurpc'
 
 const taurpc = await createTauRPCProxy()
-taurpc.hello_world()
+await taurpc.hello_world()
 ```
 
 The types for taurpc are generated once you start your application, run `pnpm tauri dev`. If the types are not picked up by the LSP, you may have to restart typescript to reload the types.
+
 You can find a complete example (using Svelte) [here](https://github.com/MatsDK/TauRPC/tree/main/example).
 
 # Using structs
@@ -73,47 +77,59 @@ struct User {
 
 #[taurpc::procedures]
 trait Api {
-    fn get_user() -> User;
+    async fn get_user() -> User;
 }
 ```
 
 # Accessing managed state
 
-You can use Tauri's managed state within your commands, along the `state` argument, you can also use the `window` and `app_handle` arguments. [Tauri docs](https://tauri.app/v1/guides/features/command/#accessing-the-window-in-commands)
+<!-- You can use Tauri's managed state within your commands, along the `state` argument, you can also use the `window` and `app_handle` arguments. [Tauri docs](https://tauri.app/v1/guides/features/command/#accessing-the-window-in-commands) -->
 
-If you want your state to be mutable, you need to use a container that enables interior mutability, like a [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html).
+To share some state between procedures, you can add fields on the API implementation struct. If the state requires to be mutable, you need to use a container that enables interior mutability, like a [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html).
+
+You can use the `window` and `app_handle` arguments just like with Tauri's commands. [Tauri docs](https://tauri.app/v1/guides/features/command/#accessing-the-window-in-commands)
 
 ```rust
 // src-tauri/src/main.rs
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{Manager, Runtime, State, Window};
 
-type MyState = Mutex<String>;
+type MyState = Arc<Mutex<String>>;
 
 #[taurpc::procedures]
 trait Api {
-    fn method_with_state(state: State<MyState>);
+    async fn method_with_state();
 
-    fn method_with_window<R: Runtime>(window: Window<R>);
+    async fn method_with_window<R: Runtime>(window: Window<R>);
 }
 
 #[derive(Clone)]
-struct ApiImpl;
+struct ApiImpl {
+    state: MyState
+};
+
 impl Api for ApiImpl {
-    fn with_state(self, state: State<MyState>) {
-        // ...
+    async fn with_state(self) {
+        // ... 
+        // self.state.lock()
+        // ... 
     }
 
-    fn with_window<R: Runtime>(self, window: Window<R>) {
+    async fn with_window<R: Runtime>(self, window: Window<R>) {
         // ...
     }
 }
 
+#[tokio::main]
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(taurpc::create_rpc_handler(ApiImpl.into_handler()))
-        .manage(Mutex::new("some state value".to_string()))
+        .invoke_handler(taurpc::create_rpc_handler(
+            ApiImpl {
+                state: Arc::new(Mutex::new("state".to_string())),
+            }
+            .into_handler(),
+        ))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -124,9 +140,11 @@ fn main() {
 - [x] Basic inputs
 - [x] Struct inputs
 - [x] Sharing state
+  - [ ] Use Tauri's managed state?
 - [ ] Renaming methods
 - [ ] Merging routers
 - [ ] Custom error handling
 - [x] Typed outputs
-- [ ] Async methods - [async traits👀](https://blog.rust-lang.org/inside-rust/2023/05/03/stabilizing-async-fn-in-trait.html)
+- [x] Async methods - [async traits👀](https://blog.rust-lang.org/inside-rust/2023/05/03/stabilizing-async-fn-in-trait.html)
+  - [ ] Allow sync methods
 - [ ] Calling the frontend

@@ -148,6 +148,7 @@ impl<'a> ProceduresGenerator<'a> {
                 };
 
                 quote! {
+                    #[allow(non_camel_case_types)]
                     #[doc = #ty_doc]
                     type #future_type_ident: std::future::Future<Output = #output_ty> + Send;
                     // type #future_type_ident: std::future::Future<Output = #output_ty>;
