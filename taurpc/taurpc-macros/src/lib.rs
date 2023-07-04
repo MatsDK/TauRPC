@@ -3,8 +3,8 @@ use proc_macro::{self, TokenStream};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    ext::IdentExt, parse_macro_input, parse_quote, spanned::Spanned, Ident, ImplItem, ImplItemFn,
-    ImplItemType, ItemImpl, ItemStruct, Pat, PatType, ReturnType,
+    ext::IdentExt, parse_macro_input, parse_quote, parse_quote_spanned, spanned::Spanned, Ident,
+    ImplItem, ImplItemFn, ImplItemType, ItemImpl, ItemStruct, Pat, PatType, ReturnType,
 };
 
 mod proc;
@@ -43,6 +43,7 @@ pub fn procedures(_attr: TokenStream, item: TokenStream) -> TokenStream {
         handler_ident: &format_ident!("TauRpc{}Handler", ident),
         inputs_ident: &format_ident!("TauRpcApiInputs"),
         outputs_ident: &format_ident!("TauRpcApiOutputs"),
+        output_types_ident: &format_ident!("TauRpcApiOutputTypes"),
         outputs_futures_ident: &format_ident!("TauRpcApiOutputFutures"),
         methods,
         method_names: &methods
@@ -103,14 +104,16 @@ fn transform_method(method: &mut ImplItemFn) -> ImplItemType {
 
     // transform the body of the method into Box::pin(async move { body }).
     let block = method.block.clone();
-    method.block = parse_quote!({
+    method.block = parse_quote_spanned! {method.span()=>{
         Box::pin(async move #block)
-    });
+    }};
 
     // generate and return type declaration for return type.
     let t = parse_quote! {
         type #fut_ident = ::core::pin::Pin<Box<dyn ::core::future::Future<Output = #ret> + ::core::marker::Send>>;
     };
+
+    println!("{t:?}");
 
     t
 }

@@ -62,6 +62,7 @@ const handleProxyCall = async (
     )
     return response['output_type']
   } catch (error) {
+    console.log('got error', error)
     console.error(error)
   }
 }

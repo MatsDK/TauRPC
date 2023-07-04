@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tauri::{Manager, Runtime};
+use tauri::{Manager, Runtime, State};
 use tokio::time::sleep;
 
 #[taurpc::rpc_struct]
@@ -13,6 +13,7 @@ struct User {
     first_name: String,
     last_name: String,
 }
+
 #[taurpc::procedures]
 trait Api {
     async fn update_state(new_value: String);
@@ -21,7 +22,11 @@ trait Api {
 
     async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
 
-    async fn test_io(user: User) -> Option<User>;
+    async fn test_io(user: User) -> User;
+
+    async fn test_option() -> Option<()>;
+
+    async fn test_result(user: User, state: State<GlobalState>) -> Result<User, String>;
 
     async fn with_sleep();
 }
@@ -49,8 +54,19 @@ impl Api for ApiImpl {
         println!("{:?}, {:?}", app_dir, app_handle.package_info());
     }
 
-    async fn test_io(self, user: User) -> Option<User> {
-        Some(user)
+    async fn test_io(self, user: User) -> User {
+        user
+    }
+
+    async fn test_option(self) -> Option<()> {
+        Some(())
+    }
+
+    async fn test_result(self, user: User, state: State<'_, GlobalState>) -> Result<User, String> {
+        let mut data = state.lock().unwrap();
+        // Ok(user)
+        println!("return error");
+        Err("Some error message".to_string())
     }
 
     async fn with_sleep(self) {
@@ -74,6 +90,7 @@ async fn main() {
             app.get_window("main").unwrap().open_devtools();
             Ok(())
         })
+        .manage(Arc::new(Mutex::new(String::from("state"))))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -3,19 +3,13 @@
 
     let value = "";
     const call_backend = async () => {
-        // const res = await taurpc.test_io({
-        //     first_name: "foo",
-        //     last_name: "bar",
-        //     uid: 0,
-        // });
-        // console.log(res);
-
         await taurpc.update_state(value);
-        // await taurpc.get_window();
-        // await taurpc.get_app_handle();
-        console.log("before sleep");
-        await taurpc.with_sleep();
-        console.log("after sleep");
+        // console.log("before sleep");
+        // await taurpc.with_sleep();
+        // console.log("after sleep");
+
+        // await taurpc.test_option();
+        await taurpc.test_result({ first_name: "", last_name: "", uid: 0 });
     };
 </script>
 

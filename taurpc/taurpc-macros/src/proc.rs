@@ -8,7 +8,8 @@ use syn::{
     parse::{self, Parse, ParseStream},
     parse_quote,
     spanned::Spanned,
-    FnArg, Generics, Ident, Pat, PatType, ReturnType, Token, Type, Visibility,
+    FnArg, GenericArgument, Generics, Ident, Pat, PatType, PathArguments, PathSegment, ReturnType,
+    Token, Type, TypePath, Visibility,
 };
 
 use crate::{method_fut_ident, parse_arg_key, parse_args};
@@ -112,6 +113,7 @@ pub struct ProceduresGenerator<'a> {
     pub handler_ident: &'a Ident,
     pub inputs_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
+    pub output_types_ident: &'a Ident,
     pub outputs_futures_ident: &'a Ident,
     pub vis: Visibility,
     pub methods: &'a [RpcMethod],
@@ -151,7 +153,6 @@ impl<'a> ProceduresGenerator<'a> {
                     #[allow(non_camel_case_types)]
                     #[doc = #ty_doc]
                     type #future_type_ident: std::future::Future<Output = #output_ty> + Send;
-                    // type #future_type_ident: std::future::Future<Output = #output_ty>;
 
                     #[allow(non_camel_case_types)]
                     fn #ident #generics(self, #( #args ),*) -> Self::#future_type_ident;
@@ -229,10 +230,39 @@ impl<'a> ProceduresGenerator<'a> {
         });
 
         quote! {
-            #[derive(taurpc::TS, taurpc::Serialize)]
+            #[derive(taurpc::Serialize)]
             #[serde(tag = "proc_name", content = "output_type")]
             #[allow(non_camel_case_types)]
             #vis enum #outputs_ident {
+                #( #outputs ),*
+            }
+        }
+    }
+
+    fn output_types_enum(&self) -> TokenStream2 {
+        let ProceduresGenerator {
+            methods,
+            vis,
+            output_types_ident,
+            ..
+        } = self;
+
+        let outputs = methods.iter().map(|RpcMethod { ident, output, .. }| {
+            let output_ty = match output {
+                ReturnType::Default => quote!(()),
+                ReturnType::Type(_, ty) => unwrap_result_ty(ty.as_ref()).into_token_stream(),
+            };
+
+            quote! {
+                #ident(#output_ty)
+            }
+        });
+
+        quote! {
+            #[derive(taurpc::TS, taurpc::Serialize)]
+            #[serde(tag = "proc_name", content = "output_type")]
+            #[allow(non_camel_case_types)]
+            #vis enum #output_types_ident {
                 #( #outputs ),*
             }
         }
@@ -296,6 +326,7 @@ impl<'a> ProceduresGenerator<'a> {
             method_names,
             methods,
             outputs_ident,
+            output_types_ident,
             outputs_futures_ident,
             ..
         } = self;
@@ -366,8 +397,7 @@ impl<'a> ProceduresGenerator<'a> {
                         let result: #outputs_futures_ident<P> = match #message.command() {
                             #( #procedure_handlers ),*
                             _ => {
-                                // #resolver.reject(format!("message {} not found", #message.command()));
-                                return Err(tauri::InvokeError::from("message not found"));
+                                return Err(tauri::InvokeError::from(format!("message `{}` not found", #message.command())));
                             }
                         };
 
@@ -391,7 +421,7 @@ impl<'a> ProceduresGenerator<'a> {
                     let input_enum_decl = <#inputs_ident as taurpc::TS>::decl();
                     ts_types.push_str(&format!("export {}\n", input_enum_decl));
 
-                    let output_enum_decl = <#outputs_ident as taurpc::TS>::decl();
+                    let output_enum_decl = <#output_types_ident as taurpc::TS>::decl();
                     ts_types.push_str(&format!("export {}\n", output_enum_decl));
 
                     // Export to .ts file in `node_modules/.taurpc`
@@ -413,6 +443,7 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
             self.procedures_handler(),
             self.input_enum(),
             self.output_enum(),
+            self.output_types_enum(),
             self.output_futures(),
         ])
     }
@@ -432,4 +463,41 @@ fn generate_export_path() -> String {
             .unwrap(),
         None => panic!("Export path not found"),
     }
+}
+
+// If a method returns a Result<T, E> type, we extract the first generic argument to use
+// inside the types enum. This is necessary since the `ts-rs` crate does not support Result types.
+// Otherwise just return the original type.
+fn unwrap_result_ty(ty: &Type) -> &Type {
+    let result_seg = match is_ty_result(ty) {
+        Some(seg) => seg,
+        None => return ty,
+    };
+
+    match &result_seg.arguments {
+        PathArguments::AngleBracketed(path_args) => {
+            if let GenericArgument::Type(ty) = path_args.args.first().unwrap() {
+                return ty;
+            }
+        }
+        _ => {}
+    }
+
+    ty
+}
+
+// TODO: This might break with other result types e.g.: io::Result.
+fn is_ty_result(ty: &Type) -> Option<&PathSegment> {
+    match ty {
+        Type::Path(TypePath { path, .. }) => {
+            if let Some(seg) = path.segments.last() {
+                if seg.ident == "Result" {
+                    return Some(seg);
+                }
+            }
+        }
+        _ => {}
+    }
+
+    None
 }
