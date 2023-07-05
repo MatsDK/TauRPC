@@ -1,5 +1,11 @@
 # taurpc
 
+## 1.2.2
+
+### Patch Changes
+
+- [`0424f61`](https://github.com/MatsDK/TauRPC/commit/0424f611f812d8ccfc9055cbddbceee7a5fef023) Thanks [@MatsDK](https://github.com/MatsDK)! - Custom error handling using Result types
+
 ## 1.2.1
 
 ### Patch Changes
