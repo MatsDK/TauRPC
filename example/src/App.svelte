@@ -9,7 +9,17 @@
         // console.log("after sleep");
 
         // await taurpc.test_option();
-        await taurpc.test_result({ first_name: "", last_name: "", uid: 0 });
+        try {
+            const res = await taurpc.test_result({
+                first_name: "",
+                last_name: "",
+                uid: 1,
+            });
+            console.log(res);
+        } catch (error) {
+            console.error(error);
+            // Handle error
+        }
     };
 </script>
 

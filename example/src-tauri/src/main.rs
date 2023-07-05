@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tauri::{Manager, Runtime, State};
+use tauri::{Manager, Runtime};
 use tokio::time::sleep;
 
 #[taurpc::rpc_struct]
@@ -12,6 +12,26 @@ struct User {
     uid: i32,
     first_name: String,
     last_name: String,
+}
+
+// create the error type that represents all errors possible in our program
+#[derive(Debug, thiserror::Error)]
+enum Error {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error("Other: `{0}`")]
+    Other(String),
+}
+
+// we must manually implement serde::Serialize
+impl serde::Serialize for Error {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_ref())
+    }
 }
 
 #[taurpc::procedures]
@@ -26,7 +46,7 @@ trait Api {
 
     async fn test_option() -> Option<()>;
 
-    async fn test_result(user: User, state: State<GlobalState>) -> Result<User, String>;
+    async fn test_result(user: User) -> Result<User, Error>;
 
     async fn with_sleep();
 }
@@ -62,11 +82,9 @@ impl Api for ApiImpl {
         Some(())
     }
 
-    async fn test_result(self, user: User, state: State<'_, GlobalState>) -> Result<User, String> {
-        let mut data = state.lock().unwrap();
-        // Ok(user)
-        println!("return error");
-        Err("Some error message".to_string())
+    async fn test_result(self, user: User) -> Result<User, Error> {
+        // Err(Error::Other("Some error message".to_string()))
+        Ok(user)
     }
 
     async fn with_sleep(self) {

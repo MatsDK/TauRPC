@@ -6,25 +6,47 @@ use syn::{
     ext::IdentExt,
     parenthesized,
     parse::{self, Parse, ParseStream},
-    parse_quote,
     spanned::Spanned,
-    FnArg, GenericArgument, Generics, Ident, Pat, PatType, PathArguments, PathSegment, ReturnType,
-    Token, Type, TypePath, Visibility,
+    Attribute, FnArg, GenericArgument, Generics, Ident, Pat, PatType, PathArguments, PathSegment,
+    ReturnType, Token, Type, TypePath, Visibility,
 };
 
 use crate::{method_fut_ident, parse_arg_key, parse_args};
 
 const RESERVED_ARGS: &'static [&'static str] = &["window", "state", "app_handle"];
 
+/// https://github.com/google/tarpc/blob/master/plugins/src/lib.rs#L29
+/// Accumulates multiple errors into a result.
+/// Only use this for recoverable errors, i.e. non-parse errors. Fatal errors should early exit to
+/// avoid further complications.
+macro_rules! extend_errors {
+    ($errors: ident, $e: expr) => {
+        match $errors {
+            Ok(_) => $errors = Err($e),
+            Err(ref mut errors) => errors.extend($e),
+        }
+    };
+}
+
 pub struct Procedures {
     pub ident: Ident,
     pub methods: Vec<RpcMethod>,
     pub vis: Visibility,
     pub generics: Generics,
+    pub attrs: Vec<Attribute>,
+}
+
+pub struct RpcMethod {
+    pub ident: Ident,
+    pub output: ReturnType,
+    pub args: Vec<PatType>,
+    pub generics: Generics,
+    pub attrs: Vec<Attribute>,
 }
 
 impl Parse for Procedures {
     fn parse(input: ParseStream) -> parse::Result<Self> {
+        let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
         <Token![trait]>::parse(input)?;
         let ident: Ident = input.parse()?;
@@ -39,40 +61,50 @@ impl Parse for Procedures {
             methods.push(<RpcMethod>::parse(&content)?);
         }
 
+        let mut ident_errors = Ok(());
         for procedure in &methods {
             if procedure.ident == "into_handler" {
-                Err(syn::Error::new(
-                    procedure.ident.span(),
-                    format!("method name conflicts with generated fn `{ident}::into_handler`"),
-                ))?;
+                extend_errors!(
+                    ident_errors,
+                    syn::Error::new(
+                        procedure.ident.span(),
+                        format!(
+                            "method name conflicts with generated fn `{}::into_handler`",
+                            ident.unraw()
+                        ),
+                    )
+                );
             }
 
             if procedure.ident == "setup" {
-                Err(syn::Error::new(
-                    procedure.ident.span(),
-                    format!("method name `setup` in `{ident}` conflicts with internal method"),
-                ))?;
+                extend_errors!(
+                    ident_errors,
+                    syn::Error::new(
+                        procedure.ident.span(),
+                        format!(
+                            "method name conflicts with generated fn `{}::setup`",
+                            ident.unraw()
+                        ),
+                    )
+                );
             }
         }
+        ident_errors?;
 
         Ok(Procedures {
             ident,
             methods,
             vis,
             generics,
+            attrs,
         })
     }
 }
 
-pub struct RpcMethod {
-    pub ident: Ident,
-    pub output: ReturnType,
-    pub args: Vec<PatType>,
-    pub generics: Generics,
-}
-
 impl Parse for RpcMethod {
     fn parse(input: ParseStream) -> parse::Result<Self> {
+        let attrs = input.call(Attribute::parse_outer)?;
+
         <Token![async]>::parse(input)?;
         <Token![fn]>::parse(input)?;
 
@@ -85,14 +117,15 @@ impl Parse for RpcMethod {
         let mut args = Vec::new();
         for arg in content.parse_terminated(FnArg::parse, Token![,])? {
             match arg {
-                // TODO: allow other Pat variants
                 FnArg::Typed(pat_ty) if matches!(*pat_ty.pat, Pat::Ident(_)) => {
                     args.push(pat_ty);
                 }
-                err => Err(syn::Error::new(
-                    err.span(),
-                    "only named arguments are allowed",
-                ))?,
+                err => {
+                    return Err(syn::Error::new(
+                        err.span(),
+                        "only named arguments are allowed",
+                    ))
+                }
             }
         }
 
@@ -104,6 +137,7 @@ impl Parse for RpcMethod {
             output,
             args,
             generics,
+            attrs,
         })
     }
 }
@@ -115,55 +149,59 @@ pub struct ProceduresGenerator<'a> {
     pub outputs_ident: &'a Ident,
     pub output_types_ident: &'a Ident,
     pub outputs_futures_ident: &'a Ident,
-    pub vis: Visibility,
+    pub vis: &'a Visibility,
+    pub generics: &'a Generics,
+    pub attrs: &'a [Attribute],
     pub methods: &'a [RpcMethod],
+    pub method_output_types: &'a [&'a Type],
     pub method_names: &'a [Ident],
     pub struct_idents: &'a [Ident],
-    pub generics: Generics,
 }
 
 impl<'a> ProceduresGenerator<'a> {
     fn procedures_trait(&self) -> TokenStream2 {
-        let ProceduresGenerator {
+        let &ProceduresGenerator {
             trait_ident,
             handler_ident,
             methods,
             vis,
             generics,
+            attrs,
+            method_output_types,
             ..
         } = self;
-        let unit_type: &Type = &parse_quote!(());
 
-        let types_and_fns = methods.iter().map(
-            |RpcMethod {
-                 ident,
-                 output,
-                 args,
-                 generics,
-             }| {
+        let types_and_fns = methods.iter().zip(method_output_types.iter()).map(
+            |(
+                RpcMethod {
+                    ident,
+                    args,
+                    generics,
+                    attrs,
+                    ..
+                },
+                output_ty,
+            )| {
                 let ty_doc = format!("The response future returned by [`{trait_ident}::{ident}`].");
                 let future_type_ident = method_fut_ident(ident);
-
-                let output_ty: &Type = match output {
-                    ReturnType::Type(_, ref ty) => ty,
-                    ReturnType::Default => unit_type,
-                };
 
                 quote! {
                     #[allow(non_camel_case_types)]
                     #[doc = #ty_doc]
                     type #future_type_ident: std::future::Future<Output = #output_ty> + Send;
 
-                    #[allow(non_camel_case_types)]
+                    #( #attrs )*
                     fn #ident #generics(self, #( #args ),*) -> Self::#future_type_ident;
                 }
             },
         );
 
         quote! {
+            #( #attrs )*
             #vis trait #trait_ident #generics: Sized {
                 #( #types_and_fns )*
 
+                /// Returns handler used for incoming requests and type generation.
                 fn into_handler(self) -> #handler_ident<Self> {
                     #handler_ident { methods: self }
                 }
@@ -172,7 +210,7 @@ impl<'a> ProceduresGenerator<'a> {
     }
 
     fn input_enum(&self) -> TokenStream2 {
-        let ProceduresGenerator {
+        let &Self {
             methods,
             vis,
             inputs_ident,
@@ -180,6 +218,7 @@ impl<'a> ProceduresGenerator<'a> {
         } = self;
 
         let inputs = methods.iter().map(|RpcMethod { ident, args, .. }| {
+            // Filter out Tauri's reserved arguments (state, window, app_handle), these args do not need TS types.
             let types = args
                 .iter()
                 .filter_map(|PatType { ty, pat, .. }| match &mut pat.as_ref() {
@@ -201,7 +240,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(taurpc::TS, taurpc::Serialize)]
-            #[serde(tag = "proc_name", content = "input_type")]
+            #[serde(tag = "proc_name", content = "input_type", rename = "TauRpcInputs")]
             #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
                 #( #inputs ),*
@@ -210,24 +249,21 @@ impl<'a> ProceduresGenerator<'a> {
     }
 
     fn output_enum(&self) -> TokenStream2 {
-        let ProceduresGenerator {
+        let &Self {
             methods,
             vis,
             outputs_ident,
+            method_output_types,
             ..
         } = self;
 
-        let outputs = methods.iter().map(|RpcMethod { ident, output, .. }| {
-            // TODO: handle Option<T>, Result<T, E>
-            let output_ty = match output {
-                ReturnType::Default => quote!(()),
-                ReturnType::Type(_, ty) => ty.into_token_stream(),
-            };
-
-            quote! {
-                #ident(#output_ty)
-            }
-        });
+        let outputs = methods.iter().zip(method_output_types.iter()).map(
+            |(RpcMethod { ident, .. }, output_ty)| {
+                quote! {
+                    #ident(#output_ty)
+                }
+            },
+        );
 
         quote! {
             #[derive(taurpc::Serialize)]
@@ -239,28 +275,30 @@ impl<'a> ProceduresGenerator<'a> {
         }
     }
 
+    // Create enum that is used for generating the TS types, unwrap Result types because
+    // ts_rs::TS is not implemented for them.
     fn output_types_enum(&self) -> TokenStream2 {
-        let ProceduresGenerator {
+        let &Self {
             methods,
             vis,
             output_types_ident,
+            method_output_types,
             ..
         } = self;
 
-        let outputs = methods.iter().map(|RpcMethod { ident, output, .. }| {
-            let output_ty = match output {
-                ReturnType::Default => quote!(()),
-                ReturnType::Type(_, ty) => unwrap_result_ty(ty.as_ref()).into_token_stream(),
-            };
+        let outputs = methods.iter().zip(method_output_types.iter()).map(
+            |(RpcMethod { ident, .. }, output_ty)| {
+                let output_ty = unwrap_result_ty(output_ty);
 
-            quote! {
-                #ident(#output_ty)
-            }
-        });
+                quote! {
+                    #ident(#output_ty)
+                }
+            },
+        );
 
         quote! {
             #[derive(taurpc::TS, taurpc::Serialize)]
-            #[serde(tag = "proc_name", content = "output_type")]
+            #[serde(tag = "proc_name", content = "output_type", rename="TauRpcOutputs")]
             #[allow(non_camel_case_types)]
             #vis enum #output_types_ident {
                 #( #outputs ),*
@@ -269,7 +307,7 @@ impl<'a> ProceduresGenerator<'a> {
     }
 
     fn output_futures(&self) -> TokenStream2 {
-        let ProceduresGenerator {
+        let &Self {
             methods,
             trait_ident,
             vis,
@@ -317,7 +355,7 @@ impl<'a> ProceduresGenerator<'a> {
     }
 
     fn procedures_handler(&self) -> TokenStream2 {
-        let ProceduresGenerator {
+        let &Self {
             trait_ident,
             handler_ident,
             vis,
@@ -327,7 +365,6 @@ impl<'a> ProceduresGenerator<'a> {
             methods,
             outputs_ident,
             output_types_ident,
-            outputs_futures_ident,
             ..
         } = self;
 
@@ -349,15 +386,18 @@ impl<'a> ProceduresGenerator<'a> {
                 let args = parse_args(args, &message).unwrap();
 
                 quote! { stringify!(#proc_name) => {
-                    #outputs_futures_ident::#method_ident(
-                        #trait_ident::#method_ident(
+                    #resolver.respond_async_serialized(async move {
+                        let res = #trait_ident::#method_ident(
                             self.methods, #( #args.unwrap() ),*
-                        )
-                    )
+                        );
+                        let kind = (&res).async_kind();
+                        kind.future(res).await
+                    });
                 }}
             },
         );
 
+        // Generate json object containing the order and names of the arguments for the methods.
         let mut args_map = HashMap::new();
         methods.iter().for_each(|RpcMethod { args, ident, .. }| {
             let args = args
@@ -393,17 +433,12 @@ impl<'a> ProceduresGenerator<'a> {
                     #[allow(unused_variables)]
                     let ::tauri::Invoke { message: #message, resolver: #resolver } = #invoke;
 
-                    #resolver.respond_async_serialized(async move {
-                        let result: #outputs_futures_ident<P> = match #message.command() {
-                            #( #procedure_handlers ),*
-                            _ => {
-                                return Err(tauri::InvokeError::from(format!("message `{}` not found", #message.command())));
-                            }
-                        };
-
-                        let kind = (&result).async_kind();
-                        kind.future(result).await
-                    });
+                    match #message.command() {
+                        #( #procedure_handlers ),*
+                        _ => {
+                            #resolver.reject(format!("message `{}` not found", #message.command()));
+                        }
+                    };
                 }
 
                 fn setup() -> String {

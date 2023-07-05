@@ -2759,6 +2759,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "taurpc",
+ "thiserror",
  "tokio",
  "ts-rs",
 ]

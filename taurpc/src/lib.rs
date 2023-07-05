@@ -6,12 +6,17 @@ pub use ts_rs::TS;
 pub use taurpc_macros::{procedures, resolvers, rpc_struct};
 
 pub trait TauRpcHandler<R: Runtime> {
+    /// Response types enum
     type Resp: Serialize;
 
+    /// Handle a single incoming request
     fn handle_incoming_request(self, invoke: Invoke<R>);
 
+    /// Generates and exports TS types on runtime.
     fn generate_ts_types();
 
+    /// Returns a json object containing the arguments for the methods.
+    /// This is used on the frontend to ensure the arguments are send with their correct idents to the backend.
     fn setup() -> String;
 }
 

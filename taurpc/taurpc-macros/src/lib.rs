@@ -4,7 +4,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use syn::{
     ext::IdentExt, parse_macro_input, parse_quote, parse_quote_spanned, spanned::Spanned, Ident,
-    ImplItem, ImplItemFn, ImplItemType, ItemImpl, ItemStruct, Pat, PatType, ReturnType,
+    ImplItem, ImplItemFn, ImplItemType, ItemImpl, ItemStruct, Pat, PatType, ReturnType, Type,
 };
 
 mod proc;
@@ -14,6 +14,8 @@ use std::sync::Mutex;
 
 static STRUCT_NAMES: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(vec![]));
 
+/// Add this macro to all structs used inside the procedures arguments or return types.
+/// This macro is necessary for serialization and TS type generation.
 #[proc_macro_attribute]
 pub fn rpc_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
@@ -27,25 +29,35 @@ pub fn rpc_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Generates the necessary structs and enums for handling calls and generating TS-types.
 #[proc_macro_attribute]
 pub fn procedures(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let Procedures {
         ref ident,
         ref methods,
-        vis,
-        generics,
+        ref vis,
+        ref generics,
+        ref attrs,
     } = parse_macro_input!(item as Procedures);
 
     let struct_idents = STRUCT_NAMES.lock().unwrap();
+    let unit_type: &Type = &parse_quote!(());
 
     ProceduresGenerator {
         trait_ident: ident,
         handler_ident: &format_ident!("TauRpc{}Handler", ident),
-        inputs_ident: &format_ident!("TauRpcApiInputs"),
-        outputs_ident: &format_ident!("TauRpcApiOutputs"),
-        output_types_ident: &format_ident!("TauRpcApiOutputTypes"),
-        outputs_futures_ident: &format_ident!("TauRpcApiOutputFutures"),
+        inputs_ident: &format_ident!("TauRpc{}Inputs", ident),
+        outputs_ident: &format_ident!("TauRpc{}Outputs", ident),
+        output_types_ident: &format_ident!("TauRpc{}OutputTypes", ident),
+        outputs_futures_ident: &format_ident!("TauRpc{}OutputFutures", ident),
         methods,
+        method_output_types: &methods
+            .iter()
+            .map(|RpcMethod { output, .. }| match output {
+                ReturnType::Type(_, ref ty) => ty,
+                ReturnType::Default => unit_type,
+            })
+            .collect::<Vec<_>>(),
         method_names: &methods
             .iter()
             .map(|RpcMethod { ident, .. }| format_method_name(ident))
@@ -56,11 +68,13 @@ pub fn procedures(_attr: TokenStream, item: TokenStream) -> TokenStream {
             .collect::<Vec<_>>(),
         vis,
         generics,
+        attrs,
     }
     .into_token_stream()
     .into()
 }
 
+/// Transforms all methods to return Pin<Box<Future<Output = ...>>>, async traits are not supported.
 #[proc_macro_attribute]
 pub fn resolvers(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut item = syn::parse_macro_input!(item as ItemImpl);
@@ -112,8 +126,6 @@ fn transform_method(method: &mut ImplItemFn) -> ImplItemType {
     let t = parse_quote! {
         type #fut_ident = ::core::pin::Pin<Box<dyn ::core::future::Future<Output = #ret> + ::core::marker::Send>>;
     };
-
-    println!("{t:?}");
 
     t
 }
