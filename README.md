@@ -1,5 +1,7 @@
 # TauRPC
 
+[![](https://img.shields.io/npm/v/taurpc)](https://www.npmjs.com/package/taurpc) [![](https://img.shields.io/crates/v/taurpc)](https://crates.io/crates/taurpc) [![](https://img.shields.io/docsrs/taurpc)](https://docs.rs/taurpc/) ![](https://img.shields.io/crates/l/taurpc)
+
 This package is a Tauri extension to give you a fully-typed RPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/).
 The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your Typescript frontend framework of choice.
 
@@ -43,6 +45,8 @@ fn main() {
         .expect("error while running tauri application");
 }
 ```
+
+The `#[taurpc::procedures]` trait will generate everything necessary for handling calls and the type-generation. Now, you should run `pnpm tauri dev` to generate and export the TS types (the types will be exported to `node_moduldes/.taurpc`).
 
 Then on the frontend install the taurpc package.
 
@@ -135,6 +139,14 @@ fn main() {
 }
 ```
 
+# Custom error handling
+
+You can return a `Result<T, E>` to return an error if the procedure fails. This is will reject the promise on the frontend and throw an error.
+If you're working with error types from Rust's std library, they will probably not implement `serde::Serialize` which is required for anything that is returned in the procedure.
+In simple scenarios you can use `map_err` to convert these errors to `String`s. For more complex scenarios, you can create your own error type that implements `serde::Serialize`.
+You can find an example using [thiserror](https://github.com/dtolnay/thiserror) [here](https://github.com/MatsDK/TauRPC/blob/main/example/src-tauri/src/main.rs).
+You can also find more information about this in the [Tauri guides](https://tauri.app/v1/guides/features/command/#error-handling).
+
 # Features
 
 - [x] Basic inputs
@@ -143,7 +155,7 @@ fn main() {
   - [ ] Use Tauri's managed state?
 - [ ] Renaming methods
 - [ ] Merging routers
-- [ ] Custom error handling
+- [x] Custom error handling
 - [x] Typed outputs
 - [x] Async methods - [async traits👀](https://blog.rust-lang.org/inside-rust/2023/05/03/stabilizing-async-fn-in-trait.html)
   - [ ] Allow sync methods
