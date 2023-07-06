@@ -3,6 +3,8 @@
 
     let value = "";
     const call_backend = async () => {
+        await taurpc.get_app_handle();
+        return
         await taurpc.update_state(value);
         // console.log("before sleep");
         // await taurpc.with_sleep();

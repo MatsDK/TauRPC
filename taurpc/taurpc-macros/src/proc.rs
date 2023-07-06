@@ -419,7 +419,6 @@ impl<'a> ProceduresGenerator<'a> {
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
 
         quote! {
-
             #[derive(Clone)]
             #vis struct #handler_ident<P> {
                 methods: P,

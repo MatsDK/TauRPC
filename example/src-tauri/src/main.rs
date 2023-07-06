@@ -70,6 +70,9 @@ impl Api for ApiImpl {
     }
 
     async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
+        app_handle
+            .emit_all("test_event", String::from("Some payload value"))
+            .unwrap();
         let app_dir = app_handle.path_resolver().app_config_dir();
         println!("{:?}, {:?}", app_dir, app_handle.package_info());
     }
@@ -108,7 +111,7 @@ async fn main() {
             app.get_window("main").unwrap().open_devtools();
             Ok(())
         })
-        .manage(Arc::new(Mutex::new(String::from("state"))))
+        // .manage(Arc::new(Mutex::new(String::from("state"))))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -31,6 +31,8 @@ trait Api {
 
 #[derive(Clone)]
 struct ApiImpl;
+
+#[taurpc::resolvers]
 impl Api for ApiImpl {
     async fn hello_world(self) {
         println!("Hello world");
@@ -113,6 +115,7 @@ struct ApiImpl {
     state: MyState
 };
 
+#[taurpc::resolvers]
 impl Api for ApiImpl {
     async fn with_state(self) {
         // ... 
