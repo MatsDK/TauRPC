@@ -145,6 +145,7 @@ impl Parse for RpcMethod {
 pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
     pub handler_ident: &'a Ident,
+    pub event_trigger_ident: &'a Ident,
     pub inputs_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
     pub output_types_ident: &'a Ident,
@@ -468,6 +469,19 @@ impl<'a> ProceduresGenerator<'a> {
             }
         }
     }
+
+    fn event_trigger_struct(&self) -> TokenStream2 {
+        let &Self {
+            vis,
+            event_trigger_ident,
+            ..
+        } = self;
+
+        quote! {
+            #[derive(Clone, Debug)]
+            #vis struct #event_trigger_ident;
+        }
+    }
 }
 
 impl<'a> ToTokens for ProceduresGenerator<'a> {
@@ -479,6 +493,7 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
             self.output_enum(),
             self.output_types_enum(),
             self.output_futures(),
+            self.event_trigger_struct()
         ])
     }
 }

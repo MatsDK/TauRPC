@@ -16,7 +16,7 @@ type FnOutput<T extends Procedures> = Extract<
 type Fn<T extends Procedures> = FnInput<T> extends null
   ? (() => Promise<FnOutput<T>>)
   : FnInput<T> extends Array<unknown>
-    ? ((...p: FnInput<T>) => Promise<FnOutput<T>>)
+  ? ((...p: FnInput<T>) => Promise<FnOutput<T>>)
   : ((p: FnInput<T>) => Promise<FnOutput<T>>)
 
 type TauRPCProxy = {
@@ -62,6 +62,6 @@ const handleProxyCall = async (
   return response
 }
 
-// export * from '../node_modules/.taurpc'
-export * from '.taurpc'
+export * from '../node_modules/.taurpc'
+// export * from '.taurpc'
 export { createTauRPCProxy }
