@@ -5,6 +5,8 @@ pub use ts_rs::TS;
 
 pub use taurpc_macros::{procedures, resolvers, rpc_struct};
 
+pub mod utils;
+
 pub trait TauRpcHandler<R: Runtime> {
     /// Response types enum
     type Resp: Serialize;

@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
-use std::{collections::HashMap, env};
+use std::collections::HashMap;
 use syn::{
     braced,
     ext::IdentExt,
@@ -370,8 +370,6 @@ impl<'a> ProceduresGenerator<'a> {
             ..
         } = self;
 
-        let path = generate_export_path();
-
         let invoke = format_ident!("__tauri__invoke__");
         let message = format_ident!("__tauri__message__");
         let resolver = format_ident!("__tauri__resolver__");
@@ -461,11 +459,7 @@ impl<'a> ProceduresGenerator<'a> {
                     ts_types.push_str(&format!("export {}\n", output_enum_decl));
 
                     // Export to .ts file in `node_modules/.taurpc`
-                    let path = std::path::Path::new(#path);
-                    if let Some(parent) = path.parent() {
-                        std::fs::create_dir_all(parent).unwrap();
-                    }
-                    std::fs::write(path, &ts_types).unwrap();
+                    taurpc::utils::export_files(ts_types);
                 }
             }
         }
@@ -560,23 +554,6 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
         ])
     }
 }
-
-fn generate_export_path() -> String {
-    let path = env::current_dir()
-        .unwrap()
-        .parent()
-        .map(|p| p.join("node_modules\\.taurpc"));
-
-    match path {
-        Some(path) => path
-            .join("index.ts")
-            .into_os_string()
-            .into_string()
-            .unwrap(),
-        None => panic!("Export path not found"),
-    }
-}
-
 // If a method returns a Result<T, E> type, we extract the first generic argument to use
 // inside the types enum. This is necessary since the `ts-rs` crate does not support Result types.
 // Otherwise just return the original type.
