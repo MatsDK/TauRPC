@@ -150,6 +150,54 @@ In simple scenarios you can use `map_err` to convert these errors to `String`s. 
 You can find an example using [thiserror](https://github.com/dtolnay/thiserror) [here](https://github.com/MatsDK/TauRPC/blob/main/example/src-tauri/src/main.rs).
 You can also find more information about this in the [Tauri guides](https://tauri.app/v1/guides/features/command/#error-handling).
 
+# Calling the frontend
+
+Trigger [events](https://tauri.app/v1/guides/features/events/) on your TypeScript frontend from your Rust backend with a fully-typed experience.
+The `#[taurpc::procedures]` macro also generatos a struct that you can use to trigger the events, this means you can define the event types the same way you define the procedures.
+
+First start by declaring the API structure, by default the event trigger struct will be identified by `TauRpc{trait_ident}EventTrigger`. If you want to change this, you can add an attribute to do this, `#[taurpc::procedures(event_trigger = ApiEventTrigger)]`.
+for more details you can look at the [example](https://github.com/MatsDK/TauRPC/blob/main/example/src-tauri/src/main.rs).
+
+```rust
+// src-tauri/src/main.rs
+
+#[taurpc::procedures(event_trigger = ApiEventTrigger)]
+trait Api {
+    async fn hello_world();
+}
+
+#[tokio::main]
+fn main() {
+    tauri::Builder::default()
+        .setup(|app| {
+            let trigger = ApiEventTrigger::new(app.handle());
+            trigger.hello_world()?;
+
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+```
+
+Then, on the frontend you can listen for the events with types:
+
+```typescript
+import { defineResolvers } from 'taurpc'
+
+const { on, subsribe, unsubscribe } = await defineResolvers()
+
+on('hello_world', () => {
+  console.log('Hello World!')
+})
+
+// Run this inside a cleanup function, for example in React and onDestroy in SvelteKit
+unsubscribe()
+
+// You can also unlisten from a single method like this
+unsubsribe('hello_world')
+```
+
 # Features
 
 - [x] Basic inputs
