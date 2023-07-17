@@ -153,10 +153,10 @@ You can also find more information about this in the [Tauri guides](https://taur
 # Calling the frontend
 
 Trigger [events](https://tauri.app/v1/guides/features/events/) on your TypeScript frontend from your Rust backend with a fully-typed experience.
-The `#[taurpc::procedures]` macro also generatos a struct that you can use to trigger the events, this means you can define the event types the same way you define the procedures.
+The `#[taurpc::procedures]` macro also generates a struct that you can use to trigger the events, this means you can define the event types the same way you define the procedures.
 
 First start by declaring the API structure, by default the event trigger struct will be identified by `TauRpc{trait_ident}EventTrigger`. If you want to change this, you can add an attribute to do this, `#[taurpc::procedures(event_trigger = ApiEventTrigger)]`.
-for more details you can look at the [example](https://github.com/MatsDK/TauRPC/blob/main/example/src-tauri/src/main.rs).
+For more details you can look at the [example](https://github.com/MatsDK/TauRPC/blob/main/example/src-tauri/src/main.rs).
 
 ```rust
 // src-tauri/src/main.rs
@@ -200,7 +200,7 @@ unsubsribe('hello_world')
 
 ## Sending an event to a specific window
 
-By default, events are emitted to all windows. If you want to send an event to a specific window by label you can do the following:
+By default, events are emitted to all windows. If you want to send an event to a specific window by label, you can do the following:
 
 ```rust
 trigger.send_to("main").hello_world()?;
