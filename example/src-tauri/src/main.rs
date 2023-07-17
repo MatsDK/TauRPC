@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 use tauri::{Manager, Runtime};
-use tokio::time::sleep;
+use tokio::{sync::oneshot, time::sleep};
 
 #[taurpc::rpc_struct]
 struct User {
@@ -70,9 +70,6 @@ impl Api for ApiImpl {
     }
 
     async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
-        app_handle
-            .emit_all("test_event", String::from("Some payload value"))
-            .unwrap();
         let app_dir = app_handle.path_resolver().app_config_dir();
         println!("{:?}, {:?}", app_dir, app_handle.package_info());
     }
@@ -99,6 +96,22 @@ type GlobalState = Arc<Mutex<String>>;
 
 #[tokio::main]
 async fn main() {
+    let (tx, rx) = oneshot::channel();
+
+    tokio::spawn(async move {
+        let app_handle = rx.await.unwrap();
+        let trigger = TauRpcApiEventTrigger::new(app_handle);
+
+        let mut interval = tokio::time::interval(Duration::from_secs(1));
+        loop {
+            interval.tick().await;
+
+            trigger.update_state(String::from("test"))?
+        }
+
+        Ok::<(), tauri::Error>(())
+    });
+
     tauri::Builder::default()
         .invoke_handler(taurpc::create_rpc_handler(
             ApiImpl {
@@ -109,6 +122,9 @@ async fn main() {
         .setup(|app| {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();
+
+            tx.send(app.handle()).unwrap();
+
             Ok(())
         })
         // .manage(Arc::new(Mutex::new(String::from("state"))))

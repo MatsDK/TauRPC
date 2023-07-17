@@ -1,4 +1,4 @@
-use tauri::{Invoke, Runtime};
+use tauri::{AppHandle, Invoke, Manager, Runtime};
 
 pub use serde::{Deserialize, Serialize};
 pub use ts_rs::TS;
@@ -56,5 +56,20 @@ where
             "TauRPC__setup" => invoke.resolver.respond(Ok(H::setup())),
             _ => procedures.clone().handle_incoming_request(invoke),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EventTrigger {
+    app_handle: AppHandle,
+}
+
+impl EventTrigger {
+    pub fn new(app_handle: AppHandle) -> Self {
+        Self { app_handle }
+    }
+
+    pub fn call<S: Serialize + Clone>(&self, req: S) -> tauri::Result<()> {
+        self.app_handle.emit_all("TauRpc_event", req)
     }
 }

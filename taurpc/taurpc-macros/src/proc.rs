@@ -169,6 +169,7 @@ impl<'a> ProceduresGenerator<'a> {
             generics,
             attrs,
             method_output_types,
+            event_trigger_ident,
             ..
         } = self;
 
@@ -240,7 +241,7 @@ impl<'a> ProceduresGenerator<'a> {
         });
 
         quote! {
-            #[derive(taurpc::TS, taurpc::Serialize)]
+            #[derive(taurpc::TS, taurpc::Serialize, Clone)]
             #[serde(tag = "proc_name", content = "input_type", rename = "TauRpcInputs")]
             #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
@@ -479,7 +480,68 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(Clone, Debug)]
-            #vis struct #event_trigger_ident;
+            #vis struct #event_trigger_ident(taurpc::EventTrigger);
+        }
+    }
+
+    fn impl_event_trigger(&self) -> TokenStream2 {
+        let &Self {
+            event_trigger_ident,
+            vis,
+            methods,
+            inputs_ident,
+            ..
+        } = self;
+
+        let method_triggers = methods
+            .iter()
+            .map(
+                |RpcMethod {
+                     ident,
+                     args,
+                     generics,
+                     attrs,
+                     ..
+                 }| {
+                    let args = args
+                        .iter()
+                        .filter_map(|arg| match &mut arg.pat.as_ref() {
+                            Pat::Ident(pat_ident) => {
+                                let arg_name = pat_ident.ident.unraw().to_string();
+                                if RESERVED_ARGS.iter().any(|&s| s == arg_name) {
+                                    return None;
+                                }
+                                Some(arg)
+                            }
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>();
+
+                    let arg_pats = args.iter().map(|arg| &*arg.pat).collect::<Vec<_>>();
+
+                    quote! {
+                        #[allow(unused)]
+                        #( #attrs )*
+                        #vis fn #ident #generics(&self, #( #args ),*) -> tauri::Result<()> {
+                            let req = #inputs_ident::#ident(( #( #arg_pats ),* ));
+
+                            self.0.call(req)
+                        }
+                    }
+                },
+            )
+            .collect::<Vec<_>>();
+
+        quote! {
+            impl #event_trigger_ident {
+                #vis fn new(app_handle: tauri::AppHandle) -> Self {
+                    let trigger = taurpc::EventTrigger::new(app_handle);
+
+                    Self(trigger)
+                }
+
+                #( #method_triggers )*
+            }
         }
     }
 }
@@ -493,7 +555,8 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
             self.output_enum(),
             self.output_types_enum(),
             self.output_futures(),
-            self.event_trigger_struct()
+            self.event_trigger_struct(),
+            self.impl_event_trigger(),
         ])
     }
 }

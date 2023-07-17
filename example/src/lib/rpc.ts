@@ -1,10 +1,10 @@
-import { emit, listen } from '@tauri-apps/api/event'
+import { listen } from '@tauri-apps/api/event'
 import { createTauRPCProxy } from '../../../src'
 
-// import { createTauRPCProxy } from 'taurpc'
+// import { createTauRPCProxy, } from 'taurpc'
 
 const taurpc = await createTauRPCProxy()
-listen('test_event', (event) => {
+listen('TauRpc_event', (event) => {
   console.log('even listen', event)
 })
 
