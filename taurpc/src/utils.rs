@@ -30,7 +30,7 @@ fn generate_export_paths() -> (PathBuf, PathBuf) {
             let ts_path = path.join("index.ts").to_path_buf();
             let package_json_path = path.join("package.json").to_path_buf();
 
-            return (ts_path, package_json_path);
+            (ts_path, package_json_path)
         }
         None => panic!("Export path not found"),
     }

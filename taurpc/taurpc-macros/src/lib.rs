@@ -7,10 +7,27 @@ use syn::{
     ImplItem, ImplItemFn, ImplItemType, ItemImpl, ItemStruct, Pat, PatType, ReturnType, Type,
 };
 
+mod attrs;
 mod proc;
 
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
+
+use crate::attrs::ProceduresAttrs;
+
+/// https://github.com/google/tarpc/blob/master/plugins/src/lib.rs#L29
+/// Accumulates multiple errors into a result.
+/// Only use this for recoverable errors, i.e. non-parse errors. Fatal errors should early exit to
+/// avoid further complications.
+macro_rules! extend_errors {
+    ($errors: ident, $e: expr) => {
+        match $errors {
+            Ok(_) => $errors = Err($e),
+            Err(ref mut errors) => errors.extend($e),
+        }
+    };
+}
+pub(crate) use extend_errors;
 
 static STRUCT_NAMES: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(vec![]));
 
@@ -31,7 +48,9 @@ pub fn rpc_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Generates the necessary structs and enums for handling calls and generating TS-types.
 #[proc_macro_attribute]
-pub fn procedures(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    let procedures_attrs = parse_macro_input!(attrs as ProceduresAttrs);
+
     let Procedures {
         ref ident,
         ref methods,
@@ -46,7 +65,9 @@ pub fn procedures(_attr: TokenStream, item: TokenStream) -> TokenStream {
     ProceduresGenerator {
         trait_ident: ident,
         handler_ident: &format_ident!("TauRpc{}Handler", ident),
-        event_trigger_ident: &format_ident!("TauRpc{}EventTrigger", ident),
+        event_trigger_ident: &procedures_attrs
+            .event_trigger_ident
+            .unwrap_or(format_ident!("TauRpc{}EventTrigger", ident)),
         inputs_ident: &format_ident!("TauRpc{}Inputs", ident),
         outputs_ident: &format_ident!("TauRpc{}Outputs", ident),
         output_types_ident: &format_ident!("TauRpc{}OutputTypes", ident),

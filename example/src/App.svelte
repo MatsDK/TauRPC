@@ -1,11 +1,12 @@
 <script lang="ts">
     import { taurpc } from "./lib/rpc";
+    import { onMount, onDestroy } from "svelte";
+    import { defineResolvers } from "../../src";
 
     let value = "";
     const call_backend = async () => {
-        await taurpc.get_app_handle();
-        return
         await taurpc.update_state(value);
+        await taurpc.get_window();
         // console.log("before sleep");
         // await taurpc.with_sleep();
         // console.log("after sleep");
@@ -23,6 +24,21 @@
             // Handle error
         }
     };
+
+    let cleanup = null;
+
+    onMount(async () => {
+        const { unsubscribe, on } = await defineResolvers();
+        cleanup = unsubscribe;
+
+        on("update_state", (value) => {
+            console.log(value);
+        });
+    });
+
+    onDestroy(() => {
+        cleanup();
+    });
 </script>
 
 <main class="container">

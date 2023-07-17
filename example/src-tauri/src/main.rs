@@ -34,7 +34,7 @@ impl serde::Serialize for Error {
     }
 }
 
-#[taurpc::procedures]
+#[taurpc::procedures(event_trigger = ApiEventTrigger)]
 trait Api {
     async fn update_state(new_value: String);
 
@@ -83,8 +83,8 @@ impl Api for ApiImpl {
     }
 
     async fn test_result(self, user: User) -> Result<User, Error> {
-        // Err(Error::Other("Some error message".to_string()))
-        Ok(user)
+        Err(Error::Other("Some error message".to_string()))
+        // Ok(user)
     }
 
     async fn with_sleep(self) {
@@ -100,13 +100,17 @@ async fn main() {
 
     tokio::spawn(async move {
         let app_handle = rx.await.unwrap();
-        let trigger = TauRpcApiEventTrigger::new(app_handle);
+        let trigger = ApiEventTrigger::new(app_handle);
 
         let mut interval = tokio::time::interval(Duration::from_secs(1));
         loop {
             interval.tick().await;
 
-            trigger.update_state(String::from("test"))?
+            trigger
+                .send_to("main")
+                .update_state(String::from("test2"))?;
+
+            trigger.update_state(String::from("test"))?;
         }
 
         Ok::<(), tauri::Error>(())
@@ -115,7 +119,7 @@ async fn main() {
     tauri::Builder::default()
         .invoke_handler(taurpc::create_rpc_handler(
             ApiImpl {
-                state: Arc::new(Mutex::new("some state value".to_string())),
+                state: Arc::new(Mutex::new("state".to_string())),
             }
             .into_handler(),
         ))

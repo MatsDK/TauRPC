@@ -162,6 +162,6 @@ You can also find more information about this in the [Tauri guides](https://taur
 - [x] Typed outputs
 - [x] Async methods - [async traits👀](https://blog.rust-lang.org/inside-rust/2023/05/03/stabilizing-async-fn-in-trait.html)
   - [ ] Allow sync methods
-- [ ] Calling the frontend
-- [ ] Renaming event trigger struct
-- [ ] Send event to specific window
+- [x] Calling the frontend
+- [x] Renaming event trigger struct
+- [x] Send event to specific window

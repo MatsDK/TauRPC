@@ -1,3 +1,4 @@
+use super::extend_errors;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use std::collections::HashMap;
@@ -14,19 +15,6 @@ use syn::{
 use crate::{method_fut_ident, parse_arg_key, parse_args};
 
 const RESERVED_ARGS: &'static [&'static str] = &["window", "state", "app_handle"];
-
-/// https://github.com/google/tarpc/blob/master/plugins/src/lib.rs#L29
-/// Accumulates multiple errors into a result.
-/// Only use this for recoverable errors, i.e. non-parse errors. Fatal errors should early exit to
-/// avoid further complications.
-macro_rules! extend_errors {
-    ($errors: ident, $e: expr) => {
-        match $errors {
-            Ok(_) => $errors = Err($e),
-            Err(ref mut errors) => errors.extend($e),
-        }
-    };
-}
 
 pub struct Procedures {
     pub ident: Ident,
@@ -169,7 +157,6 @@ impl<'a> ProceduresGenerator<'a> {
             generics,
             attrs,
             method_output_types,
-            event_trigger_ident,
             ..
         } = self;
 
@@ -528,9 +515,16 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             impl #event_trigger_ident {
+                /// Generate a new client to trigger events on the client-side.
                 #vis fn new(app_handle: tauri::AppHandle) -> Self {
                     let trigger = taurpc::EventTrigger::new(app_handle);
 
+                    Self(trigger)
+                }
+
+                /// Trigger an event on a specific window by label.
+                #vis fn send_to(&self, label: &str) -> Self {
+                    let trigger = taurpc::EventTrigger::new_scoped_from_trigger(self.0.clone(), label);
                     Self(trigger)
                 }
 

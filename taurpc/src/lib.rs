@@ -64,14 +64,35 @@ where
 #[derive(Debug, Clone)]
 pub struct EventTrigger {
     app_handle: AppHandle,
+    scope: Option<String>,
 }
 
 impl EventTrigger {
     pub fn new(app_handle: AppHandle) -> Self {
-        Self { app_handle }
+        Self {
+            app_handle,
+            scope: None,
+        }
+    }
+
+    pub fn new_scoped(app_handle: AppHandle, scope: &str) -> Self {
+        Self {
+            app_handle,
+            scope: Some(scope.to_string()),
+        }
+    }
+
+    pub fn new_scoped_from_trigger(trigger: Self, scope: &str) -> Self {
+        Self {
+            app_handle: trigger.app_handle,
+            scope: Some(scope.to_string()),
+        }
     }
 
     pub fn call<S: Serialize + Clone>(&self, req: S) -> tauri::Result<()> {
-        self.app_handle.emit_all("TauRpc_event", req)
+        match &self.scope {
+            Some(scope) => self.app_handle.emit_to(&scope, "TauRpc_event", req),
+            None => self.app_handle.emit_all("TauRpc_event", req),
+        }
     }
 }
