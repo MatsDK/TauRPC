@@ -1,5 +1,13 @@
 # taurpc
 
+## 1.2.3
+
+### Patch Changes
+
+- [`209358c`](https://github.com/MatsDK/TauRPC/commit/209358c2084e6a77a3e34e5a20b9a8614361720c) Thanks [@MatsDK](https://github.com/MatsDK)! - rename event trigger, event scope
+
+- [`3c8fee9`](https://github.com/MatsDK/TauRPC/commit/3c8fee9af6571f420ec121c33adfc91382592681) Thanks [@MatsDK](https://github.com/MatsDK)! - trigger events on client side, with types
+
 ## 1.2.2
 
 ### Patch Changes
