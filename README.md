@@ -198,6 +198,14 @@ unsubscribe()
 unsubsribe('hello_world')
 ```
 
+## Sending an event to a specific window
+
+By default, events are emitted to all windows. If you want to send an event to a specific window by label you can do the following:
+
+```rust
+trigger.send_to("main").hello_world()?;
+```
+
 # Features
 
 - [x] Basic inputs
