@@ -14,7 +14,7 @@
   },
   "include": [
     "src",
-    ".eslintrc.js"
+    ".eslintrc.cjs"
   ],
   "exclude": [
     "node_modules",

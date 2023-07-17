@@ -1,11 +1,16 @@
-import { listen } from '@tauri-apps/api/event'
-import { createTauRPCProxy } from '../../../src'
+import { createTauRPCProxy, defineResolvers } from '../../../src'
 
 // import { createTauRPCProxy, } from 'taurpc'
 
 const taurpc = await createTauRPCProxy()
-listen('TauRpc_event', (event) => {
-  console.log('even listen', event)
+
+const { unsubscribe, on } = await defineResolvers()
+
+on('update_state', (value) => {
+  console.log(value)
+  // unsubscribe("update_state")
 })
+
+// subsribe()
 
 export { taurpc }
