@@ -48,7 +48,11 @@ trait Api {
 
     async fn test_result(user: User) -> Result<User, Error>;
 
+    // #[taurpc(skip)]
     async fn with_sleep();
+
+    #[taurpc(alias = "method_with_alias")]
+    async fn with_alias();
 }
 
 #[derive(Clone)]
@@ -89,6 +93,10 @@ impl Api for ApiImpl {
 
     async fn with_sleep(self) {
         sleep(Duration::from_millis(2000)).await;
+    }
+
+    async fn with_alias(self) {
+        println!("method with alias called");
     }
 }
 

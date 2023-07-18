@@ -1,13 +1,15 @@
-use proc::{Procedures, ProceduresGenerator, RpcMethod};
+use generator::ProceduresGenerator;
+use proc::{Procedures, RpcMethod};
 use proc_macro::{self, TokenStream};
-use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    ext::IdentExt, parse_macro_input, parse_quote, parse_quote_spanned, spanned::Spanned, Ident,
-    ImplItem, ImplItemFn, ImplItemType, ItemImpl, ItemStruct, Pat, PatType, ReturnType, Type,
+    parse_macro_input, parse_quote, parse_quote_spanned, spanned::Spanned, Ident, ImplItem,
+    ImplItemFn, ImplItemType, ItemImpl, ItemStruct, ReturnType, Type,
 };
 
+mod args;
 mod attrs;
+mod generator;
 mod proc;
 
 use once_cell::sync::Lazy;
@@ -82,7 +84,15 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
             .collect::<Vec<_>>(),
         method_names: &methods
             .iter()
-            .map(|RpcMethod { ident, .. }| format_method_name(ident))
+            .map(|RpcMethod { ident, attrs, .. }| {
+                let ident = attrs
+                    .alias
+                    .as_ref()
+                    .map(|alias| format_ident!("{}", alias))
+                    .unwrap_or(ident.clone());
+
+                format_method_name(&ident)
+            })
             .collect::<Vec<_>>(),
         struct_idents: &struct_idents
             .iter()
@@ -158,44 +168,4 @@ fn format_method_name(method: &Ident) -> Ident {
 
 fn method_fut_ident(ident: &Ident) -> Ident {
     format_ident!("{}Fut", ident)
-}
-
-pub(crate) fn parse_args(args: &Vec<PatType>, message: &Ident) -> syn::Result<Vec<TokenStream2>> {
-    args.iter().map(|arg| parse_arg(arg, message)).collect()
-}
-
-fn parse_arg(arg: &PatType, message: &Ident) -> syn::Result<TokenStream2> {
-    let key = parse_arg_key(arg)?;
-
-    // catch self arguments that use FnArg::Typed syntax
-    if key == "self" {
-        return Err(syn::Error::new(
-            key.span(),
-            "unable to use self as a command function parameter",
-        ));
-    }
-
-    Ok(quote!(::tauri::command::CommandArg::from_command(
-      ::tauri::command::CommandItem {
-        name: "placeholder",
-        key: #key,
-        message: &#message
-      }
-    )))
-}
-
-pub(crate) fn parse_arg_key(arg: &PatType) -> Result<String, syn::Error> {
-    // we only support patterns that allow us to extract some sort of keyed identifier
-    match &mut arg.pat.as_ref().clone() {
-        Pat::Ident(arg) => Ok(arg.ident.unraw().to_string()),
-        Pat::Wild(_) => Ok("".into()), // we always convert to camelCase, so "_" will end up empty anyways
-        Pat::Struct(s) => Ok(s.path.segments.last_mut().unwrap().ident.to_string()),
-        Pat::TupleStruct(s) => Ok(s.path.segments.last_mut().unwrap().ident.to_string()),
-        err => {
-            return Err(syn::Error::new(
-                err.span(),
-                "only named, wildcard, struct, and tuple struct arguments allowed",
-            ))
-        }
-    }
 }

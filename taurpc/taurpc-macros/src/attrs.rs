@@ -4,7 +4,7 @@ use quote::format_ident;
 use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
-    Expr, MetaNameValue, Token,
+    Attribute, Expr, LitStr, MetaNameValue, Token,
 };
 
 #[derive(Debug, Default)]
@@ -54,5 +54,54 @@ impl Parse for ProceduresAttrs {
         errors?;
 
         Ok(result)
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct MethodAttrs {
+    pub(crate) skip: bool,
+    pub(crate) alias: Option<String>,
+}
+
+impl Parse for MethodAttrs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut res = MethodAttrs::default();
+        let attrs = input.call(Attribute::parse_outer)?;
+
+        let mut errors = Ok(());
+
+        for attr in attrs {
+            if !attr.path().is_ident("taurpc") {
+                extend_errors!(
+                    errors,
+                    syn::Error::new(
+                        attr.meta.span(),
+                        "these attributes are not supported, use `#[taurpc(...)]` instead"
+                    )
+                );
+                // continue;
+            }
+
+            if let Err(e) = attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("skip") {
+                    res.skip = true;
+                    Ok(())
+                } else if meta.path.is_ident("alias") {
+                    let value = meta.value()?;
+                    let alias: LitStr = value.parse()?;
+
+                    res.alias = Some(alias.value());
+                    Ok(())
+                } else {
+                    Err(meta.error("unsupported attribute"))
+                }
+            }) {
+                extend_errors!(errors, e);
+            };
+        }
+
+        errors?;
+
+        Ok(res)
     }
 }

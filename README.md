@@ -3,7 +3,7 @@
 [![](https://img.shields.io/npm/v/taurpc)](https://www.npmjs.com/package/taurpc) [![](https://img.shields.io/crates/v/taurpc)](https://crates.io/crates/taurpc) [![](https://img.shields.io/docsrs/taurpc)](https://docs.rs/taurpc/) ![](https://img.shields.io/crates/l/taurpc)
 
 This package is a Tauri extension to give you a fully-typed RPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/).
-The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your Typescript frontend framework of choice.
+The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your Typescript frontend framework of choice. You can also easily send events to the frontend with typed arguments from the Rust backend.
 
 # Usage🔧
 
@@ -13,7 +13,7 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-taurpc = "0.1.0"
+taurpc = "0.1.3"
 
 ts-rs = "6.2"
 tokio = { version = "1", features = ["full"] }
@@ -40,7 +40,7 @@ impl Api for ApiImpl {
 }
 
 #[tokio::main]
-fn main() {
+async fn main() {
     tauri::Builder::default()
         .invoke_handler(taurpc::create_rpc_handler(ApiImpl.into_handler()))
         .run(tauri::generate_context!())
@@ -105,9 +105,9 @@ type MyState = Arc<Mutex<String>>;
 
 #[taurpc::procedures]
 trait Api {
-    async fn method_with_state();
+    async fn with_state();
 
-    async fn method_with_window<R: Runtime>(window: Window<R>);
+    async fn with_window<R: Runtime>(window: Window<R>);
 }
 
 #[derive(Clone)]
@@ -129,7 +129,7 @@ impl Api for ApiImpl {
 }
 
 #[tokio::main]
-fn main() {
+async fn main() {
     tauri::Builder::default()
         .invoke_handler(taurpc::create_rpc_handler(
             ApiImpl {
@@ -167,7 +167,7 @@ trait Api {
 }
 
 #[tokio::main]
-fn main() {
+async fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let trigger = ApiEventTrigger::new(app.handle());
@@ -191,7 +191,7 @@ on('hello_world', () => {
   console.log('Hello World!')
 })
 
-// Run this inside a cleanup function, for example in React and onDestroy in SvelteKit
+// Run this inside a cleanup function, for example in React and onDestroy in Svelte
 unsubscribe()
 
 // You can also unlisten from a single method like this

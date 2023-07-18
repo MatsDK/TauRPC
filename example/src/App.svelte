@@ -7,6 +7,7 @@
     const call_backend = async () => {
         await taurpc.update_state(value);
         await taurpc.get_window();
+        await taurpc.method_with_alias()
         // console.log("before sleep");
         // await taurpc.with_sleep();
         // console.log("after sleep");
