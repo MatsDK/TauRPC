@@ -7,7 +7,7 @@
     const call_backend = async () => {
         await taurpc.update_state(value);
         await taurpc.get_window();
-        await taurpc.method_with_alias()
+        await taurpc.method_with_alias();
         // console.log("before sleep");
         // await taurpc.with_sleep();
         // console.log("after sleep");
@@ -34,6 +34,10 @@
 
         on("update_state", (value) => {
             console.log(value);
+        });
+
+        on("method_with_alias", () => {
+            console.log("method with alias called");
         });
     });
 

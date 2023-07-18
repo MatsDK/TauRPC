@@ -118,6 +118,7 @@ async fn main() {
                 .send_to("main")
                 .update_state(String::from("test2"))?;
 
+            trigger.with_alias()?;
             trigger.update_state(String::from("test"))?;
         }
 

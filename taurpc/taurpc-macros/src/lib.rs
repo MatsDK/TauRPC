@@ -73,7 +73,7 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
         inputs_ident: &format_ident!("TauRpc{}Inputs", ident),
         outputs_ident: &format_ident!("TauRpc{}Outputs", ident),
         output_types_ident: &format_ident!("TauRpc{}OutputTypes", ident),
-        outputs_futures_ident: &format_ident!("TauRpc{}OutputFutures", ident),
+        output_futures_ident: &format_ident!("TauRpc{}OutputFutures", ident),
         methods,
         method_output_types: &methods
             .iter()
@@ -82,16 +82,14 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
                 ReturnType::Default => unit_type,
             })
             .collect::<Vec<_>>(),
-        method_names: &methods
-            .iter()
+        alias_method_idents: &methods
+            .into_iter()
             .map(|RpcMethod { ident, attrs, .. }| {
-                let ident = attrs
+                attrs
                     .alias
                     .as_ref()
-                    .map(|alias| format_ident!("{}", alias))
-                    .unwrap_or(ident.clone());
-
-                format_method_name(&ident)
+                    .map(|alias| Ident::new(alias, ident.span()))
+                    .unwrap_or(ident.clone())
             })
             .collect::<Vec<_>>(),
         struct_idents: &struct_idents
@@ -131,7 +129,7 @@ pub fn resolvers(_attr: TokenStream, item: TokenStream) -> TokenStream {
     quote!(#item).into()
 }
 
-// Transform an async method into a sync one that returns a future.
+// Transform an async method into a sync one that returns a Pin<Box<Future<Output = ...  >> .
 fn transform_method(method: &mut ImplItemFn) -> ImplItemType {
     method.sig.asyncness = None;
 
@@ -162,7 +160,7 @@ fn transform_method(method: &mut ImplItemFn) -> ImplItemType {
     t
 }
 
-fn format_method_name(method: &Ident) -> Ident {
+pub(crate) fn format_method_name(method: &Ident) -> Ident {
     format_ident!("TauRPC__{}", method)
 }
 

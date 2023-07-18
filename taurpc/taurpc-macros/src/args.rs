@@ -2,11 +2,18 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{ext::IdentExt, spanned::Spanned, Ident, Pat, PatType};
 
-pub(crate) fn parse_args(args: &Vec<PatType>, message: &Ident) -> syn::Result<Vec<TokenStream2>> {
-    args.iter().map(|arg| parse_arg(arg, message)).collect()
+/// Generate the code that extracts and deserializes the args from the tauri message.
+pub(crate) fn parse_args(
+    args: &Vec<PatType>,
+    message: &Ident,
+    proc_ident: &Ident,
+) -> syn::Result<Vec<TokenStream2>> {
+    args.iter()
+        .map(|arg| parse_arg(arg, message, proc_ident))
+        .collect()
 }
 
-fn parse_arg(arg: &PatType, message: &Ident) -> syn::Result<TokenStream2> {
+fn parse_arg(arg: &PatType, message: &Ident, proc_ident: &Ident) -> syn::Result<TokenStream2> {
     let key = parse_arg_key(arg)?;
 
     // catch self arguments that use FnArg::Typed syntax
@@ -17,9 +24,10 @@ fn parse_arg(arg: &PatType, message: &Ident) -> syn::Result<TokenStream2> {
         ));
     }
 
+    // this way tauri knows how to deserialize the different types of the args
     Ok(quote!(::tauri::command::CommandArg::from_command(
       ::tauri::command::CommandItem {
-        name: "placeholder",
+        name: #proc_ident,
         key: #key,
         message: &#message
       }

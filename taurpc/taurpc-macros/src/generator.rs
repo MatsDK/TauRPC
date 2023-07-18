@@ -1,4 +1,5 @@
 use crate::args::{parse_arg_key, parse_args};
+use crate::format_method_name;
 use crate::{method_fut_ident, proc::RpcMethod};
 
 use proc_macro2::TokenStream as TokenStream2;
@@ -18,13 +19,13 @@ pub struct ProceduresGenerator<'a> {
     pub inputs_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
     pub output_types_ident: &'a Ident,
-    pub outputs_futures_ident: &'a Ident,
+    pub output_futures_ident: &'a Ident,
     pub vis: &'a Visibility,
     pub generics: &'a Generics,
     pub attrs: &'a [Attribute],
     pub methods: &'a [RpcMethod],
     pub method_output_types: &'a [&'a Type],
-    pub method_names: &'a [Ident],
+    pub alias_method_idents: &'a [Ident],
     pub struct_idents: &'a [Ident],
 }
 
@@ -83,39 +84,26 @@ impl<'a> ProceduresGenerator<'a> {
             methods,
             vis,
             inputs_ident,
+            alias_method_idents,
             ..
         } = self;
 
-        let inputs = methods.iter().map(
-            |RpcMethod {
-                 ident, args, attrs, ..
-             }| {
-                // Filter out Tauri's reserved arguments (state, window, app_handle), these args do not need TS types.
-                let types = args
-                    .iter()
-                    .filter_map(|PatType { ty, pat, .. }| match &mut pat.as_ref() {
-                        Pat::Ident(pat_ident) => {
-                            let arg_name = pat_ident.ident.unraw().to_string();
-                            if RESERVED_ARGS.iter().any(|&s| s == arg_name) {
-                                return None;
-                            }
-                            Some(ty)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
+        let inputs =
+            alias_method_idents
+                .iter()
+                .zip(methods)
+                .map(|(ident, RpcMethod { args, .. })| {
+                    // Filter out Tauri's reserved arguments (state, window, app_handle), these args do not need TS types.
+                    let types = args
+                        .iter()
+                        .filter(filter_reserved_args)
+                        .map(|PatType { ty, .. }| ty)
+                        .collect::<Vec<_>>();
 
-                let ident = attrs
-                    .alias
-                    .as_ref()
-                    .map(|alias| format_ident!("{}", alias))
-                    .unwrap_or(ident.clone());
-
-                quote! {
-                    #ident(( #( #types ),* ))
-                }
-            },
-        );
+                    quote! {
+                        #ident(( #( #types ),* ))
+                    }
+                });
 
         quote! {
             #[derive(taurpc::TS, taurpc::Serialize, Clone)]
@@ -158,28 +146,23 @@ impl<'a> ProceduresGenerator<'a> {
     // ts_rs::TS is not implemented for them.
     fn output_types_enum(&self) -> TokenStream2 {
         let &Self {
-            methods,
             vis,
             output_types_ident,
             method_output_types,
+            alias_method_idents,
             ..
         } = self;
 
-        let outputs = methods.iter().zip(method_output_types.iter()).map(
-            |(RpcMethod { ident, attrs, .. }, output_ty)| {
+        let outputs = alias_method_idents
+            .iter()
+            .zip(method_output_types.iter())
+            .map(|(ident, output_ty)| {
                 let output_ty = unwrap_result_ty(output_ty);
-
-                let ident = attrs
-                    .alias
-                    .as_ref()
-                    .map(|alias| format_ident!("{}", alias))
-                    .unwrap_or(ident.clone());
 
                 quote! {
                     #ident(#output_ty)
                 }
-            },
-        );
+            });
 
         quote! {
             #[derive(taurpc::TS, taurpc::Serialize)]
@@ -196,7 +179,7 @@ impl<'a> ProceduresGenerator<'a> {
             methods,
             trait_ident,
             vis,
-            outputs_futures_ident,
+            output_futures_ident,
             outputs_ident,
             ..
         } = self;
@@ -213,11 +196,11 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[allow(non_camel_case_types)]
-            #vis enum #outputs_futures_ident<P: #trait_ident> {
+            #vis enum #output_futures_ident<P: #trait_ident> {
                 #( #outputs ),*
             }
 
-            impl<P: #trait_ident> std::future::Future for #outputs_futures_ident<P> {
+            impl<P: #trait_ident> std::future::Future for #output_futures_ident<P> {
                 type Output = #outputs_ident;
 
                 fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>)
@@ -226,7 +209,7 @@ impl<'a> ProceduresGenerator<'a> {
                     unsafe {
                         match std::pin::Pin::get_unchecked_mut(self) {
                             #(
-                                #outputs_futures_ident::#method_idents(resp) =>
+                                #output_futures_ident::#method_idents(resp) =>
                                     std::pin::Pin::new_unchecked(resp)
                                         .poll(cx)
                                         .map(#outputs_ident::#method_idents),
@@ -246,7 +229,7 @@ impl<'a> ProceduresGenerator<'a> {
             vis,
             inputs_ident,
             struct_idents,
-            method_names,
+            alias_method_idents,
             methods,
             outputs_ident,
             output_types_ident,
@@ -257,20 +240,14 @@ impl<'a> ProceduresGenerator<'a> {
         let message = format_ident!("__tauri__message__");
         let resolver = format_ident!("__tauri__resolver__");
 
-        let procedure_handlers = method_names.iter().zip(methods.iter()).map(
-            |(
-                proc_name,
-                RpcMethod {
-                    ident: method_ident,
-                    args,
-                    ..
-                },
-            )| {
-                let args = parse_args(args, &message).unwrap();
+        let procedure_handlers = alias_method_idents.iter().zip(methods.iter()).map(
+            |(proc_name, RpcMethod { ident, args, .. })| {
+                let args = parse_args(args, &message, ident).unwrap();
+                let proc_name = format_method_name(proc_name);
 
                 quote! { stringify!(#proc_name) => {
                     #resolver.respond_async_serialized(async move {
-                        let res = #trait_ident::#method_ident(
+                        let res = #trait_ident::#ident(
                             self.methods, #( #args.unwrap() ),*
                         );
                         let kind = (&res).async_kind();
@@ -282,32 +259,19 @@ impl<'a> ProceduresGenerator<'a> {
 
         // Generate json object containing the order and names of the arguments for the methods.
         let mut args_map = HashMap::new();
-        methods.iter().for_each(
-            |RpcMethod {
-                 args, ident, attrs, ..
-             }| {
+        alias_method_idents
+            .iter()
+            .zip(methods)
+            .for_each(|(ident, RpcMethod { args, .. })| {
                 let args = args
                     .iter()
-                    .filter(|PatType { pat, .. }| match &mut pat.as_ref() {
-                        Pat::Ident(pat_ident) => {
-                            let arg_name = pat_ident.ident.unraw().to_string();
-                            !RESERVED_ARGS.iter().any(|&s| s == arg_name)
-                        }
-                        _ => false,
-                    })
+                    .filter(filter_reserved_args)
                     .map(parse_arg_key)
                     .map(|r| r.unwrap())
                     .collect::<Vec<_>>();
 
-                let ident = attrs
-                    .alias
-                    .as_ref()
-                    .map(|alias| format_ident!("{}", alias))
-                    .unwrap_or(ident.clone());
-
                 args_map.insert(ident.to_string(), args);
-            },
-        );
+            });
 
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
 
@@ -377,46 +341,32 @@ impl<'a> ProceduresGenerator<'a> {
             vis,
             methods,
             inputs_ident,
+            alias_method_idents,
             ..
         } = self;
 
-        let method_triggers = methods
+        let method_triggers = alias_method_idents
             .iter()
+            .zip(methods)
             .map(
-                |RpcMethod {
-                     ident,
-                     args,
-                     generics,
-                     attrs,
-                     ..
-                 }| {
-                    let args = args
-                        .iter()
-                        .filter_map(|arg| match &mut arg.pat.as_ref() {
-                            Pat::Ident(pat_ident) => {
-                                let arg_name = pat_ident.ident.unraw().to_string();
-                                if RESERVED_ARGS.iter().any(|&s| s == arg_name) {
-                                    return None;
-                                }
-                                Some(arg)
-                            }
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>();
+                |(
+                    alias_ident,
+                    RpcMethod {
+                        ident,
+                        args,
+                        generics,
+                        ..
+                    },
+                )| {
+                    let args = args.iter().filter(filter_reserved_args).collect::<Vec<_>>();
 
                     let arg_pats = args.iter().map(|arg| &*arg.pat).collect::<Vec<_>>();
-
-                    let ident = attrs
-                        .alias
-                        .as_ref()
-                        .map(|alias| format_ident!("{}", alias))
-                        .unwrap_or(ident.clone());
 
                     quote! {
                         #[allow(unused)]
                         // #( #attrs )*
                         #vis fn #ident #generics(&self, #( #args ),*) -> tauri::Result<()> {
-                            let req = #inputs_ident::#ident(( #( #arg_pats ),* ));
+                            let req = #inputs_ident::#alias_ident(( #( #arg_pats ),* ));
 
                             self.0.call(req)
                         }
@@ -496,4 +446,16 @@ fn is_ty_result(ty: &Type) -> Option<&PathSegment> {
     }
 
     None
+}
+
+/// Filter out Tauri's reserved argument names (state, window, app_handle), since
+/// we should not generate the types for these.
+fn filter_reserved_args(arg: &&PatType) -> bool {
+    match &mut arg.pat.as_ref() {
+        Pat::Ident(pat_ident) => {
+            let arg_name = pat_ident.ident.unraw().to_string();
+            !RESERVED_ARGS.iter().any(|&s| s == arg_name)
+        }
+        _ => false,
+    }
 }

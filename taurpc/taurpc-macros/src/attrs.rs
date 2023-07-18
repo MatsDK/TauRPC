@@ -1,12 +1,12 @@
 use super::extend_errors;
 use proc_macro2::Ident;
-use quote::format_ident;
 use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
     Attribute, Expr, LitStr, MetaNameValue, Token,
 };
 
+/// Attributes added on the procedures trait itself, `#[taurpc::procedures( ... )]`.
 #[derive(Debug, Default)]
 pub struct ProceduresAttrs {
     pub event_trigger_ident: Option<Ident>,
@@ -44,9 +44,8 @@ impl Parse for ProceduresAttrs {
                         );
                     }
 
-                    let event_trigger_ident = p.path.segments.last().unwrap();
-                    result.event_trigger_ident =
-                        Some(format_ident!("{}", event_trigger_ident.ident));
+                    let ident = p.path.get_ident().unwrap();
+                    result.event_trigger_ident = Some(ident.clone());
                 }
             }
         }
@@ -57,6 +56,9 @@ impl Parse for ProceduresAttrs {
     }
 }
 
+/// Attributes defined on methods inside a procedures trait.
+/// Parse the attributes to make sure they are defined in the correct way, like `#[taurpc( ... )]`, accumulate
+/// all errors and then display them together with `extend_errors!()`.  
 #[derive(Default, Debug)]
 pub struct MethodAttrs {
     pub(crate) skip: bool,

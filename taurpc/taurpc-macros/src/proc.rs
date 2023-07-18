@@ -10,6 +10,7 @@ use syn::{
 
 use crate::attrs::MethodAttrs;
 
+/// Parse the structure of the procedures trait tagged with `#[taurpc::procedures]`.
 pub struct Procedures {
     pub ident: Ident,
     pub methods: Vec<RpcMethod>,
@@ -18,6 +19,8 @@ pub struct Procedures {
     pub attrs: Vec<Attribute>,
 }
 
+/// Parse the structure of the methods insdie the procedures trait tagged with `#[taurpc::procedures]`.
+/// These methods can have generics and also have attributes e.g.: `#[taurpc(skip, alias = "...")]`.
 pub struct RpcMethod {
     pub ident: Ident,
     pub output: ReturnType,

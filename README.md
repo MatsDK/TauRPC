@@ -150,6 +150,19 @@ In simple scenarios you can use `map_err` to convert these errors to `String`s. 
 You can find an example using [thiserror](https://github.com/dtolnay/thiserror) [here](https://github.com/MatsDK/TauRPC/blob/main/example/src-tauri/src/main.rs).
 You can also find more information about this in the [Tauri guides](https://tauri.app/v1/guides/features/command/#error-handling).
 
+# Extra options for procedures
+
+Inside your procedures trait you can add attributes to the defined methods. This can be used to ignore or rename a method. Renaming will change the name of the procedure on the frontend.
+
+```rust
+#[taurpc::procedures]
+trait Api {
+    // #[taurpc(skip)]
+    #[taurpc(alias = "_hello_world_")]
+    async fn hello_world();
+}
+```
+
 # Calling the frontend
 
 Trigger [events](https://tauri.app/v1/guides/features/events/) on your TypeScript frontend from your Rust backend with a fully-typed experience.
@@ -212,7 +225,8 @@ trigger.send_to("main").hello_world()?;
 - [x] Struct inputs
 - [x] Sharing state
   - [ ] Use Tauri's managed state?
-- [ ] Renaming methods
+- [x] Renaming methods
+- [ ] Nested routes
 - [ ] Merging routers
 - [x] Custom error handling
 - [x] Typed outputs
