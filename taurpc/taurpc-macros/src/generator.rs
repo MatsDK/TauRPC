@@ -1,6 +1,6 @@
 use crate::args::{parse_arg_key, parse_args};
 use crate::format_method_name;
-use crate::{method_fut_ident, proc::RpcMethod};
+use crate::{method_fut_ident, proc::IpcMethod};
 
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
@@ -23,7 +23,7 @@ pub struct ProceduresGenerator<'a> {
     pub vis: &'a Visibility,
     pub generics: &'a Generics,
     pub attrs: &'a [Attribute],
-    pub methods: &'a [RpcMethod],
+    pub methods: &'a [IpcMethod],
     pub method_output_types: &'a [&'a Type],
     pub alias_method_idents: &'a [Ident],
     pub struct_idents: &'a [Ident],
@@ -44,7 +44,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         let types_and_fns = methods.iter().zip(method_output_types.iter()).map(
             |(
-                RpcMethod {
+                IpcMethod {
                     ident,
                     args,
                     generics,
@@ -92,7 +92,7 @@ impl<'a> ProceduresGenerator<'a> {
             alias_method_idents
                 .iter()
                 .zip(methods)
-                .map(|(ident, RpcMethod { args, .. })| {
+                .map(|(ident, IpcMethod { args, .. })| {
                     // Filter out Tauri's reserved arguments (state, window, app_handle), these args do not need TS types.
                     let types = args
                         .iter()
@@ -125,7 +125,7 @@ impl<'a> ProceduresGenerator<'a> {
         } = self;
 
         let outputs = methods.iter().zip(method_output_types.iter()).map(
-            |(RpcMethod { ident, .. }, output_ty)| {
+            |(IpcMethod { ident, .. }, output_ty)| {
                 quote! {
                     #ident(#output_ty)
                 }
@@ -184,7 +184,7 @@ impl<'a> ProceduresGenerator<'a> {
             ..
         } = self;
 
-        let outputs = methods.iter().map(|RpcMethod { ident, .. }| {
+        let outputs = methods.iter().map(|IpcMethod { ident, .. }| {
             let future_ident = method_fut_ident(ident);
 
             quote! {
@@ -192,7 +192,7 @@ impl<'a> ProceduresGenerator<'a> {
             }
         });
 
-        let method_idents = methods.iter().map(|RpcMethod { ident, .. }| ident);
+        let method_idents = methods.iter().map(|IpcMethod { ident, .. }| ident);
 
         quote! {
             #[allow(non_camel_case_types)]
@@ -241,7 +241,7 @@ impl<'a> ProceduresGenerator<'a> {
         let resolver = format_ident!("__tauri__resolver__");
 
         let procedure_handlers = alias_method_idents.iter().zip(methods.iter()).map(
-            |(proc_name, RpcMethod { ident, args, .. })| {
+            |(proc_name, IpcMethod { ident, args, .. })| {
                 let args = parse_args(args, &message, ident).unwrap();
                 let proc_name = format_method_name(proc_name);
 
@@ -262,7 +262,7 @@ impl<'a> ProceduresGenerator<'a> {
         alias_method_idents
             .iter()
             .zip(methods)
-            .for_each(|(ident, RpcMethod { args, .. })| {
+            .for_each(|(ident, IpcMethod { args, .. })| {
                 let args = args
                     .iter()
                     .filter(filter_reserved_args)
@@ -351,7 +351,7 @@ impl<'a> ProceduresGenerator<'a> {
             .map(
                 |(
                     alias_ident,
-                    RpcMethod {
+                    IpcMethod {
                         ident,
                         args,
                         generics,

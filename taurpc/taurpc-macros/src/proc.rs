@@ -13,7 +13,7 @@ use crate::attrs::MethodAttrs;
 /// Parse the structure of the procedures trait tagged with `#[taurpc::procedures]`.
 pub struct Procedures {
     pub ident: Ident,
-    pub methods: Vec<RpcMethod>,
+    pub methods: Vec<IpcMethod>,
     pub vis: Visibility,
     pub generics: Generics,
     pub attrs: Vec<Attribute>,
@@ -21,7 +21,7 @@ pub struct Procedures {
 
 /// Parse the structure of the methods insdie the procedures trait tagged with `#[taurpc::procedures]`.
 /// These methods can have generics and also have attributes e.g.: `#[taurpc(skip, alias = "...")]`.
-pub struct RpcMethod {
+pub struct IpcMethod {
     pub ident: Ident,
     pub output: ReturnType,
     pub args: Vec<PatType>,
@@ -43,7 +43,7 @@ impl Parse for Procedures {
 
         let mut methods = Vec::new();
         while !content.is_empty() {
-            let method = <RpcMethod>::parse(&content)?;
+            let method = <IpcMethod>::parse(&content)?;
             if method.attrs.skip {
                 continue;
             }
@@ -103,10 +103,9 @@ impl Parse for Procedures {
     }
 }
 
-impl Parse for RpcMethod {
+impl Parse for IpcMethod {
     fn parse(input: ParseStream) -> parse::Result<Self> {
         let attrs = MethodAttrs::parse(input)?;
-        println!("{:?}", attrs);
 
         <Token![async]>::parse(input)?;
         <Token![fn]>::parse(input)?;
@@ -135,7 +134,7 @@ impl Parse for RpcMethod {
         let output = input.parse()?;
         <Token![;]>::parse(input)?;
 
-        Ok(RpcMethod {
+        Ok(IpcMethod {
             ident,
             output,
             args,

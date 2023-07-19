@@ -3,7 +3,7 @@ use tauri::{AppHandle, Invoke, Manager, Runtime};
 pub use serde::{Deserialize, Serialize};
 pub use ts_rs::TS;
 
-pub use taurpc_macros::{procedures, resolvers, rpc_struct};
+pub use taurpc_macros::{ipc_struct, procedures, resolvers};
 
 pub mod utils;
 
@@ -22,7 +22,7 @@ pub trait TauRpcHandler<R: Runtime> {
     fn setup() -> String;
 }
 
-/// Creates a handler that allows your RPCs to be called from the frontend with the coresponding
+/// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
 /// types. Accepts a struct in which your `taurpc::procedures` trait is implemented.
 ///
 ///  # Examples
@@ -41,10 +41,10 @@ pub trait TauRpcHandler<R: Runtime> {
 /// }
 ///
 /// fn main() {
-///   let _handler = taurpc::create_rpc_handler(ApiImpl.into_handler());
+///   let _handler = taurpc::create_ipc_handler(ApiImpl.into_handler());
 /// }
 /// ```
-pub fn create_rpc_handler<H, R>(procedures: H) -> impl Fn(Invoke<R>) + Send + Sync + 'static
+pub fn create_ipc_handler<H, R>(procedures: H) -> impl Fn(Invoke<R>) + Send + Sync + 'static
 where
     H: TauRpcHandler<R> + Send + Sync + 'static + Clone,
     R: Runtime,

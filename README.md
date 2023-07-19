@@ -2,7 +2,7 @@
 
 [![](https://img.shields.io/npm/v/taurpc)](https://www.npmjs.com/package/taurpc) [![](https://img.shields.io/crates/v/taurpc)](https://crates.io/crates/taurpc) [![](https://img.shields.io/docsrs/taurpc)](https://docs.rs/taurpc/) ![](https://img.shields.io/crates/l/taurpc)
 
-This package is a Tauri extension to give you a fully-typed RPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/).
+This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/).
 The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your Typescript frontend framework of choice. You can also easily send events to the frontend with typed arguments from the Rust backend.
 
 # Usage🔧
@@ -19,7 +19,7 @@ ts-rs = "6.2"
 tokio = { version = "1", features = ["full"] }
 ```
 
-Then, declare and implement your RPC methods.
+Then, declare and implement your IPC methods.
 
 ```rust
 // src-tauri/src/main.rs
@@ -42,7 +42,7 @@ impl Api for ApiImpl {
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
-        .invoke_handler(taurpc::create_rpc_handler(ApiImpl.into_handler()))
+        .invoke_handler(taurpc::create_ipc_handler(ApiImpl.into_handler()))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -71,10 +71,10 @@ You can find a complete example (using Svelte) [here](https://github.com/MatsDK/
 
 # Using structs
 
-If you want to you structs for the inputs/outputs of procedures, you should always add `#[taurpc::rpc_struct]` to make sure the coresponding ts types are generated.
+If you want to you structs for the inputs/outputs of procedures, you should always add `#[taurpc::ipc_struct]` to make sure the coresponding ts types are generated.
 
 ```rust
-#[taurpc::rpc_struct]
+#[taurpc::ipc_struct]
 struct User {
     user_id: u32,
     first_name: String,
@@ -131,7 +131,7 @@ impl Api for ApiImpl {
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
-        .invoke_handler(taurpc::create_rpc_handler(
+        .invoke_handler(taurpc::create_ipc_handler(
             ApiImpl {
                 state: Arc::new(Mutex::new("state".to_string())),
             }
@@ -235,3 +235,4 @@ trigger.send_to("main").hello_world()?;
 - [x] Calling the frontend
 - [x] Renaming event trigger struct
 - [x] Send event to specific window
+- [ ] React/Svelte handlers

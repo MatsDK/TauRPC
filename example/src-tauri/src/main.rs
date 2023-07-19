@@ -7,7 +7,7 @@ use std::{
 use tauri::{Manager, Runtime};
 use tokio::{sync::oneshot, time::sleep};
 
-#[taurpc::rpc_struct]
+#[taurpc::ipc_struct]
 struct User {
     uid: i32,
     first_name: String,
@@ -126,7 +126,7 @@ async fn main() {
     });
 
     tauri::Builder::default()
-        .invoke_handler(taurpc::create_rpc_handler(
+        .invoke_handler(taurpc::create_ipc_handler(
             ApiImpl {
                 state: Arc::new(Mutex::new("state".to_string())),
             }

@@ -1,5 +1,5 @@
 use generator::ProceduresGenerator;
-use proc::{Procedures, RpcMethod};
+use proc::{IpcMethod, Procedures};
 use proc_macro::{self, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
@@ -36,7 +36,7 @@ static STRUCT_NAMES: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(vec![]))
 /// Add this macro to all structs used inside the procedures arguments or return types.
 /// This macro is necessary for serialization and TS type generation.
 #[proc_macro_attribute]
-pub fn rpc_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn ipc_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
 
     STRUCT_NAMES.lock().unwrap().push(input.ident.to_string());
@@ -77,14 +77,14 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
         methods,
         method_output_types: &methods
             .iter()
-            .map(|RpcMethod { output, .. }| match output {
+            .map(|IpcMethod { output, .. }| match output {
                 ReturnType::Type(_, ref ty) => ty,
                 ReturnType::Default => unit_type,
             })
             .collect::<Vec<_>>(),
         alias_method_idents: &methods
             .into_iter()
-            .map(|RpcMethod { ident, attrs, .. }| {
+            .map(|IpcMethod { ident, attrs, .. }| {
                 attrs
                     .alias
                     .as_ref()

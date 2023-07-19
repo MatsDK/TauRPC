@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { taurpc } from "./lib/rpc";
+    import { taurpc } from "./lib/ipc";
     import { onMount, onDestroy } from "svelte";
     import { defineResolvers } from "../../src";
 

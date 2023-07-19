@@ -27,7 +27,7 @@ fn parse_arg(arg: &PatType, message: &Ident, proc_ident: &Ident) -> syn::Result<
     // this way tauri knows how to deserialize the different types of the args
     Ok(quote!(::tauri::command::CommandArg::from_command(
       ::tauri::command::CommandItem {
-        name: #proc_ident,
+        name: stringify!(#proc_ident),
         key: #key,
         message: &#message
       }
