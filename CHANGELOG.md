@@ -1,5 +1,11 @@
 # taurpc
 
+## 1.2.4
+
+### Patch Changes
+
+- [`2bae0ca`](https://github.com/MatsDK/TauRPC/commit/2bae0ca9c1eee7f36d2ab2bcbd6773792babd475) Thanks [@MatsDK](https://github.com/MatsDK)! - alias/skip method attributes
+
 ## 1.2.3
 
 ### Patch Changes
