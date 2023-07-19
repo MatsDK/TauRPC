@@ -13,7 +13,7 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-taurpc = "0.1.3"
+taurpc = "0.1.4"
 
 ts-rs = "6.2"
 tokio = { version = "1", features = ["full"] }
