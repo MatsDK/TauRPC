@@ -8,6 +8,8 @@ static PACKAGE_JSON: &'static str = r#"
 }
 "#;
 
+/// Create the `.taurpc` folder and export types generated using `ts_rs` to `.taurpc/index.ts`,
+/// generate a `package.json` so the types can be imported on the frontend.
 pub fn export_files(ts_types: String) {
     let (ts_path, package_json_path) = generate_export_paths();
 

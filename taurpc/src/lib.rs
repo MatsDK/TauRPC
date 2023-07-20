@@ -1,3 +1,9 @@
+//! This crate provides a typesafe IPC layer for Tauri's commands and events.
+//! TauRPC should be used instead of [Tauri's IPC system](https://tauri.app/v1/references/architecture/inter-process-communication/),
+//! which does not provide TypeScript types for your commands or events.
+//!
+//! Go the the [GitHub](https://github.com/MatsDK/TauRPC/#readme) page to get started.
+
 use tauri::{AppHandle, Invoke, Manager, Runtime};
 
 pub use serde::{Deserialize, Serialize};
@@ -5,8 +11,11 @@ pub use ts_rs::TS;
 
 pub use taurpc_macros::{ipc_struct, procedures, resolvers};
 
-pub mod utils;
+mod utils;
+pub use utils::export_files;
 
+/// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
+/// and the type generation.
 pub trait TauRpcHandler<R: Runtime> {
     /// Response types enum
     type Resp: Serialize;
@@ -61,6 +70,9 @@ where
     }
 }
 
+/// A structure used for triggering [tauri events](https://tauri.app/v1/guides/features/events/) on the frontend.
+/// By default the events are send to all windows with `emit_all`, if you want to send to a specific window by label,
+/// use `new_scoped` or `new_scoped_from_trigger`.
 #[derive(Debug, Clone)]
 pub struct EventTrigger {
     app_handle: AppHandle,

@@ -316,7 +316,7 @@ impl<'a> ProceduresGenerator<'a> {
                     ts_types.push_str(&format!("export {}\n", output_enum_decl));
 
                     // Export to .ts file in `node_modules/.taurpc`
-                    taurpc::utils::export_files(ts_types);
+                    taurpc::export_files(ts_types);
                 }
             }
         }
