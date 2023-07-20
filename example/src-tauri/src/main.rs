@@ -42,7 +42,7 @@ trait Api {
 
     async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
 
-    async fn test_io(user: User) -> User;
+    async fn test_io(user: User, arg: u32) -> User;
 
     async fn test_option() -> Option<()>;
 
@@ -78,7 +78,7 @@ impl Api for ApiImpl {
         println!("{:?}, {:?}", app_dir, app_handle.package_info());
     }
 
-    async fn test_io(self, user: User) -> User {
+    async fn test_io(self, user: User, arg: u32) -> User {
         user
     }
 

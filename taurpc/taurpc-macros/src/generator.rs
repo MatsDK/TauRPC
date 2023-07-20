@@ -9,6 +9,7 @@ use syn::{
     ext::IdentExt, Attribute, GenericArgument, Generics, Ident, Pat, PatType, PathArguments,
     PathSegment, Type, TypePath, Visibility,
 };
+use syn::{parse_quote, TypeTuple, Variant};
 
 const RESERVED_ARGS: &'static [&'static str] = &["window", "state", "app_handle"];
 
@@ -100,13 +101,22 @@ impl<'a> ProceduresGenerator<'a> {
                         .map(|PatType { ty, .. }| ty)
                         .collect::<Vec<_>>();
 
+                    let ty: Type = if types.len() == 1 {
+                        let t = types[0];
+                        parse_quote! {#t}
+                    } else {
+                        parse_quote! {
+                            ( #( #types ),* )
+                        }
+                    };
                     quote! {
-                        #ident(( #( #types ),* ))
+                        #ident(#ty)
                     }
                 });
 
         quote! {
-            #[derive(taurpc::TS, taurpc::Serialize, Clone)]
+            // #[derive(taurpc::TS, taurpc::Serialize, Clone)]
+            #[derive(specta::Type, taurpc::Serialize, Clone)]
             #[serde(tag = "proc_name", content = "input_type", rename = "TauRpcInputs")]
             #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
@@ -165,7 +175,8 @@ impl<'a> ProceduresGenerator<'a> {
             });
 
         quote! {
-            #[derive(taurpc::TS, taurpc::Serialize)]
+            // #[derive(taurpc::TS, taurpc::Serialize)]
+            #[derive(specta::Type, taurpc::Serialize)]
             #[serde(tag = "proc_name", content = "output_type", rename="TauRpcOutputs")]
             #[allow(non_camel_case_types)]
             #vis enum #output_types_ident {
@@ -275,6 +286,18 @@ impl<'a> ProceduresGenerator<'a> {
 
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
 
+        let path = std::env::current_dir()
+            .unwrap()
+            .parent()
+            .map(|p| p.join("node_modules\\.taurpc"));
+
+        let export_path = match path {
+            Some(path) => path.join("index.ts"),
+            None => panic!("Export path not found"),
+        };
+
+        let export_path = export_path.to_str().unwrap();
+
         quote! {
             #[derive(Clone)]
             #vis struct #handler_ident<P> {
@@ -302,21 +325,24 @@ impl<'a> ProceduresGenerator<'a> {
                 }
 
                 fn generate_ts_types() {
-                    let mut ts_types = String::new();
+                    // let mut ts_types = String::new();
 
-                    #(
-                        let decl = <#struct_idents as taurpc::TS>::decl();
-                        ts_types.push_str(&format!("export {}\n", decl));
-                    )*
+                    // #(
+                    //     let decl = <#struct_idents as taurpc::TS>::decl();
+                    //     ts_types.push_str(&format!("export {}\n", decl));
+                    // )*
 
-                    let input_enum_decl = <#inputs_ident as taurpc::TS>::decl();
-                    ts_types.push_str(&format!("export {}\n", input_enum_decl));
+                    // let input_enum_decl = specta::ts::export::<#inputs_ident>(&specta::ts::ExportConfiguration::default()).unwrap();
+                    // // let input_enum_decl = <#inputs_ident as taurpc::TS>::decl();
+                    // ts_types.push_str(&format!("{}\n", input_enum_decl));
 
-                    let output_enum_decl = <#output_types_ident as taurpc::TS>::decl();
-                    ts_types.push_str(&format!("export {}\n", output_enum_decl));
+                    // let output_enum_decl = specta::ts::export::<#output_types_ident>(&specta::ts::ExportConfiguration::default()).unwrap();
+                    // // let output_enum_decl = <#output_types_ident as taurpc::TS>::decl();
+                    // ts_types.push_str(&format!("{}\n", output_enum_decl));
 
+                    specta::export::ts(#export_path).unwrap();
                     // Export to .ts file in `node_modules/.taurpc`
-                    taurpc::export_files(ts_types);
+                    taurpc::export_files(#export_path);
                 }
             }
         }

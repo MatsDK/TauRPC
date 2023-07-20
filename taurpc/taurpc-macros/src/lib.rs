@@ -42,7 +42,8 @@ pub fn ipc_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     STRUCT_NAMES.lock().unwrap().push(input.ident.to_string());
 
     quote! {
-        #[derive(taurpc::Serialize, taurpc::Deserialize, taurpc::TS, Clone)]
+        // #[derive(taurpc::Serialize, taurpc::Deserialize, taurpc::TS, Clone)]
+        #[derive(taurpc::Serialize, taurpc::Deserialize, specta::Type, Clone)]
         #input
     }
     .into()

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { taurpc } from "./lib/ipc";
     import { onMount, onDestroy } from "svelte";
-    import { defineResolvers } from "../../src";
+    // import { defineResolvers } from "../../src";
 
     let value = "";
     const call_backend = async () => {
@@ -28,22 +28,22 @@
 
     let cleanup = null;
 
-    onMount(async () => {
-        const { unsubscribe, on } = await defineResolvers();
-        cleanup = unsubscribe;
+    // onMount(async () => {
+    //     const { unsubscribe, on } = await defineResolvers();
+    //     cleanup = unsubscribe;
 
-        on("update_state", (value) => {
-            console.log(value);
-        });
+    //     on("update_state", (value) => {
+    //         console.log(value);
+    //     });
 
-        on("method_with_alias", () => {
-            console.log("method with alias called");
-        });
-    });
+    //     on("method_with_alias", () => {
+    //         console.log("method with alias called");
+    //     });
+    // });
 
-    onDestroy(() => {
-        cleanup();
-    });
+    // onDestroy(() => {
+    //     cleanup();
+    // });
 </script>
 
 <main class="container">
