@@ -1,5 +1,5 @@
+use std::fs::OpenOptions;
 use std::io::prelude::*;
-use std::{env, fs::OpenOptions, path::PathBuf};
 
 static BOILERPLATE_TS_CODE: &'static str = r#"
 import { createTauRPCProxy as createProxy } from "taurpc"
@@ -33,21 +33,4 @@ pub fn export_files(export_path: &str) {
     // std::fs::write(ts_path, &ts_types).unwrap();
 
     // std::fs::write(package_json_path, &PACKAGE_JSON).unwrap();
-}
-
-fn generate_export_paths() -> (PathBuf, PathBuf) {
-    let path = env::current_dir()
-        .unwrap()
-        .parent()
-        .map(|p| p.join("node_modules\\.taurpc"));
-
-    match path {
-        Some(path) => {
-            let ts_path = path.join("index.ts").to_path_buf();
-            let package_json_path = path.join("package.json").to_path_buf();
-
-            (ts_path, package_json_path)
-        }
-        None => panic!("Export path not found"),
-    }
 }

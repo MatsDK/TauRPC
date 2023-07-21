@@ -13,7 +13,7 @@ mod generator;
 mod proc;
 
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use std::{path::PathBuf, sync::Mutex};
 
 use crate::attrs::ProceduresAttrs;
 
@@ -36,7 +36,7 @@ static STRUCT_NAMES: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(vec![]))
 /// Add this macro to all structs used inside the procedures arguments or return types.
 /// This macro is necessary for serialization and TS type generation.
 #[proc_macro_attribute]
-pub fn ipc_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn ipc_type(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
 
     STRUCT_NAMES.lock().unwrap().push(input.ident.to_string());
@@ -65,12 +65,17 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
     let struct_idents = STRUCT_NAMES.lock().unwrap();
     let unit_type: &Type = &parse_quote!(());
 
+    let export_path = procedures_attrs
+        .export_to
+        .unwrap_or(generate_default_export_path().to_str().unwrap().to_string());
+
     ProceduresGenerator {
         trait_ident: ident,
         handler_ident: &format_ident!("TauRpc{}Handler", ident),
         event_trigger_ident: &procedures_attrs
             .event_trigger_ident
             .unwrap_or(format_ident!("TauRpc{}EventTrigger", ident)),
+        export_path,
         inputs_ident: &format_ident!("TauRpc{}Inputs", ident),
         outputs_ident: &format_ident!("TauRpc{}Outputs", ident),
         output_types_ident: &format_ident!("TauRpc{}OutputTypes", ident),
@@ -167,4 +172,16 @@ pub(crate) fn format_method_name(method: &Ident) -> Ident {
 
 fn method_fut_ident(ident: &Ident) -> Ident {
     format_ident!("{}Fut", ident)
+}
+
+fn generate_default_export_path() -> PathBuf {
+    let path = std::env::current_dir()
+        .unwrap()
+        .parent()
+        .map(|p| p.join("node_modules\\.taurpc"));
+
+    match path {
+        Some(path) => path.join("index.ts"),
+        None => panic!("Export path not found"),
+    }
 }

@@ -9,7 +9,7 @@ use tauri::{AppHandle, Invoke, Manager, Runtime};
 pub use serde::{Deserialize, Serialize};
 pub use ts_rs::TS;
 
-pub use taurpc_macros::{ipc_struct, procedures, resolvers};
+pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod utils;
 pub use utils::export_files;

@@ -6,10 +6,9 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use std::collections::HashMap;
 use syn::{
-    ext::IdentExt, Attribute, GenericArgument, Generics, Ident, Pat, PatType, PathArguments,
-    PathSegment, Type, TypePath, Visibility,
+    ext::IdentExt, parse_quote, Attribute, GenericArgument, Generics, Ident, Pat, PatType,
+    PathArguments, PathSegment, Type, TypePath, Visibility,
 };
-use syn::{parse_quote, TypeTuple, Variant};
 
 const RESERVED_ARGS: &'static [&'static str] = &["window", "state", "app_handle"];
 
@@ -17,6 +16,7 @@ pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
     pub handler_ident: &'a Ident,
     pub event_trigger_ident: &'a Ident,
+    pub export_path: String,
     pub inputs_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
     pub output_types_ident: &'a Ident,
@@ -238,12 +238,10 @@ impl<'a> ProceduresGenerator<'a> {
             trait_ident,
             handler_ident,
             vis,
-            inputs_ident,
-            struct_idents,
             alias_method_idents,
             methods,
             outputs_ident,
-            output_types_ident,
+            ref export_path,
             ..
         } = self;
 
@@ -285,18 +283,6 @@ impl<'a> ProceduresGenerator<'a> {
             });
 
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
-
-        let path = std::env::current_dir()
-            .unwrap()
-            .parent()
-            .map(|p| p.join("node_modules\\.taurpc"));
-
-        let export_path = match path {
-            Some(path) => path.join("index.ts"),
-            None => panic!("Export path not found"),
-        };
-
-        let export_path = export_path.to_str().unwrap();
 
         quote! {
             #[derive(Clone)]
