@@ -4,15 +4,16 @@
 //!
 //! Go the the [GitHub](https://github.com/MatsDK/TauRPC/#readme) page to get started.
 
-use tauri::{AppHandle, Invoke, Manager, Runtime};
-
-pub use serde::{Deserialize, Serialize};
-pub use ts_rs::TS;
+pub extern crate serde;
+pub extern crate specta;
 
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod utils;
 pub use utils::export_files;
+
+use serde::Serialize;
+use tauri::{AppHandle, Invoke, Manager, Runtime};
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.

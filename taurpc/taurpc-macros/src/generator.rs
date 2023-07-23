@@ -27,7 +27,6 @@ pub struct ProceduresGenerator<'a> {
     pub methods: &'a [IpcMethod],
     pub method_output_types: &'a [&'a Type],
     pub alias_method_idents: &'a [Ident],
-    pub struct_idents: &'a [Ident],
 }
 
 impl<'a> ProceduresGenerator<'a> {
@@ -115,8 +114,7 @@ impl<'a> ProceduresGenerator<'a> {
                 });
 
         quote! {
-            // #[derive(taurpc::TS, taurpc::Serialize, Clone)]
-            #[derive(specta::Type, taurpc::Serialize, Clone)]
+            #[derive(taurpc::specta::Type, taurpc::serde::Serialize, Clone)]
             #[serde(tag = "proc_name", content = "input_type", rename = "TauRpcInputs")]
             #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
@@ -143,7 +141,7 @@ impl<'a> ProceduresGenerator<'a> {
         );
 
         quote! {
-            #[derive(taurpc::Serialize)]
+            #[derive(taurpc::serde::Serialize)]
             #[serde(tag = "proc_name", content = "output_type")]
             #[allow(non_camel_case_types)]
             #vis enum #outputs_ident {
@@ -152,8 +150,7 @@ impl<'a> ProceduresGenerator<'a> {
         }
     }
 
-    // Create enum that is used for generating the TS types, unwrap Result types because
-    // ts_rs::TS is not implemented for them.
+    // Create enum that is used for generating the TS types with specta
     fn output_types_enum(&self) -> TokenStream2 {
         let &Self {
             vis,
@@ -175,8 +172,7 @@ impl<'a> ProceduresGenerator<'a> {
             });
 
         quote! {
-            // #[derive(taurpc::TS, taurpc::Serialize)]
-            #[derive(specta::Type, taurpc::Serialize)]
+            #[derive(taurpc::specta::Type, taurpc::serde::Serialize)]
             #[serde(tag = "proc_name", content = "output_type", rename="TauRpcOutputs")]
             #[allow(non_camel_case_types)]
             #vis enum #output_types_ident {
@@ -311,23 +307,6 @@ impl<'a> ProceduresGenerator<'a> {
                 }
 
                 fn generate_ts_types() {
-                    // let mut ts_types = String::new();
-
-                    // #(
-                    //     let decl = <#struct_idents as taurpc::TS>::decl();
-                    //     ts_types.push_str(&format!("export {}\n", decl));
-                    // )*
-
-                    // let input_enum_decl = specta::ts::export::<#inputs_ident>(&specta::ts::ExportConfiguration::default()).unwrap();
-                    // // let input_enum_decl = <#inputs_ident as taurpc::TS>::decl();
-                    // ts_types.push_str(&format!("{}\n", input_enum_decl));
-
-                    // let output_enum_decl = specta::ts::export::<#output_types_ident>(&specta::ts::ExportConfiguration::default()).unwrap();
-                    // // let output_enum_decl = <#output_types_ident as taurpc::TS>::decl();
-                    // ts_types.push_str(&format!("{}\n", output_enum_decl));
-
-                    specta::export::ts(#export_path).unwrap();
-                    // Export to .ts file in `node_modules/.taurpc`
                     taurpc::export_files(#export_path);
                 }
             }
@@ -424,8 +403,8 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
 }
 
 // If a method returns a Result<T, E> type, we extract the first generic argument to use
-// inside the types enum. This is necessary since the `ts-rs` crate does not support Result types.
-// Otherwise just return the original type.
+// inside the types enum. This is necessary because `specta::Type` is not implemented for Result.
+// If the type is not a Result, return the original type.
 fn unwrap_result_ty(ty: &Type) -> &Type {
     let result_seg = match is_ty_result(ty) {
         Some(seg) => seg,

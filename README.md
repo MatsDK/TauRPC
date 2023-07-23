@@ -15,7 +15,7 @@ First, add the following crates to your `Cargo.toml`:
 [dependencies]
 taurpc = "0.1.4"
 
-ts-rs = "6.2"
+specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -48,7 +48,8 @@ async fn main() {
 }
 ```
 
-The `#[taurpc::procedures]` trait will generate everything necessary for handling calls and the type-generation. Now, you should run `pnpm tauri dev` to generate and export the TS types (the types will be exported to `node_moduldes/.taurpc`).
+The `#[taurpc::procedures]` trait will generate everything necessary for handling calls and the type-generation. Now, you should run `pnpm tauri dev` to generate and export the TS types.
+The types will by default be exported to `node_modules/.taurpc`, but you can specify an export path by doing this `#[taurpc::procedures(export_to = "../bindings.ts")]`.
 
 Then on the frontend install the taurpc package.
 
@@ -56,10 +57,11 @@ Then on the frontend install the taurpc package.
 pnpm install taurpc
 ```
 
-Now you can call your backend with types from inside typescript frontend files.
+Now on the frontend you import the generated types, if you specified the `export_to` attribute on your procedures you should import your from there. By default you can import from `.taurpc`.
+With these types a typesafe proxy is generated that you can use to invoke commands and listen for events.
 
 ```typescript
-import { createTauRPCProxy } from 'taurpc'
+import { createTauRPCProxy } from '.taurpc'
 
 const taurpc = await createTauRPCProxy()
 await taurpc.hello_world()
@@ -196,19 +198,12 @@ async fn main() {
 Then, on the frontend you can listen for the events with types:
 
 ```typescript
-import { defineResolvers } from 'taurpc'
-
-const { on, subsribe, unsubscribe } = await defineResolvers()
-
-on('hello_world', () => {
+const unlisten = taurpc.hello_world.on(() => {
   console.log('Hello World!')
 })
 
 // Run this inside a cleanup function, for example in React and onDestroy in Svelte
-unsubscribe()
-
-// You can also unlisten from a single method like this
-unsubsribe('hello_world')
+unlisten()
 ```
 
 ## Sending an event to a specific window
