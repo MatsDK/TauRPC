@@ -1,39 +1,55 @@
-use std::{env, path::PathBuf};
+use std::fs::OpenOptions;
+use std::io::prelude::*;
+use std::path::Path;
 
 static PACKAGE_JSON: &'static str = r#"
 {
-	"name": ".taurpc",
-	"main": "index.js",
-	"types": "index.ts"
+    "name": ".taurpc",
+    "types": "index.ts"
 }
 "#;
 
-/// Create the `.taurpc` folder and export types generated using `ts_rs` to `.taurpc/index.ts`,
-/// generate a `package.json` so the types can be imported on the frontend.
-pub fn export_files(ts_types: String) {
-    let (ts_path, package_json_path) = generate_export_paths();
+static BOILERPLATE_TS_CODE: &'static str = r#"
+import { createTauRPCProxy as createProxy } from "taurpc"
 
-    if let Some(parent) = ts_path.parent() {
-        std::fs::create_dir_all(parent).unwrap();
-    }
-    std::fs::write(ts_path, &ts_types).unwrap();
-
-    std::fs::write(package_json_path, &PACKAGE_JSON).unwrap();
+type Router = {
+	root: [TauRpcInputs, TauRpcOutputs]
 }
 
-fn generate_export_paths() -> (PathBuf, PathBuf) {
-    let path = env::current_dir()
-        .unwrap()
-        .parent()
-        .map(|p| p.join("node_modules\\.taurpc"));
+export const createTauRPCProxy = () => createProxy<Router>()
+"#;
 
-    match path {
-        Some(path) => {
-            let ts_path = path.join("index.ts").to_path_buf();
-            let package_json_path = path.join("package.json").to_path_buf();
+/// Export the generated TS types with the code necessary for generating the client proxy.
+///
+/// By default, if the `export_to` attribute was not specified on the procedures macro, it will be exported
+/// to `node_modules/.taurpc` and a `package.json` will also be generated to import the package.
+/// Otherwise the code will just be export to the .ts file specified by the user.
+pub fn export_files(export_path: &str) {
+    let path = Path::new(export_path);
+    if path.is_dir() {
+        panic!("`export_to` path should be a ts file");
+    }
 
-            (ts_path, package_json_path)
-        }
-        None => panic!("Export path not found"),
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).unwrap();
+    }
+
+    specta::export::ts(export_path).unwrap();
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(path)
+        .unwrap();
+
+    file.write_all(BOILERPLATE_TS_CODE.as_bytes()).unwrap();
+
+    if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
+        let package_json_path = Path::new(export_path)
+            .parent()
+            .and_then(|path| Some(path.join("package.json")))
+            .unwrap();
+
+        std::fs::write(package_json_path, &PACKAGE_JSON).unwrap();
     }
 }

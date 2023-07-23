@@ -18,7 +18,7 @@ tokio = { version = "1", features = ["full"] }
 thiserror = "1.0"
 
 taurpc = { path = "../../taurpc" }
-ts-rs = "6.2"
+specta = { version = "1.0.5", features = ["export"] }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

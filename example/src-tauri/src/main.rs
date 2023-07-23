@@ -7,7 +7,7 @@ use std::{
 use tauri::{Manager, Runtime};
 use tokio::{sync::oneshot, time::sleep};
 
-#[taurpc::ipc_struct]
+#[taurpc::ipc_type]
 struct User {
     uid: i32,
     first_name: String,
@@ -34,6 +34,7 @@ impl serde::Serialize for Error {
     }
 }
 
+// #[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../bindings.ts")]
 #[taurpc::procedures(event_trigger = ApiEventTrigger)]
 trait Api {
     async fn update_state(new_value: String);
@@ -42,7 +43,7 @@ trait Api {
 
     async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
 
-    async fn test_io(user: User) -> User;
+    async fn test_io(user: User, arg: u32) -> User;
 
     async fn test_option() -> Option<()>;
 
@@ -78,7 +79,7 @@ impl Api for ApiImpl {
         println!("{:?}, {:?}", app_dir, app_handle.package_info());
     }
 
-    async fn test_io(self, user: User) -> User {
+    async fn test_io(self, user: User, arg: u32) -> User {
         user
     }
 

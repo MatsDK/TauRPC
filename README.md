@@ -2,8 +2,10 @@
 
 [![](https://img.shields.io/npm/v/taurpc)](https://www.npmjs.com/package/taurpc) [![](https://img.shields.io/crates/v/taurpc)](https://crates.io/crates/taurpc) [![](https://img.shields.io/docsrs/taurpc)](https://docs.rs/taurpc/) ![](https://img.shields.io/crates/l/taurpc)
 
-This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/).
-The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your Typescript frontend framework of choice. You can also easily send events to the frontend with typed arguments from the Rust backend.
+This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/) and [events](https://tauri.app/v1/guides/features/events/).
+
+The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your TypeScript frontend framework of choice. This crate provides typesafe bidirectional IPC communication between the Rust backend and TypeScript frontend.
+[Specta](https://github.com/oscartbeaumont/specta) is used under the hood for the type-generation.
 
 # Usage🔧
 
@@ -15,11 +17,11 @@ First, add the following crates to your `Cargo.toml`:
 [dependencies]
 taurpc = "0.1.4"
 
-ts-rs = "6.2"
+specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }
 ```
 
-Then, declare and implement your IPC methods.
+Then, declare and implement your IPC methods and resolvers. If you want to use your API for Tauri's events, you don't have to implement the resolvers, go to [Calling the frontend](https://github.com/MatsDK/TauRPC/tree/specta-types#calling-the-frontend)
 
 ```rust
 // src-tauri/src/main.rs
@@ -48,18 +50,20 @@ async fn main() {
 }
 ```
 
-The `#[taurpc::procedures]` trait will generate everything necessary for handling calls and the type-generation. Now, you should run `pnpm tauri dev` to generate and export the TS types (the types will be exported to `node_moduldes/.taurpc`).
+The `#[taurpc::procedures]` trait will generate everything necessary for handling calls and the type-generation. Now, you should run `pnpm tauri dev` to generate and export the TS types.
+The types will by default be exported to `node_modules/.taurpc`, but you can specify an export path by doing this `#[taurpc::procedures(export_to = "../bindings.ts")]`.
 
 Then on the frontend install the taurpc package.
 
-```
+```bash
 pnpm install taurpc
 ```
 
-Now you can call your backend with types from inside typescript frontend files.
+Now on the frontend you import the generated types, if you specified the `export_to` attribute on your procedures you should import your from there. By default you can import from `.taurpc`.
+With these types a typesafe proxy is generated that you can use to invoke commands and listen for events.
 
 ```typescript
-import { createTauRPCProxy } from 'taurpc'
+import { createTauRPCProxy } from '.taurpc'
 
 const taurpc = await createTauRPCProxy()
 await taurpc.hello_world()
@@ -196,19 +200,12 @@ async fn main() {
 Then, on the frontend you can listen for the events with types:
 
 ```typescript
-import { defineResolvers } from 'taurpc'
-
-const { on, subsribe, unsubscribe } = await defineResolvers()
-
-on('hello_world', () => {
+const unlisten = taurpc.hello_world.on(() => {
   console.log('Hello World!')
 })
 
 // Run this inside a cleanup function, for example in React and onDestroy in Svelte
-unsubscribe()
-
-// You can also unlisten from a single method like this
-unsubsribe('hello_world')
+unlisten()
 ```
 
 ## Sending an event to a specific window
