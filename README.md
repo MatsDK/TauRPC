@@ -21,7 +21,7 @@ specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }
 ```
 
-Then, declare and implement your IPC methods.
+Then, declare and implement your IPC methods and resolvers. If you want to use your API for Tauri's events, you don't have to implement the resolvers, go to [Calling the frontend](https://github.com/MatsDK/TauRPC/tree/specta-types#calling-the-frontend)
 
 ```rust
 // src-tauri/src/main.rs
