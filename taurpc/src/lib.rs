@@ -71,41 +71,55 @@ where
     }
 }
 
+/// Enum used for triggering scoped events instead of on all windows.
+/// Use the `send_to(scope: Windows)` method on your event trigger struct.
+#[derive(Default, Debug, Clone)]
+pub enum Windows {
+    #[default]
+    All,
+    One(String),
+    N(Vec<String>),
+}
+
 /// A structure used for triggering [tauri events](https://tauri.app/v1/guides/features/events/) on the frontend.
 /// By default the events are send to all windows with `emit_all`, if you want to send to a specific window by label,
 /// use `new_scoped` or `new_scoped_from_trigger`.
 #[derive(Debug, Clone)]
 pub struct EventTrigger {
     app_handle: AppHandle,
-    scope: Option<String>,
+    scope: Windows,
 }
 
 impl EventTrigger {
     pub fn new(app_handle: AppHandle) -> Self {
         Self {
             app_handle,
-            scope: None,
+            scope: Default::default(),
         }
     }
 
-    pub fn new_scoped(app_handle: AppHandle, scope: &str) -> Self {
-        Self {
-            app_handle,
-            scope: Some(scope.to_string()),
-        }
+    pub fn new_scoped(app_handle: AppHandle, scope: Windows) -> Self {
+        Self { app_handle, scope }
     }
 
-    pub fn new_scoped_from_trigger(trigger: Self, scope: &str) -> Self {
+    pub fn new_scoped_from_trigger(trigger: Self, scope: Windows) -> Self {
         Self {
             app_handle: trigger.app_handle,
-            scope: Some(scope.to_string()),
+            scope,
         }
     }
 
     pub fn call<S: Serialize + Clone>(&self, req: S) -> tauri::Result<()> {
         match &self.scope {
-            Some(scope) => self.app_handle.emit_to(&scope, "TauRpc_event", req),
-            None => self.app_handle.emit_all("TauRpc_event", req),
+            Windows::All => self.app_handle.emit_all("TauRpc_event", req),
+            Windows::One(label) => self.app_handle.emit_to(&label, "TauRpc_event", req),
+            Windows::N(labels) => {
+                for label in labels {
+                    self.app_handle
+                        .emit_to(&label, "TauRpc_event", req.clone())?;
+                }
+                Ok(())
+            }
         }
     }
 }

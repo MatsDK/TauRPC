@@ -213,7 +213,13 @@ unlisten()
 By default, events are emitted to all windows. If you want to send an event to a specific window by label, you can do the following:
 
 ```rust
-trigger.send_to("main").hello_world()?;
+use taurpc::Windows;
+
+trigger.send_to(Windows::One("main".to_string())).hello_world()?;
+// Options:
+//   - Windows::All (default)
+//   - Windows::One(String)
+//   - Windows::N(Vec<String>)
 ```
 
 # Features

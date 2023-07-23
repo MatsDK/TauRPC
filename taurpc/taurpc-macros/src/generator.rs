@@ -60,7 +60,6 @@ impl<'a> ProceduresGenerator<'a> {
                     #[doc = #ty_doc]
                     type #future_type_ident: std::future::Future<Output = #output_ty> + Send;
 
-                    // #( #attrs )*
                     fn #ident #generics(self, #( #args ),*) -> Self::#future_type_ident;
                 }
             },
@@ -100,6 +99,8 @@ impl<'a> ProceduresGenerator<'a> {
                         .map(|PatType { ty, .. }| ty)
                         .collect::<Vec<_>>();
 
+                    // Tuples with 1 element were parsed as Type::Paren, which is not supported by specta.
+                    // This may not be necessary and there is probably a better solution, but this works.
                     let ty: Type = if types.len() == 1 {
                         let t = types[0];
                         parse_quote! {#t}
@@ -350,12 +351,10 @@ impl<'a> ProceduresGenerator<'a> {
                     },
                 )| {
                     let args = args.iter().filter(filter_reserved_args).collect::<Vec<_>>();
-
                     let arg_pats = args.iter().map(|arg| &*arg.pat).collect::<Vec<_>>();
 
                     quote! {
                         #[allow(unused)]
-                        // #( #attrs )*
                         #vis fn #ident #generics(&self, #( #args ),*) -> tauri::Result<()> {
                             let req = #inputs_ident::#alias_ident(( #( #arg_pats ),* ));
 
@@ -375,9 +374,14 @@ impl<'a> ProceduresGenerator<'a> {
                     Self(trigger)
                 }
 
-                /// Trigger an event on a specific window by label.
-                #vis fn send_to(&self, label: &str) -> Self {
-                    let trigger = taurpc::EventTrigger::new_scoped_from_trigger(self.0.clone(), label);
+                /// Trigger an event with a specific scope.
+                ///
+                /// Options:
+                ///    - Windows::All (default)
+                ///    - Windows::One(String)
+                ///    - Windows::N(Vec<String>)
+                #vis fn send_to(&self, scope: taurpc::Windows) -> Self {
+                    let trigger = taurpc::EventTrigger::new_scoped_from_trigger(self.0.clone(), scope);
                     Self(trigger)
                 }
 

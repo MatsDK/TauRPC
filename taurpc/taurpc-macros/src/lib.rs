@@ -164,6 +164,7 @@ fn method_fut_ident(ident: &Ident) -> Ident {
     format_ident!("{}Fut", ident)
 }
 
+// Generate the default path for exporting the types: `node_modules/.taurpc/index.ts`
 fn generate_default_export_path() -> PathBuf {
     let path = std::env::current_dir()
         .unwrap()
