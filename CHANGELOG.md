@@ -4,7 +4,7 @@
 
 ### Minor Changes
 
-- [`8a7b495`](https://github.com/MatsDK/TauRPC/commit/8a7b495f6c96b8ef4f8fc706e4b51c1f2793ebc5) Thanks [@MatsDK](https://github.com/MatsDK)! 
+- [`8a7b495`](https://github.com/MatsDK/TauRPC/commit/8a7b495f6c96b8ef4f8fc706e4b51c1f2793ebc5) Thanks [@MatsDK](https://github.com/MatsDK)!
   - Switch from `ts_rs` to `specta` for the type-generation.
   - Allow to specify `export_to` attribute on procedures for exporting the generated types.
   - Windows enum for sending scoped events.
