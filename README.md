@@ -2,8 +2,10 @@
 
 [![](https://img.shields.io/npm/v/taurpc)](https://www.npmjs.com/package/taurpc) [![](https://img.shields.io/crates/v/taurpc)](https://crates.io/crates/taurpc) [![](https://img.shields.io/docsrs/taurpc)](https://docs.rs/taurpc/) ![](https://img.shields.io/crates/l/taurpc)
 
-This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/).
-The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your Typescript frontend framework of choice. You can also easily send events to the frontend with typed arguments from the Rust backend.
+This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/) and [events](https://tauri.app/v1/guides/features/events/).
+
+The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your TypeScript frontend framework of choice. This crate provides typesafe bidirectional IPC communication between the Rust backend and TypeScript frontend. 
+[Specta](https://github.com/oscartbeaumont/specta) is used under the hood for the type-generation.
 
 # Usage🔧
 
@@ -53,7 +55,7 @@ The types will by default be exported to `node_modules/.taurpc`, but you can spe
 
 Then on the frontend install the taurpc package.
 
-```
+```bash
 pnpm install taurpc
 ```
 
