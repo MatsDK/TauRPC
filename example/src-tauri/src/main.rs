@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 use tauri::{Manager, Runtime};
+use taurpc::Windows;
 use tokio::{sync::oneshot, time::sleep};
 
 #[taurpc::ipc_type]
@@ -116,11 +117,11 @@ async fn main() {
             interval.tick().await;
 
             trigger
-                .send_to("main")
-                .update_state(String::from("test2"))?;
+                .send_to(Windows::One("main".to_string()))
+                .update_state("message scoped".to_string())?;
 
-            trigger.with_alias()?;
-            trigger.update_state(String::from("test"))?;
+            trigger.update_state("message".to_string())?;
+            // trigger.with_alias()?;
         }
 
         Ok::<(), tauri::Error>(())
