@@ -55,6 +55,9 @@ trait Api {
 
     #[taurpc(alias = "method_with_alias")]
     async fn with_alias();
+
+    #[taurpc(event)]
+    async fn ev(updated_value: String);
 }
 
 #[derive(Clone)]
@@ -121,6 +124,7 @@ async fn main() {
                 .update_state("message scoped".to_string())?;
 
             trigger.update_state("message".to_string())?;
+            trigger.ev("hello world".to_string())?;
             // trigger.with_alias()?;
         }
 

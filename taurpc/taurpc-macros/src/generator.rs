@@ -42,26 +42,31 @@ impl<'a> ProceduresGenerator<'a> {
             ..
         } = self;
 
-        let types_and_fns = methods.iter().zip(method_output_types.iter()).map(
+        let types_and_fns = methods.iter().zip(method_output_types.iter()).filter_map(
             |(
                 IpcMethod {
                     ident,
                     args,
                     generics,
+                    attrs,
                     ..
                 },
                 output_ty,
             )| {
+                // skip methods that are marked as events, these methods don't need an implementation
+                if attrs.is_event {
+                    return None;
+                }
                 let ty_doc = format!("The response future returned by [`{trait_ident}::{ident}`].");
                 let future_type_ident = method_fut_ident(ident);
 
-                quote! {
+                Some(quote! {
                     #[allow(non_camel_case_types)]
                     #[doc = #ty_doc]
                     type #future_type_ident: std::future::Future<Output = #output_ty> + Send;
 
                     fn #ident #generics(self, #( #args ),*) -> Self::#future_type_ident;
-                }
+                })
             },
         );
 
@@ -192,15 +197,21 @@ impl<'a> ProceduresGenerator<'a> {
             ..
         } = self;
 
-        let outputs = methods.iter().map(|IpcMethod { ident, .. }| {
+        let outputs = methods.iter().filter_map(|IpcMethod { ident, attrs, .. }| {
+            if attrs.is_event {
+                return None;
+            }
             let future_ident = method_fut_ident(ident);
 
-            quote! {
+            Some(quote! {
                 #ident(<P as #trait_ident>::#future_ident)
-            }
+            })
         });
 
-        let method_idents = methods.iter().map(|IpcMethod { ident, .. }| ident);
+        let method_idents = methods
+            .iter()
+            .filter(|IpcMethod { attrs, .. }| !attrs.is_event)
+            .map(|IpcMethod { ident, .. }| ident);
 
         quote! {
             #[allow(non_camel_case_types)]
@@ -246,12 +257,20 @@ impl<'a> ProceduresGenerator<'a> {
         let message = format_ident!("__tauri__message__");
         let resolver = format_ident!("__tauri__resolver__");
 
-        let procedure_handlers = alias_method_idents.iter().zip(methods.iter()).map(
-            |(proc_name, IpcMethod { ident, args, .. })| {
+        let procedure_handlers = alias_method_idents.iter().zip(methods.iter()).filter_map(
+            |(
+                proc_name,
+                IpcMethod {
+                    ident, args, attrs, ..
+                },
+            )| {
+                if attrs.is_event {
+                    return None;
+                }
                 let args = parse_args(args, &message, ident).unwrap();
                 let proc_name = format_method_name(proc_name);
 
-                quote! { stringify!(#proc_name) => {
+                Some(quote! { stringify!(#proc_name) => {
                     #resolver.respond_async_serialized(async move {
                         let res = #trait_ident::#ident(
                             self.methods, #( #args.unwrap() ),*
@@ -259,7 +278,7 @@ impl<'a> ProceduresGenerator<'a> {
                         let kind = (&res).async_kind();
                         kind.future(res).await
                     });
-                }}
+                }})
             },
         );
 

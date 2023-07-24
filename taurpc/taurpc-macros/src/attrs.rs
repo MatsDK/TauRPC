@@ -79,6 +79,7 @@ impl Parse for ProceduresAttrs {
 pub struct MethodAttrs {
     pub(crate) skip: bool,
     pub(crate) alias: Option<String>,
+    pub(crate) is_event: bool,
 }
 
 impl Parse for MethodAttrs {
@@ -103,6 +104,9 @@ impl Parse for MethodAttrs {
             if let Err(e) = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("skip") {
                     res.skip = true;
+                    Ok(())
+                } else if meta.path.is_ident("event") {
+                    res.is_event = true;
                     Ok(())
                 } else if meta.path.is_ident("alias") {
                     let value = meta.value()?;

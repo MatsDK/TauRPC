@@ -24,9 +24,12 @@
     let unlisten = null;
 
     onMount(async () => {
-        unlisten = taurpc.update_state.on((new_state) => {
-            console.log("state updated", new_state);
-        });
+        // unlisten = taurpc.update_state.on((new_state) => {
+        //     console.log("state updated", new_state);
+        // });
+        unlisten = taurpc.ev.on((val) => {
+            console.log("ev", val)
+        })
     });
 
     onDestroy(() => {

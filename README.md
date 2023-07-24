@@ -15,7 +15,7 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-taurpc = "0.1.6"
+taurpc = "0.1.7"
 
 specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }
@@ -175,17 +175,27 @@ The `#[taurpc::procedures]` macro also generates a struct that you can use to tr
 First start by declaring the API structure, by default the event trigger struct will be identified by `TauRpc{trait_ident}EventTrigger`. If you want to change this, you can add an attribute to do this, `#[taurpc::procedures(event_trigger = ApiEventTrigger)]`.
 For more details you can look at the [example](https://github.com/MatsDK/TauRPC/blob/main/example/src-tauri/src/main.rs).
 
+You should add the `#[taurpc(event)]` attribute to your events. If you do this, you will not have to implement the corresponding resolver.
+
 ```rust
 // src-tauri/src/main.rs
 
 #[taurpc::procedures(event_trigger = ApiEventTrigger)]
 trait Api {
+    #[taurpc(event)]
     async fn hello_world();
 }
+
+#[derive(Clone)]
+struct ApiImpl;
+
+#[taurpc::resolvers]
+impl Api for ApiImpl {}
 
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
+        .invoke_handler(taurpc::create_ipc_handler(ApiImpl.into_handler()))
         .setup(|app| {
             let trigger = ApiEventTrigger::new(app.handle());
             trigger.hello_world()?;
