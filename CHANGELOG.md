@@ -1,5 +1,11 @@
 # taurpc
 
+## 1.3.1
+
+### Patch Changes
+
+- [`31690ca`](https://github.com/MatsDK/TauRPC/commit/31690cadacbee837b73fcf471955936296f67431) Thanks [@MatsDK](https://github.com/MatsDK)! - event attribute so you are not forced to implement a resolver for them
+
 ## 1.3.0
 
 ### Minor Changes
