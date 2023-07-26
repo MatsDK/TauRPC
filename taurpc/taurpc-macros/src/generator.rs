@@ -248,7 +248,6 @@ impl<'a> ProceduresGenerator<'a> {
             vis,
             alias_method_idents,
             methods,
-            outputs_ident,
             ref export_path,
             ..
         } = self;
@@ -308,8 +307,6 @@ impl<'a> ProceduresGenerator<'a> {
 
             use ::tauri::command::private::*;
             impl<P: #trait_ident + Send + 'static, R: tauri::Runtime> taurpc::TauRpcHandler<R> for #handler_ident<P> {
-                type Resp = #outputs_ident;
-
                 fn handle_incoming_request(self, #invoke: tauri::Invoke<R>) {
                     #[allow(unused_variables)]
                     let ::tauri::Invoke { message: #message, resolver: #resolver } = #invoke;
@@ -328,6 +325,10 @@ impl<'a> ProceduresGenerator<'a> {
 
                 fn generate_ts_types() {
                     taurpc::export_files(#export_path);
+                }
+
+                fn get_path_prefix() -> String {
+                    stringify!(#trait_ident).to_string()
                 }
             }
         }

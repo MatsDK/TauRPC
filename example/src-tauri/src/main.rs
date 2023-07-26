@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 use tauri::{Manager, Runtime};
-use taurpc::Windows;
+use taurpc::{Router, Windows};
 use tokio::{sync::oneshot, time::sleep};
 
 #[taurpc::ipc_type]
@@ -105,6 +105,22 @@ impl Api for ApiImpl {
     }
 }
 
+#[taurpc::procedures]
+trait Events {
+    async fn cmd();
+
+    #[taurpc(event)]
+    async fn test_ev();
+}
+
+#[derive(Clone)]
+struct EventsImpl;
+
+#[taurpc::resolvers]
+impl Events for EventsImpl {
+    async fn cmd(self) {}
+}
+
 type GlobalState = Arc<Mutex<String>>;
 
 #[tokio::main]
@@ -131,13 +147,24 @@ async fn main() {
         Ok::<(), tauri::Error>(())
     });
 
-    tauri::Builder::default()
-        .invoke_handler(taurpc::create_ipc_handler(
+    let router = Router::new()
+        .merge(
             ApiImpl {
                 state: Arc::new(Mutex::new("state".to_string())),
             }
             .into_handler(),
-        ))
+        )
+        .merge(EventsImpl.into_handler());
+
+    tauri::Builder::default()
+        // .invoke_handler(taurpc::create_ipc_handler(
+        //     ApiImpl {
+        //         state: Arc::new(Mutex::new("state".to_string())),
+        //     }
+        //     .into_handler(),
+        // ))
+        // .invoke_handler(taurpc::create_handler_from_router(router))
+        .invoke_handler(router.into_handler())
         .setup(|app| {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();

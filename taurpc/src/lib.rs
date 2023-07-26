@@ -7,6 +7,12 @@
 pub extern crate serde;
 pub extern crate specta;
 
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    sync::{Arc, Mutex, RwLock},
+};
+
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod utils;
@@ -17,15 +23,15 @@ use tauri::{AppHandle, Invoke, Manager, Runtime};
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.
-pub trait TauRpcHandler<R: Runtime> {
-    /// Response types enum
-    type Resp: Serialize;
-
+pub trait TauRpcHandler<R: Runtime>: Sized {
     /// Handle a single incoming request
     fn handle_incoming_request(self, invoke: Invoke<R>);
 
     /// Generates and exports TS types on runtime.
     fn generate_ts_types();
+
+    /// Get Prefix
+    fn get_path_prefix() -> String;
 
     /// Returns a json object containing the arguments for the methods.
     /// This is used on the frontend to ensure the arguments are send with their correct idents to the backend.
@@ -54,14 +60,13 @@ pub trait TauRpcHandler<R: Runtime> {
 ///   let _handler = taurpc::create_ipc_handler(ApiImpl.into_handler());
 /// }
 /// ```
-pub fn create_ipc_handler<H, R>(procedures: H) -> impl Fn(Invoke<R>) + Send + Sync + 'static
+pub fn create_ipc_handler<H>(procedures: H) -> impl Fn(Invoke<tauri::Wry>) + Send + Sync + 'static
 where
-    H: TauRpcHandler<R> + Send + Sync + 'static + Clone,
-    R: Runtime,
+    H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
     H::generate_ts_types();
 
-    move |invoke: Invoke<R>| {
+    move |invoke: Invoke<tauri::Wry>| {
         let cmd = invoke.message.command();
 
         match cmd {
@@ -119,6 +124,45 @@ impl EventTrigger {
                         .emit_to(&label, "TauRpc_event", req.clone())?;
                 }
                 Ok(())
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Router {
+    handlers: HashMap<String, Arc<Mutex<Box<dyn std::any::Any + Send + Sync>>>>,
+}
+
+impl Router {
+    pub fn new() -> Self {
+        Self {
+            handlers: Default::default(),
+        }
+    }
+
+    pub fn merge<H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static>(
+        mut self,
+        handler: H,
+    ) -> Self {
+        let path_prefix = H::get_path_prefix();
+        self.handlers
+            .insert(path_prefix, Arc::new(Mutex::new(Box::new(handler))));
+        self
+    }
+
+    pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) + Send + Sync + 'static {
+        move |invoke: Invoke<tauri::Wry>| {
+            let cmd = invoke.message.command();
+
+            match cmd {
+                "TauRPC__setup" => {
+                    println!("Setup called");
+                    invoke.resolver.respond(Ok("{}"));
+                }
+                _ => {
+                    println!("Trigger event: {cmd}")
+                }
             }
         }
     }
