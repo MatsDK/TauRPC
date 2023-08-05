@@ -70,6 +70,7 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
             .event_trigger_ident
             .unwrap_or(format_ident!("TauRpc{}EventTrigger", ident)),
         export_path,
+        path_prefix: procedures_attrs.path,
         inputs_ident: &format_ident!("TauRpc{}Inputs", ident),
         outputs_ident: &format_ident!("TauRpc{}Outputs", ident),
         output_types_ident: &format_ident!("TauRpc{}OutputTypes", ident),

@@ -105,11 +105,11 @@ impl Api for ApiImpl {
     }
 }
 
-#[taurpc::procedures]
+#[taurpc::procedures(path = "events")]
 trait Events {
     async fn cmd();
 
-    #[taurpc(event)]
+    // #[taurpc(event)]
     async fn test_ev();
 }
 
@@ -119,6 +119,10 @@ struct EventsImpl;
 #[taurpc::resolvers]
 impl Events for EventsImpl {
     async fn cmd(self) {}
+
+    async fn test_ev(self) {
+        println!("test event called");
+    }
 }
 
 type GlobalState = Arc<Mutex<String>>;
@@ -140,7 +144,7 @@ async fn main() {
                 .update_state("message scoped".to_string())?;
 
             trigger.update_state("message".to_string())?;
-            trigger.ev("hello world".to_string())?;
+            // trigger.ev("hello world".to_string())?;
             // trigger.with_alias()?;
         }
 
@@ -157,13 +161,6 @@ async fn main() {
         .merge(EventsImpl.into_handler());
 
     tauri::Builder::default()
-        // .invoke_handler(taurpc::create_ipc_handler(
-        //     ApiImpl {
-        //         state: Arc::new(Mutex::new("state".to_string())),
-        //     }
-        //     .into_handler(),
-        // ))
-        // .invoke_handler(taurpc::create_handler_from_router(router))
         .invoke_handler(router.into_handler())
         .setup(|app| {
             #[cfg(debug_assertions)]
@@ -173,7 +170,6 @@ async fn main() {
 
             Ok(())
         })
-        // .manage(Arc::new(Mutex::new(String::from("state"))))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

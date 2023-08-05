@@ -11,6 +11,7 @@ use syn::{
 pub struct ProceduresAttrs {
     pub event_trigger_ident: Option<Ident>,
     pub export_to: Option<String>,
+    pub path: String,
 }
 
 impl Parse for ProceduresAttrs {
@@ -63,6 +64,28 @@ impl Parse for ProceduresAttrs {
                         syn::Error::new(meta.path.span(), "export_to should be a str")
                     );
                 }
+            } else if meta.path.is_ident("path") {
+                if let Expr::Lit(p) = meta.value {
+                    match p.lit {
+                        Lit::Str(str) => result.path = str.value(),
+                        _ => {
+                            extend_errors!(
+                                errors,
+                                syn::Error::new(p.span(), "path should be a str")
+                            );
+                        }
+                    }
+                } else {
+                    extend_errors!(
+                        errors,
+                        syn::Error::new(meta.path.span(), "path should be a str")
+                    );
+                }
+            } else {
+                extend_errors!(
+                    errors,
+                    syn::Error::new(meta.path.span(), "Unsupported attribute")
+                );
             }
         }
 

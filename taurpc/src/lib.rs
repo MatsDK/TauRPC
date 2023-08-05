@@ -9,9 +9,10 @@ pub extern crate specta;
 
 use std::{
     collections::HashMap,
-    fmt::Debug,
-    sync::{Arc, Mutex, RwLock},
+    fmt::{format, Debug},
+    sync::{Arc, Mutex},
 };
+use tokio::sync::broadcast::Sender;
 
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
@@ -19,13 +20,16 @@ mod utils;
 pub use utils::export_files;
 
 use serde::Serialize;
-use tauri::{AppHandle, Invoke, Manager, Runtime};
+use tauri::{AppHandle, Invoke, InvokeError, Manager, Runtime};
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.
 pub trait TauRpcHandler<R: Runtime>: Sized {
     /// Handle a single incoming request
     fn handle_incoming_request(self, invoke: Invoke<R>);
+
+    /// Handle a single incoming request
+    fn spawn(self) -> Sender<Arc<Invoke<tauri::Wry>>>;
 
     /// Generates and exports TS types on runtime.
     fn generate_ts_types();
@@ -129,41 +133,58 @@ impl EventTrigger {
     }
 }
 
-#[derive(Clone)]
 pub struct Router {
-    handlers: HashMap<String, Arc<Mutex<Box<dyn std::any::Any + Send + Sync>>>>,
+    handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
+    args_map_json: HashMap<String, String>,
 }
 
 impl Router {
     pub fn new() -> Self {
         Self {
             handlers: Default::default(),
+            args_map_json: Default::default(),
         }
     }
 
-    pub fn merge<H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static>(
-        mut self,
-        handler: H,
-    ) -> Self {
-        let path_prefix = H::get_path_prefix();
-        self.handlers
-            .insert(path_prefix, Arc::new(Mutex::new(Box::new(handler))));
+    pub fn merge<T: TauRpcHandler<tauri::Wry>>(mut self, handler: T) -> Self {
+        self.args_map_json.insert(T::get_path_prefix(), T::setup());
+        self.handlers.insert(T::get_path_prefix(), handler.spawn());
         self
     }
 
-    pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) + Send + Sync + 'static {
+    pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) {
         move |invoke: Invoke<tauri::Wry>| {
             let cmd = invoke.message.command();
 
             match cmd {
                 "TauRPC__setup" => {
-                    println!("Setup called");
-                    invoke.resolver.respond(Ok("{}"));
+                    let map = serde_json::to_string(&self.args_map_json).unwrap();
+                    invoke.resolver.respond(Ok(map))
                 }
-                _ => {
-                    println!("Trigger event: {cmd}")
-                }
+                _ => self.on_command(invoke),
             }
         }
+    }
+
+    fn on_command(&self, invoke: Invoke<tauri::Wry>) {
+        let cmd = invoke.message.command();
+        if !cmd.starts_with("TauRPC__") {
+            return;
+        }
+
+        // Remove `TauRPC__`
+        let prefix = cmd[8..].to_string();
+        let mut prefix = prefix.split(".").collect::<Vec<_>>();
+        // Remove the actual name of the command
+        prefix.pop().unwrap();
+
+        match self.handlers.get(&prefix.join(".")) {
+            Some(handler) => {
+                handler.send(Arc::new(invoke)).unwrap();
+            }
+            None => invoke
+                .resolver
+                .invoke_error(InvokeError::from(format!("`{cmd}` not found"))),
+        };
     }
 }

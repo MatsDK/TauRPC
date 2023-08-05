@@ -4,6 +4,7 @@
 
     let value = "";
     const call_backend = async () => {
+        await taurpc.events.test_ev();
         await taurpc.update_state(value);
         await taurpc.get_window();
         await taurpc.method_with_alias();
@@ -28,8 +29,8 @@
         //     console.log("state updated", new_state);
         // });
         unlisten = taurpc.ev.on((val) => {
-            console.log("ev", val)
-        })
+            console.log("ev", val);
+        });
     });
 
     onDestroy(() => {

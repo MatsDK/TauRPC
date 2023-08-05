@@ -17,6 +17,7 @@ pub struct ProceduresGenerator<'a> {
     pub handler_ident: &'a Ident,
     pub event_trigger_ident: &'a Ident,
     pub export_path: String,
+    pub path_prefix: String,
     pub inputs_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
     pub output_types_ident: &'a Ident,
@@ -248,6 +249,7 @@ impl<'a> ProceduresGenerator<'a> {
             vis,
             alias_method_idents,
             methods,
+            ref path_prefix,
             ref export_path,
             ..
         } = self;
@@ -267,7 +269,6 @@ impl<'a> ProceduresGenerator<'a> {
                     return None;
                 }
                 let args = parse_args(args, &message, ident).unwrap();
-                let proc_name = format_method_name(proc_name);
 
                 Some(quote! { stringify!(#proc_name) => {
                     #resolver.respond_async_serialized(async move {
@@ -306,17 +307,37 @@ impl<'a> ProceduresGenerator<'a> {
             }
 
             use ::tauri::command::private::*;
-            impl<P: #trait_ident + Send + 'static, R: tauri::Runtime> taurpc::TauRpcHandler<R> for #handler_ident<P> {
-                fn handle_incoming_request(self, #invoke: tauri::Invoke<R>) {
+            impl<P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<tauri::Wry> for #handler_ident<P> {
+                fn handle_incoming_request(self, #invoke: tauri::Invoke<tauri::Wry>) {
                     #[allow(unused_variables)]
                     let ::tauri::Invoke { message: #message, resolver: #resolver } = #invoke;
 
-                    match #message.command() {
+                    // Remove `TauRpc__` prefix
+                    let prefix = #message.command()[8..].to_string();
+                    let mut prefix = prefix.split(".").collect::<Vec<_>>();
+                    // // Get the actual name of the command
+                    let cmd_name = prefix.pop().unwrap().to_string();
+
+                    match cmd_name.as_str() {
                         #( #procedure_handlers ),*
                         _ => {
                             #resolver.reject(format!("message `{}` not found", #message.command()));
                         }
                     };
+                }
+
+                fn spawn(self) -> tokio::sync::broadcast::Sender<std::sync::Arc<tauri::Invoke<tauri::Wry>>> {
+                    let (tx, mut rx) = tokio::sync::broadcast::channel(32);
+
+                    tokio::spawn(async move {
+                        while let Ok(invoke) = rx.recv().await {
+                            if let Some(invoke) = Arc::into_inner(invoke) {
+                                self.clone().handle_incoming_request(invoke);
+                            }
+                        }
+                    });
+
+                    tx
                 }
 
                 fn setup() -> String {
@@ -328,7 +349,7 @@ impl<'a> ProceduresGenerator<'a> {
                 }
 
                 fn get_path_prefix() -> String {
-                    stringify!(#trait_ident).to_string()
+                    #path_prefix.to_string()
                 }
             }
         }
