@@ -7,17 +7,13 @@
 pub extern crate serde;
 pub extern crate specta;
 
-use std::{
-    collections::HashMap,
-    fmt::{format, Debug},
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use tokio::sync::broadcast::Sender;
 
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
-mod utils;
-pub use utils::export_files;
+mod export;
+use export::export_files;
 
 use serde::Serialize;
 use tauri::{AppHandle, Invoke, InvokeError, Manager, Runtime};
@@ -32,7 +28,10 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     fn spawn(self) -> Sender<Arc<Invoke<tauri::Wry>>>;
 
     /// Generates and exports TS types on runtime.
-    fn generate_ts_types();
+    fn export_path() -> Option<String>;
+
+    /// Get the ident of the trait
+    fn get_trait_name() -> String;
 
     /// Get Prefix
     fn get_path_prefix() -> String;
@@ -68,7 +67,10 @@ pub fn create_ipc_handler<H>(procedures: H) -> impl Fn(Invoke<tauri::Wry>) + Sen
 where
     H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
-    H::generate_ts_types();
+    export_files(
+        H::export_path(),
+        vec![(H::get_path_prefix(), H::get_trait_name())],
+    );
 
     move |invoke: Invoke<tauri::Wry>| {
         let cmd = invoke.message.command();
@@ -134,8 +136,10 @@ impl EventTrigger {
 }
 
 pub struct Router {
+    export_path: Option<String>,
     handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
     args_map_json: HashMap<String, String>,
+    handler_paths: Vec<(String, String)>,
 }
 
 impl Router {
@@ -143,16 +147,26 @@ impl Router {
         Self {
             handlers: Default::default(),
             args_map_json: Default::default(),
+            export_path: None,
+            handler_paths: vec![],
         }
     }
 
-    pub fn merge<T: TauRpcHandler<tauri::Wry>>(mut self, handler: T) -> Self {
-        self.args_map_json.insert(T::get_path_prefix(), T::setup());
-        self.handlers.insert(T::get_path_prefix(), handler.spawn());
+    pub fn merge<H: TauRpcHandler<tauri::Wry>>(mut self, handler: H) -> Self {
+        if let Some(path) = H::export_path() {
+            self.export_path = Some(path)
+        }
+
+        self.handler_paths
+            .push((H::get_path_prefix(), H::get_trait_name()));
+        self.args_map_json.insert(H::get_path_prefix(), H::setup());
+        self.handlers.insert(H::get_path_prefix(), handler.spawn());
         self
     }
 
     pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) {
+        export_files(self.export_path.clone(), self.handler_paths.clone());
+
         move |invoke: Invoke<tauri::Wry>| {
             let cmd = invoke.message.command();
 

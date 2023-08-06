@@ -1,5 +1,4 @@
 use crate::args::{parse_arg_key, parse_args};
-use crate::format_method_name;
 use crate::{method_fut_ident, proc::IpcMethod};
 
 use proc_macro2::TokenStream as TokenStream2;
@@ -16,7 +15,8 @@ pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
     pub handler_ident: &'a Ident,
     pub event_trigger_ident: &'a Ident,
-    pub export_path: String,
+    // pub export_path: String,
+    pub export_path: Option<String>,
     pub path_prefix: String,
     pub inputs_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
@@ -122,7 +122,8 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(taurpc::specta::Type, taurpc::serde::Serialize, Clone)]
-            #[serde(tag = "proc_name", content = "input_type", rename = "TauRpcInputs")]
+            #[serde(tag = "proc_name", content = "input_type")]
+            // #[serde(tag = "proc_name", content = "input_type", rename = "TauRpcInputs")]
             #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
                 #( #inputs ),*
@@ -180,7 +181,8 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(taurpc::specta::Type, taurpc::serde::Serialize)]
-            #[serde(tag = "proc_name", content = "output_type", rename="TauRpcOutputs")]
+            // #[serde(tag = "proc_name", content = "output_type", rename="TauRpcOutputs")]
+            #[serde(tag = "proc_name", content = "output_type")]
             #[allow(non_camel_case_types)]
             #vis enum #output_types_ident {
                 #( #outputs ),*
@@ -249,8 +251,8 @@ impl<'a> ProceduresGenerator<'a> {
             vis,
             alias_method_idents,
             methods,
-            ref path_prefix,
             ref export_path,
+            ref path_prefix,
             ..
         } = self;
 
@@ -299,6 +301,10 @@ impl<'a> ProceduresGenerator<'a> {
             });
 
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
+        let export_path = match export_path {
+            Some(path) => quote! { Some(#path) },
+            None => quote! { None },
+        };
 
         quote! {
             #[derive(Clone)]
@@ -344,8 +350,12 @@ impl<'a> ProceduresGenerator<'a> {
                     #serialized_args_map.to_string()
                 }
 
-                fn generate_ts_types() {
-                    taurpc::export_files(#export_path);
+                fn export_path() -> Option<String>  {
+                    #export_path
+                }
+
+                fn get_trait_name() -> String  {
+                    stringify!(#trait_ident).to_string()
                 }
 
                 fn get_path_prefix() -> String {
