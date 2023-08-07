@@ -1,5 +1,11 @@
 # taurpc
 
+## 1.4.0
+
+### Minor Changes
+
+- [`8df57cf`](https://github.com/MatsDK/TauRPC/commit/8df57cf221f8cab0a7de6c39f54eee9b095ad2d3) Thanks [@MatsDK](https://github.com/MatsDK)! - Allow users to create nested commands that can be called with a proxy-like ts client
+
 ## 1.3.1
 
 ### Patch Changes
