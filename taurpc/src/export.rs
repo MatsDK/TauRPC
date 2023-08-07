@@ -25,7 +25,6 @@ pub(crate) fn export_files(export_path: Option<String>, handlers: Vec<(String, S
         export_path.unwrap_or(generate_default_export_path().to_str().unwrap().to_string());
     let export_path = export_path.as_str();
 
-    println!("{:?}", export_path);
     let path = Path::new(export_path);
     if path.is_dir() {
         panic!("`export_to` path should be a ts file");
@@ -58,7 +57,7 @@ pub(crate) fn export_files(export_path: Option<String>, handlers: Vec<(String, S
 }
 
 fn generate_router_type(handlers: Vec<(String, String)>) -> String {
-    let mut output = String::from("type Router = {\n");
+    let mut output = String::from("\ntype Router = {\n");
 
     for (path, handler_name) in handlers {
         output += &format!(

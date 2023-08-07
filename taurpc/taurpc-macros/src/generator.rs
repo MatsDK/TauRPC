@@ -123,7 +123,6 @@ impl<'a> ProceduresGenerator<'a> {
         quote! {
             #[derive(taurpc::specta::Type, taurpc::serde::Serialize, Clone)]
             #[serde(tag = "proc_name", content = "input_type")]
-            // #[serde(tag = "proc_name", content = "input_type", rename = "TauRpcInputs")]
             #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
                 #( #inputs ),*
@@ -181,7 +180,6 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(taurpc::specta::Type, taurpc::serde::Serialize)]
-            // #[serde(tag = "proc_name", content = "output_type", rename="TauRpcOutputs")]
             #[serde(tag = "proc_name", content = "output_type")]
             #[allow(non_camel_case_types)]
             #vis enum #output_types_ident {
@@ -302,7 +300,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
         let export_path = match export_path {
-            Some(path) => quote! { Some(#path) },
+            Some(path) => quote! { Some(#path.to_string()) },
             None => quote! { None },
         };
 
@@ -385,6 +383,7 @@ impl<'a> ProceduresGenerator<'a> {
             methods,
             inputs_ident,
             alias_method_idents,
+            ref path_prefix,
             ..
         } = self;
 
@@ -407,9 +406,10 @@ impl<'a> ProceduresGenerator<'a> {
                     quote! {
                         #[allow(unused)]
                         #vis fn #ident #generics(&self, #( #args ),*) -> tauri::Result<()> {
+                            let proc_name = stringify!(#alias_ident);
                             let req = #inputs_ident::#alias_ident(( #( #arg_pats ),* ));
 
-                            self.0.call(req)
+                            self.0.call(proc_name, req)
                         }
                     }
                 },
@@ -420,7 +420,7 @@ impl<'a> ProceduresGenerator<'a> {
             impl #event_trigger_ident {
                 /// Generate a new client to trigger events on the client-side.
                 #vis fn new(app_handle: tauri::AppHandle) -> Self {
-                    let trigger = taurpc::EventTrigger::new(app_handle);
+                    let trigger = taurpc::EventTrigger::new(app_handle, String::from(#path_prefix));
 
                     Self(trigger)
                 }

@@ -82,6 +82,12 @@ where
     }
 }
 
+#[derive(Serialize, Clone)]
+struct Event<S> {
+    event: S,
+    event_name: String,
+}
+
 /// Enum used for triggering scoped events instead of on all windows.
 /// Use the `send_to(scope: Windows)` method on your event trigger struct.
 #[derive(Default, Debug, Clone)]
@@ -98,36 +104,49 @@ pub enum Windows {
 #[derive(Debug, Clone)]
 pub struct EventTrigger {
     app_handle: AppHandle,
+    path_prefix: String,
     scope: Windows,
 }
 
 impl EventTrigger {
-    pub fn new(app_handle: AppHandle) -> Self {
+    pub fn new(app_handle: AppHandle, path_prefix: String) -> Self {
         Self {
             app_handle,
+            path_prefix,
             scope: Default::default(),
         }
     }
 
-    pub fn new_scoped(app_handle: AppHandle, scope: Windows) -> Self {
-        Self { app_handle, scope }
+    pub fn new_scoped(app_handle: AppHandle, path_prefix: String, scope: Windows) -> Self {
+        Self {
+            app_handle,
+            path_prefix,
+            scope,
+        }
     }
 
     pub fn new_scoped_from_trigger(trigger: Self, scope: Windows) -> Self {
         Self {
             app_handle: trigger.app_handle,
+            path_prefix: trigger.path_prefix,
             scope,
         }
     }
 
-    pub fn call<S: Serialize + Clone>(&self, req: S) -> tauri::Result<()> {
+    pub fn call<S: Serialize + Clone>(&self, proc_name: &str, event: S) -> tauri::Result<()> {
+        let event_name = if self.path_prefix.len() == 0 {
+            proc_name.to_string()
+        } else {
+            format!("{}.{}", self.path_prefix, proc_name)
+        };
+        let event = Event { event_name, event };
         match &self.scope {
-            Windows::All => self.app_handle.emit_all("TauRpc_event", req),
-            Windows::One(label) => self.app_handle.emit_to(&label, "TauRpc_event", req),
+            Windows::All => self.app_handle.emit_all("TauRpc_event", event),
+            Windows::One(label) => self.app_handle.emit_to(&label, "TauRpc_event", event),
             Windows::N(labels) => {
                 for label in labels {
                     self.app_handle
-                        .emit_to(&label, "TauRpc_event", req.clone())?;
+                        .emit_to(&label, "TauRpc_event", event.clone())?;
                 }
                 Ok(())
             }

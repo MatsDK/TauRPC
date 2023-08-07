@@ -75,7 +75,10 @@ type TauRpcProxy<TRouter extends Router> =
   & InvokeLayer<TRouter['']>
   & Convert<Omit<TRouter, ''>>
 
-type Payload = { proc_name: string; input_type: unknown }
+type Payload = {
+  event_name: string
+  event: { proc_name: string; input_type: unknown }
+}
 
 type Listeners = Map<string, (args: unknown) => void>
 const TAURPC_EVENT_NAME = 'TauRpc_event'
@@ -85,15 +88,15 @@ const createTauRPCProxy = async <TRouter extends Router>() => {
   const listeners: Listeners = new Map()
 
   const event_handler: EventCallback<Payload> = (event) => {
-    const listener = listeners.get(event.payload.proc_name)
+    const listener = listeners.get(event.payload.event_name)
     if (!listener) return
 
-    if (Array.isArray(event.payload.input_type)) {
+    if (Array.isArray(event.payload.event.input_type)) {
       const _ = (listener as ((...args: unknown[]) => void))(
-        ...event.payload.input_type as unknown[],
+        ...event.payload.event.input_type as unknown[],
       )
     } else {
-      listener(event.payload.input_type)
+      listener(event.payload.event.input_type)
     }
   }
 
@@ -107,11 +110,11 @@ const nestedProxy = (
   path: string[] = [],
 ) => {
   return new window.Proxy({}, {
-    get(_target, p, _receiver): any {
+    get(_target, p, _receiver): object {
       const method_name = p.toString()
       const nested_path = [...path, method_name]
       const args_map = args_maps[path.join('.')]
-      if (method_name === 'then' || !args_map) return
+      if (method_name === 'then' || !args_map) return {}
 
       if (method_name in args_map) {
         return new window.Proxy(() => {
@@ -127,10 +130,10 @@ const nestedProxy = (
             }
           },
           apply(_target, _thisArg, args) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             return handleProxyCall(
               nested_path.join('.'),
               args,
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               args_map[method_name]!,
             )
           },

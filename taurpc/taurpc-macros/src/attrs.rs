@@ -67,7 +67,10 @@ impl Parse for ProceduresAttrs {
             } else if meta.path.is_ident("path") {
                 if let Expr::Lit(p) = meta.value {
                     match p.lit {
-                        Lit::Str(str) => result.path = str.value(),
+                        Lit::Str(str) => {
+                            // TODO: validate path
+                            result.path = str.value()
+                        }
                         _ => {
                             extend_errors!(
                                 errors,
