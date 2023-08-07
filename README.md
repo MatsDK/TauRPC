@@ -167,6 +167,69 @@ trait Api {
 }
 ```
 
+# Routing
+
+It is possible to define all your commands and events inside a single procedures trait, but this can quickly get cluttered. By using the `Router` struct you can create nested commands and events,
+that you can call using a proxy TypeScript client.
+
+The path of the procedures trait is set by using the `path` attribute on `#[taurpc::procedures(path = "")]`, then you can create an empty router and use the `merge` method to add handlers to the router.
+You can only have 1 trait without a path specified, this will be the root. Finally instead of using `taurpc::create_ipc_handler()`, you should just call `into_handler()` on the router.
+
+```rust
+// Root procedures
+#[taurpc::procedures]
+trait Api {
+    async fn hello_world();
+}
+
+#[derive(Clone)]
+struct ApiImpl;
+
+#[taurpc::resolvers]
+impl Api for ApiImpl {
+    async fn hello_world(self) {
+        println!("Hello world");
+    }
+}
+
+// Nested procedures, you can also do this (path = "api.events.users")
+#[taurpc::procedures(path = "events")]
+trait Events {
+    #[taurpc(event)]
+    async fn event();
+}
+
+#[derive(Clone)]
+struct EventsImpl;
+
+#[taurpc::resolvers]
+impl Events for EventsImpl {}
+
+#[tokio::main]
+async fn main() {
+    let router = Router::new()
+        .merge(ApiImpl.into_handler())
+        .merge(EventsImpl.into_handler());
+
+    tauri::Builder::default()
+        .invoke_handler(router.into_handler())
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+```
+
+Now on the frontend you can use the proxy client.
+
+```typescript
+// Call `hello_world` on the root layer
+await taurpc.hello_world()
+
+// Listen for `event` on the `events` layer
+const unlisten = taurpc.events.event.on(() => {
+  console.log('Hello World!')
+})
+```
+
 # Calling the frontend
 
 Trigger [events](https://tauri.app/v1/guides/features/events/) on your TypeScript frontend from your Rust backend with a fully-typed experience.
@@ -239,8 +302,8 @@ trigger.send_to(Windows::One("main".to_string())).hello_world()?;
 - [x] Sharing state
   - [ ] Use Tauri's managed state?
 - [x] Renaming methods
-- [ ] Nested routes
-- [ ] Merging routers
+- [x] Nested routes
+- [x] Merging routers
 - [x] Custom error handling
 - [x] Typed outputs
 - [x] Async methods - [async traits👀](https://blog.rust-lang.org/inside-rust/2023/05/03/stabilizing-async-fn-in-trait.html)

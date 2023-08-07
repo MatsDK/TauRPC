@@ -43,24 +43,33 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
 
 /// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
 /// types. Accepts a struct in which your `taurpc::procedures` trait is implemented.
+/// If you have nested routes, look at [taurpc::Router]()
+///
 ///
 ///  # Examples
 /// ```rust
 /// #[taurpc::procedures]
 /// trait Api {
-///     fn hello_world();
+///     async fn hello_world();
 /// }
 ///
 /// #[derive(Clone)]
 /// struct ApiImpl;
+/// #[taurpc::resolvers]
 /// impl Api for ApiImpl {
-///     fn hello_world(self) {
+///     async fn hello_world(self) {
 ///         println!("Hello world");
 ///     }
 /// }
 ///
-/// fn main() {
-///   let _handler = taurpc::create_ipc_handler(ApiImpl.into_handler());
+/// #[tokio::main]
+/// async fn main() {
+///   tauri::Builder::default()
+///     .invoke_handler(
+///       taurpc::create_ipc_handler(ApiImpl.into_handler());
+///     )
+///     .run(tauri::generate_context!())
+///     .expect("error while running tauri application");
 /// }
 /// ```
 pub fn create_ipc_handler<H>(procedures: H) -> impl Fn(Invoke<tauri::Wry>) + Send + Sync + 'static
@@ -154,9 +163,45 @@ impl EventTrigger {
     }
 }
 
+/// Used for merging nested trait implementations. This is used when you have multiple trait implementations,
+/// instead of `taurpc::create_ipc_handler()`. Use `.merge()` to add trait implementations to the router.
+/// The trait must be have the `#[taurpc::procedures]` and the nested routes should have `#[taurpc::procedures(path = "path")]`.
+///
+///  # Examples
+/// ```rust
+/// #[taurpc::procedures]
+/// trait Api { }
+///
+/// #[derive(Clone)]
+/// struct ApiImpl;
+///
+/// #[taurpc::resolveres]
+/// impl Api for ApiImpl { }
+///
+/// #[taurpc::procedures(path = "events")]
+/// trait Events { }
+///
+/// #[derive(Clone)]
+/// struct EventsImpl;
+///
+/// #[taurpc::resolveres]
+/// impl Events for EventsImpl { }
+///
+/// #[tokio::main]
+/// async fn main() {
+///   let router = Router::new()
+///     .merge(ApiImpl.into_handler())
+///     .merge(EventsImpl.into_handler());
+///
+///   tauri::Builder::default()
+///     .invoke_handler(router.into_handler())
+///     .run(tauri::generate_context!())
+///     .expect("error while running tauri application");
+/// }
+/// ```
 pub struct Router {
-    export_path: Option<String>,
     handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
+    export_path: Option<String>,
     args_map_json: HashMap<String, String>,
     handler_paths: Vec<(String, String)>,
 }
@@ -171,6 +216,13 @@ impl Router {
         }
     }
 
+    /// Add routes to the router, accepts a struct for which a `#[taurpc::procedures]` trait is implemented
+    ///
+    /// ```rust
+    ///   let router = Router::new()
+    ///     .merge(ApiImpl.into_handler())
+    ///     .merge(EventsImpl.into_handler());
+    /// ```
     pub fn merge<H: TauRpcHandler<tauri::Wry>>(mut self, handler: H) -> Self {
         if let Some(path) = H::export_path() {
             self.export_path = Some(path)
@@ -183,6 +235,15 @@ impl Router {
         self
     }
 
+    /// Create a handler out of the router that allows your IPCs to be called from the frontend,
+    /// and generate the corresponding types. Use this inside `.invoke_handler()` on the tauri::Builder.
+    ///
+    /// ```rust
+    ///   tauri::Builder::default()
+    ///     .invoke_handler(router.into_handler())
+    ///     .run(tauri::generate_context!())
+    ///     .expect("error while running tauri application");
+    /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) {
         export_files(self.export_path.clone(), self.handler_paths.clone());
 

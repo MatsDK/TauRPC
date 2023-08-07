@@ -20,7 +20,7 @@ export const createTauRPCProxy = () => createProxy<Router>()
 /// By default, if the `export_to` attribute was not specified on the procedures macro, it will be exported
 /// to `node_modules/.taurpc` and a `package.json` will also be generated to import the package.
 /// Otherwise the code will just be export to the .ts file specified by the user.
-pub(crate) fn export_files(export_path: Option<String>, handlers: Vec<(String, String)>) {
+pub(super) fn export_files(export_path: Option<String>, handlers: Vec<(String, String)>) {
     let export_path =
         export_path.unwrap_or(generate_default_export_path().to_str().unwrap().to_string());
     let export_path = export_path.as_str();
