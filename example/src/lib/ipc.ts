@@ -1,5 +1,4 @@
-import { createTauRPCProxy } from '../../node_modules/.taurpc'
-// import { createTauRPCProxy } from '.taurpc'
+import { createTauRPCProxy } from '../../bindings'
 
 const taurpc = await createTauRPCProxy()
 

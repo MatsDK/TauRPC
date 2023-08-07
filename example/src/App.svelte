@@ -4,6 +4,7 @@
 
     let value = "";
     const call_backend = async () => {
+        await taurpc.events.test_ev();
         await taurpc.update_state(value);
         await taurpc.get_window();
         await taurpc.method_with_alias();
@@ -21,19 +22,26 @@
         }
     };
 
-    let unlisten = null;
+    let unlisten = [];
 
     onMount(async () => {
         // unlisten = taurpc.update_state.on((new_state) => {
         //     console.log("state updated", new_state);
         // });
-        unlisten = taurpc.ev.on((val) => {
-            console.log("ev", val)
-        })
+        unlisten.push(
+            taurpc.update_state.on((val) => {
+                console.log("update_state", val);
+            })
+        );
+        unlisten.push(
+            taurpc.events.test_ev.on(() => {
+                console.log("events.test_ev");
+            })
+        );
     });
 
     onDestroy(() => {
-        unlisten();
+        unlisten.forEach((fn) => fn());
     });
 </script>
 

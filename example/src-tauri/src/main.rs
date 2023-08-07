@@ -4,8 +4,8 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tauri::{Manager, Runtime};
-use taurpc::Windows;
+use tauri::{AppHandle, Manager, Runtime};
+use taurpc::{Router, Windows};
 use tokio::{sync::oneshot, time::sleep};
 
 #[taurpc::ipc_type]
@@ -35,8 +35,8 @@ impl serde::Serialize for Error {
     }
 }
 
-// #[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../bindings.ts")]
-#[taurpc::procedures(event_trigger = ApiEventTrigger)]
+#[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../bindings.ts")]
+// #[taurpc::procedures(event_trigger = ApiEventTrigger)]
 trait Api {
     async fn update_state(new_value: String);
 
@@ -105,39 +105,64 @@ impl Api for ApiImpl {
     }
 }
 
+#[taurpc::procedures(path = "events", export_to = "../bindings.ts")]
+trait Events {
+    async fn cmd();
+
+    // #[taurpc(event)]
+    async fn test_ev();
+}
+
+#[derive(Clone)]
+struct EventsImpl;
+
+#[taurpc::resolvers]
+impl Events for EventsImpl {
+    async fn cmd(self) {}
+
+    async fn test_ev(self) {
+        println!("test event called");
+    }
+}
+
 type GlobalState = Arc<Mutex<String>>;
 
 #[tokio::main]
 async fn main() {
-    let (tx, rx) = oneshot::channel();
+    let (tx, rx) = oneshot::channel::<AppHandle>();
 
     tokio::spawn(async move {
         let app_handle = rx.await.unwrap();
-        let trigger = ApiEventTrigger::new(app_handle);
+        let api_trigger = ApiEventTrigger::new(app_handle.clone());
+        let events_trigger = TauRpcEventsEventTrigger::new(app_handle);
 
         let mut interval = tokio::time::interval(Duration::from_secs(1));
         loop {
             interval.tick().await;
 
-            trigger
+            api_trigger
                 .send_to(Windows::One("main".to_string()))
                 .update_state("message scoped".to_string())?;
 
-            trigger.update_state("message".to_string())?;
-            trigger.ev("hello world".to_string())?;
-            // trigger.with_alias()?;
+            api_trigger.update_state("message".to_string())?;
+
+            events_trigger.test_ev()?;
         }
 
         Ok::<(), tauri::Error>(())
     });
 
-    tauri::Builder::default()
-        .invoke_handler(taurpc::create_ipc_handler(
+    let router = Router::new()
+        .merge(
             ApiImpl {
                 state: Arc::new(Mutex::new("state".to_string())),
             }
             .into_handler(),
-        ))
+        )
+        .merge(EventsImpl.into_handler());
+
+    tauri::Builder::default()
+        .invoke_handler(router.into_handler())
         .setup(|app| {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();
@@ -146,7 +171,6 @@ async fn main() {
 
             Ok(())
         })
-        // .manage(Arc::new(Mutex::new(String::from("state"))))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

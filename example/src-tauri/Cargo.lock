@@ -2821,6 +2821,7 @@ dependencies = [
  "specta",
  "tauri",
  "taurpc-macros",
+ "tokio",
 ]
 
 [[package]]

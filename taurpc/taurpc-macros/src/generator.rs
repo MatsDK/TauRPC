@@ -1,5 +1,4 @@
 use crate::args::{parse_arg_key, parse_args};
-use crate::format_method_name;
 use crate::{method_fut_ident, proc::IpcMethod};
 
 use proc_macro2::TokenStream as TokenStream2;
@@ -16,7 +15,9 @@ pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
     pub handler_ident: &'a Ident,
     pub event_trigger_ident: &'a Ident,
-    pub export_path: String,
+    // pub export_path: String,
+    pub export_path: Option<String>,
+    pub path_prefix: String,
     pub inputs_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
     pub output_types_ident: &'a Ident,
@@ -121,7 +122,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(taurpc::specta::Type, taurpc::serde::Serialize, Clone)]
-            #[serde(tag = "proc_name", content = "input_type", rename = "TauRpcInputs")]
+            #[serde(tag = "proc_name", content = "input_type")]
             #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
                 #( #inputs ),*
@@ -179,7 +180,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(taurpc::specta::Type, taurpc::serde::Serialize)]
-            #[serde(tag = "proc_name", content = "output_type", rename="TauRpcOutputs")]
+            #[serde(tag = "proc_name", content = "output_type")]
             #[allow(non_camel_case_types)]
             #vis enum #output_types_ident {
                 #( #outputs ),*
@@ -248,8 +249,8 @@ impl<'a> ProceduresGenerator<'a> {
             vis,
             alias_method_idents,
             methods,
-            outputs_ident,
             ref export_path,
+            ref path_prefix,
             ..
         } = self;
 
@@ -268,7 +269,6 @@ impl<'a> ProceduresGenerator<'a> {
                     return None;
                 }
                 let args = parse_args(args, &message, ident).unwrap();
-                let proc_name = format_method_name(proc_name);
 
                 Some(quote! { stringify!(#proc_name) => {
                     #resolver.respond_async_serialized(async move {
@@ -299,6 +299,10 @@ impl<'a> ProceduresGenerator<'a> {
             });
 
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
+        let export_path = match export_path {
+            Some(path) => quote! { Some(#path.to_string()) },
+            None => quote! { None },
+        };
 
         quote! {
             #[derive(Clone)]
@@ -307,14 +311,18 @@ impl<'a> ProceduresGenerator<'a> {
             }
 
             use ::tauri::command::private::*;
-            impl<P: #trait_ident + Send + 'static, R: tauri::Runtime> taurpc::TauRpcHandler<R> for #handler_ident<P> {
-                type Resp = #outputs_ident;
-
-                fn handle_incoming_request(self, #invoke: tauri::Invoke<R>) {
+            impl<P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<tauri::Wry> for #handler_ident<P> {
+                fn handle_incoming_request(self, #invoke: tauri::Invoke<tauri::Wry>) {
                     #[allow(unused_variables)]
                     let ::tauri::Invoke { message: #message, resolver: #resolver } = #invoke;
 
-                    match #message.command() {
+                    // Remove `TauRpc__` prefix
+                    let prefix = #message.command()[8..].to_string();
+                    let mut prefix = prefix.split(".").collect::<Vec<_>>();
+                    // // Get the actual name of the command
+                    let cmd_name = prefix.pop().unwrap().to_string();
+
+                    match cmd_name.as_str() {
                         #( #procedure_handlers ),*
                         _ => {
                             #resolver.reject(format!("message `{}` not found", #message.command()));
@@ -322,12 +330,26 @@ impl<'a> ProceduresGenerator<'a> {
                     };
                 }
 
-                fn setup() -> String {
+                fn spawn(self) -> tokio::sync::broadcast::Sender<std::sync::Arc<tauri::Invoke<tauri::Wry>>> {
+                    let (tx, mut rx) = tokio::sync::broadcast::channel(32);
+
+                    tokio::spawn(async move {
+                        while let Ok(invoke) = rx.recv().await {
+                            if let Some(invoke) = Arc::into_inner(invoke) {
+                                self.clone().handle_incoming_request(invoke);
+                            }
+                        }
+                    });
+
+                    tx
+                }
+
+                fn args_map() -> String {
                     #serialized_args_map.to_string()
                 }
 
-                fn generate_ts_types() {
-                    taurpc::export_files(#export_path);
+                fn handler_info() -> (String, String, Option<String>) {
+                    (stringify!(#trait_ident).to_string(), #path_prefix.to_string(), #export_path)
                 }
             }
         }
@@ -353,6 +375,7 @@ impl<'a> ProceduresGenerator<'a> {
             methods,
             inputs_ident,
             alias_method_idents,
+            ref path_prefix,
             ..
         } = self;
 
@@ -375,9 +398,10 @@ impl<'a> ProceduresGenerator<'a> {
                     quote! {
                         #[allow(unused)]
                         #vis fn #ident #generics(&self, #( #args ),*) -> tauri::Result<()> {
+                            let proc_name = stringify!(#alias_ident);
                             let req = #inputs_ident::#alias_ident(( #( #arg_pats ),* ));
 
-                            self.0.call(req)
+                            self.0.call(proc_name, req)
                         }
                     }
                 },
@@ -388,7 +412,7 @@ impl<'a> ProceduresGenerator<'a> {
             impl #event_trigger_ident {
                 /// Generate a new client to trigger events on the client-side.
                 #vis fn new(app_handle: tauri::AppHandle) -> Self {
-                    let trigger = taurpc::EventTrigger::new(app_handle);
+                    let trigger = taurpc::EventTrigger::new(app_handle, String::from(#path_prefix));
 
                     Self(trigger)
                 }
