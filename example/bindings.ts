@@ -38,6 +38,6 @@ import { createTauRPCProxy as createProxy } from 'taurpc'
 export const createTauRPCProxy = () => createProxy<Router>()
 
 type Router = {
-  '': [TauRpcApiInputs, TauRpcApiOutputTypes]
+  // '': [TauRpcApiInputs, TauRpcApiOutputTypes]
   'events': [TauRpcEventsInputs, TauRpcEventsOutputTypes]
 }

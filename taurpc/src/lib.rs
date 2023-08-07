@@ -27,18 +27,13 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     /// Handle a single incoming request
     fn spawn(self) -> Sender<Arc<Invoke<tauri::Wry>>>;
 
-    /// Generates and exports TS types on runtime.
-    fn export_path() -> Option<String>;
-
-    /// Get the ident of the trait
-    fn get_trait_name() -> String;
-
-    /// Get Prefix
-    fn get_path_prefix() -> String;
+    /// Get info about that handler that is necessary for generating and exporthing the types on runtime.
+    /// Returns (trait_name, trait_path_prefix, export_path)
+    fn handler_info() -> (String, String, Option<String>);
 
     /// Returns a json object containing the arguments for the methods.
     /// This is used on the frontend to ensure the arguments are send with their correct idents to the backend.
-    fn setup() -> String;
+    fn args_map() -> String;
 }
 
 /// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
@@ -76,16 +71,14 @@ pub fn create_ipc_handler<H>(procedures: H) -> impl Fn(Invoke<tauri::Wry>) + Sen
 where
     H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
-    export_files(
-        H::export_path(),
-        vec![(H::get_path_prefix(), H::get_trait_name())],
-    );
+    let (trait_name, path_prefix, export_path) = H::handler_info();
+    export_files(export_path, vec![(path_prefix, trait_name)]);
 
     move |invoke: Invoke<tauri::Wry>| {
         let cmd = invoke.message.command();
 
         match cmd {
-            "TauRPC__setup" => invoke.resolver.respond(Ok(H::setup())),
+            "TauRPC__setup" => invoke.resolver.respond(Ok(H::args_map())),
             _ => procedures.clone().handle_incoming_request(invoke),
         }
     }
@@ -224,14 +217,15 @@ impl Router {
     ///     .merge(EventsImpl.into_handler());
     /// ```
     pub fn merge<H: TauRpcHandler<tauri::Wry>>(mut self, handler: H) -> Self {
-        if let Some(path) = H::export_path() {
+        let (trait_name, path_prefix, export_path) = H::handler_info();
+        if let Some(path) = export_path {
             self.export_path = Some(path)
         }
 
-        self.handler_paths
-            .push((H::get_path_prefix(), H::get_trait_name()));
-        self.args_map_json.insert(H::get_path_prefix(), H::setup());
-        self.handlers.insert(H::get_path_prefix(), handler.spawn());
+        self.handler_paths.push((path_prefix.clone(), trait_name));
+        self.args_map_json
+            .insert(path_prefix.clone(), H::args_map());
+        self.handlers.insert(path_prefix, handler.spawn());
         self
     }
 

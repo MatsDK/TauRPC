@@ -344,20 +344,12 @@ impl<'a> ProceduresGenerator<'a> {
                     tx
                 }
 
-                fn setup() -> String {
+                fn args_map() -> String {
                     #serialized_args_map.to_string()
                 }
 
-                fn export_path() -> Option<String>  {
-                    #export_path
-                }
-
-                fn get_trait_name() -> String  {
-                    stringify!(#trait_ident).to_string()
-                }
-
-                fn get_path_prefix() -> String {
-                    #path_prefix.to_string()
+                fn handler_info() -> (String, String, Option<String>) {
+                    (stringify!(#trait_ident).to_string(), #path_prefix.to_string(), #export_path)
                 }
             }
         }

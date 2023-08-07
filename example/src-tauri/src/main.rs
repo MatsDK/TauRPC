@@ -105,7 +105,7 @@ impl Api for ApiImpl {
     }
 }
 
-#[taurpc::procedures(path = "events")]
+#[taurpc::procedures(path = "events", export_to = "../bindings.ts")]
 trait Events {
     async fn cmd();
 

@@ -8,7 +8,7 @@ type RoutesLayer = [TauRpcInputs, TauRpcOutputs]
 type NestedRoutes = {
   [route: string]: RoutesLayer | NestedRoutes
 }
-type Router = NestedRoutes & { '': RoutesLayer }
+type Router = NestedRoutes & { ''?: RoutesLayer }
 
 type FnInput<TInputs extends TauRpcInputs, TProc extends string> = Extract<
   TInputs,
@@ -72,7 +72,8 @@ type Convert<TRouter extends NestedRoutes> = UnionToIntersection<
 >
 
 type TauRpcProxy<TRouter extends Router> =
-  & InvokeLayer<TRouter['']>
+  & (TRouter[''] extends RoutesLayer ? InvokeLayer<TRouter['']>
+    : object)
   & Convert<Omit<TRouter, ''>>
 
 type Payload = {
