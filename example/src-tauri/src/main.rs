@@ -85,7 +85,7 @@ impl Api for ApiImpl {
         println!("{:?}, {:?}", app_dir, app_handle.package_info());
     }
 
-    async fn test_io(self, user: User, arg: u32) -> User {
+    async fn test_io(self, user: User) -> User {
         user
     }
 
