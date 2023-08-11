@@ -24,11 +24,12 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     /// Handle a single incoming request
     fn handle_incoming_request(self, invoke: Invoke<R>);
 
-    /// Handle a single incoming request
+    /// Spawn a new `tokio` thread that listens for and handles incoming request through a `tokio::broadcast::channel`.
+    /// This is used for when you have multiple handlers inside a router.
     fn spawn(self) -> Sender<Arc<Invoke<tauri::Wry>>>;
 
     /// Get info about that handler that is necessary for generating and exporthing the types on runtime.
-    /// Returns (trait_name, trait_path_prefix, export_path)
+    /// Returns `(trait_name, trait_path_prefix, export_path)`
     fn handler_info() -> (String, String, Option<String>);
 
     /// Returns a json object containing the arguments for the methods.
