@@ -38,7 +38,7 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
 
 /// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
 /// types. Accepts a struct in which your `taurpc::procedures` trait is implemented.
-/// If you have nested routes, look at [taurpc::Router]()
+/// If you have nested routes, look at [taurpc::Router](https://docs.rs/taurpc/latest/taurpc/struct.Router.html).
 ///
 ///
 ///  # Examples

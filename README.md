@@ -15,7 +15,7 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-taurpc = "0.1.7"
+taurpc = "0.2.0"
 
 specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }
@@ -75,10 +75,11 @@ You can find a complete example (using Svelte) [here](https://github.com/MatsDK/
 
 # Using structs
 
-If you want to you structs for the inputs/outputs of procedures, you should always add `#[taurpc::ipc_struct]` to make sure the coresponding ts types are generated.
+If you want to you structs for the inputs/outputs of procedures, you should always add `#[taurpc::ipc_struct]` to make sure the coresponding ts types are generated. This make will derive serde `Serialize` and `Deserialize`, `Clone` and `specta::Type`.
 
 ```rust
 #[taurpc::ipc_struct]
+// #[derive(serde::Serialize, serde::Deserialize, specta::Type, Clone)]
 struct User {
     user_id: u32,
     first_name: String,

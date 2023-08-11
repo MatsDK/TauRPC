@@ -198,16 +198,24 @@ impl<'a> ProceduresGenerator<'a> {
             ..
         } = self;
 
-        let outputs = methods.iter().filter_map(|IpcMethod { ident, attrs, .. }| {
-            if attrs.is_event {
-                return None;
-            }
-            let future_ident = method_fut_ident(ident);
+        let outputs = methods
+            .iter()
+            .filter_map(|IpcMethod { ident, attrs, .. }| {
+                if attrs.is_event {
+                    return None;
+                }
+                let future_ident = method_fut_ident(ident);
 
-            Some(quote! {
-                #ident(<P as #trait_ident>::#future_ident)
+                Some(quote! {
+                    #ident(<P as #trait_ident>::#future_ident)
+                })
             })
-        });
+            .collect::<Vec<_>>();
+
+        // If there are not commands, there are no future outputs and the generic P will be unused resulting in errors.
+        if outputs.len() == 0 {
+            return quote! {};
+        }
 
         let method_idents = methods
             .iter()
@@ -335,7 +343,7 @@ impl<'a> ProceduresGenerator<'a> {
 
                     tokio::spawn(async move {
                         while let Ok(invoke) = rx.recv().await {
-                            if let Some(invoke) = Arc::into_inner(invoke) {
+                            if let Some(invoke) = std::sync::Arc::into_inner(invoke) {
                                 self.clone().handle_incoming_request(invoke);
                             }
                         }

@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use serde::{Deserialize, Serialize};
 use std::{
     sync::{Arc, Mutex},
     time::Duration,
@@ -8,7 +9,8 @@ use tauri::{AppHandle, Manager, Runtime};
 use taurpc::{Router, Windows};
 use tokio::{sync::oneshot, time::sleep};
 
-#[taurpc::ipc_type]
+// #[taurpc::ipc_type]
+#[derive(Serialize, Deserialize, specta::Type, Clone)]
 struct User {
     uid: i32,
     first_name: String,
@@ -107,9 +109,7 @@ impl Api for ApiImpl {
 
 #[taurpc::procedures(path = "events", export_to = "../bindings.ts")]
 trait Events {
-    async fn cmd();
-
-    // #[taurpc(event)]
+    #[taurpc(event)]
     async fn test_ev();
 }
 
@@ -117,13 +117,7 @@ trait Events {
 struct EventsImpl;
 
 #[taurpc::resolvers]
-impl Events for EventsImpl {
-    async fn cmd(self) {}
-
-    async fn test_ev(self) {
-        println!("test event called");
-    }
-}
+impl Events for EventsImpl {}
 
 type GlobalState = Arc<Mutex<String>>;
 
