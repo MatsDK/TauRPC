@@ -62,23 +62,29 @@ type SplitKeyNested<
       : never
   }
 
-type SplitKey<TRouter extends NestedRoutes, T extends keyof TRouter> = T extends
-  `${infer A}.${infer B}` ? { [K in A]: SplitKeyNested<TRouter, T, B> }
+type RouterPathsToNestedObject<
+  TRouter extends NestedRoutes,
+  TPath extends keyof TRouter,
+> = TPath extends `${infer A}.${infer B}`
+  ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
   : {
-    [K in T]: TRouter[T] extends RoutesLayer ? InvokeLayer<TRouter[T]> : never
+    [K in TPath]: TRouter[TPath] extends RoutesLayer
+      ? InvokeLayer<TRouter[TPath]>
+      : never
   }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends
   ((k: infer I) => void) ? I : never
 
-type Convert<TRouter extends NestedRoutes> = UnionToIntersection<
-  SplitKey<TRouter, keyof TRouter>
+type ConvertToNestedObject<TRouter extends NestedRoutes> = UnionToIntersection<
+  RouterPathsToNestedObject<TRouter, keyof TRouter>
 >
 
 type TauRpcProxy<TRouter extends Router> =
   & (TRouter[''] extends RoutesLayer ? InvokeLayer<TRouter['']>
     : object)
-  & Convert<Omit<TRouter, ''>>
+  & ConvertToNestedObject<Omit<TRouter, ''>>
 
 type Payload = {
   event_name: string

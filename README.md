@@ -124,7 +124,7 @@ struct ApiImpl {
 impl Api for ApiImpl {
     async fn with_state(self) {
         // ... 
-        // self.state.lock()
+        // let state = self.state.lock().await;
         // ... 
     }
 
