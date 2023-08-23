@@ -154,17 +154,23 @@ async fn main() {
         Ok::<(), tauri::Error>(())
     });
 
-    let router = Router::new()
-        .merge(
-            ApiImpl {
-                state: Arc::new(Mutex::new("state".to_string())),
-            }
-            .into_handler(),
-        )
-        .merge(EventsImpl.into_handler());
+    // let router = Router::new()
+    //     .merge(
+    //         ApiImpl {
+    //             state: Arc::new(Mutex::new("state".to_string())),
+    //         }
+    //         .into_handler(),
+    //     )
+    //     .merge(EventsImpl.into_handler());
 
     tauri::Builder::default()
-        .invoke_handler(router.into_handler())
+        // .invoke_handler(router.into_handler())
+        .invoke_handler(taurpc::create_ipc_handler(
+            ApiImpl {
+                state: Arc::new(Mutex::new(String::from("test"))),
+            }
+            .into_handler(),
+        ))
         .setup(|app| {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();

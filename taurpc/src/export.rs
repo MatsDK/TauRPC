@@ -12,7 +12,7 @@ static PACKAGE_JSON: &'static str = r#"
 static BOILERPLATE_TS_CODE: &'static str = r#"
 import { createTauRPCProxy as createProxy } from "taurpc"
 
-export const createTauRPCProxy = () => createProxy<Router>()
+export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 "#;
 
 /// Export the generated TS types with the code necessary for generating the client proxy.
@@ -20,7 +20,11 @@ export const createTauRPCProxy = () => createProxy<Router>()
 /// By default, if the `export_to` attribute was not specified on the procedures macro, it will be exported
 /// to `node_modules/.taurpc` and a `package.json` will also be generated to import the package.
 /// Otherwise the code will just be export to the .ts file specified by the user.
-pub(super) fn export_files(export_path: Option<String>, handlers: Vec<(String, String)>) {
+pub(super) fn export_types(
+    export_path: Option<String>,
+    handlers: Vec<(String, String)>,
+    args_map: String,
+) {
     let export_path =
         export_path.unwrap_or(generate_default_export_path().to_str().unwrap().to_string());
     let export_path = export_path.as_str();
@@ -42,6 +46,8 @@ pub(super) fn export_files(export_path: Option<String>, handlers: Vec<(String, S
         .open(path)
         .unwrap();
 
+    file.write_all(format!("const ARGS_MAP = {}", args_map).as_bytes())
+        .unwrap();
     file.write_all(BOILERPLATE_TS_CODE.as_bytes()).unwrap();
     file.write_all(generate_router_type(handlers).as_bytes())
         .unwrap();

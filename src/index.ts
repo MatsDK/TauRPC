@@ -88,8 +88,10 @@ type Payload = {
 type Listeners = Map<string, (args: unknown) => void>
 const TAURPC_EVENT_NAME = 'TauRpc_event'
 
-const createTauRPCProxy = async <TRouter extends Router>() => {
-  const args_map = await getArgsMap()
+const createTauRPCProxy = async <TRouter extends Router>(
+  args: Record<string, string>,
+) => {
+  const args_map = parseArgsMap(args)
   const listeners: Listeners = new Map()
 
   const event_handler: EventCallback<Payload> = (event) => {
@@ -173,10 +175,9 @@ const handleProxyCall = async (
   return response
 }
 
-const getArgsMap = async () => {
-  const setup: string = await invoke('TauRPC__setup')
+const parseArgsMap = (args: Record<string, string>) => {
   const args_map: Record<string, Record<string, string[]>> = {}
-  Object.entries(JSON.parse(setup) as Record<string, string>).map(
+  Object.entries(args).map(
     ([path, args]) => {
       args_map[path] = JSON.parse(args) as Record<string, string[]>
     },

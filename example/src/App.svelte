@@ -4,7 +4,6 @@
 
     let value = "";
     const call_backend = async () => {
-        await taurpc.events.test_ev();
         await taurpc.update_state(value);
         await taurpc.get_window();
         await taurpc.method_with_alias();

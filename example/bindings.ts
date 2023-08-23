@@ -35,11 +35,14 @@ export type TauRpcApiInputTypes =
   | { proc_name: 'vec_test'; input_type: { type: string[] } }
   | { proc_name: 'multiple_args'; input_type: [string[], string] }
 
+const ARGS_MAP = {
+  '':
+    '{"test_result":["user"],"update_state":["new_value"],"get_app_handle":[],"with_sleep":[],"ev":["updated_value"],"test_option":[],"get_window":[],"vec_test":["arg"],"multiple_args":["arg","arg2"],"method_with_alias":[],"test_io":["user"]}',
+}
 import { createTauRPCProxy as createProxy } from 'taurpc'
 
-export const createTauRPCProxy = () => createProxy<Router>()
+export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 
 type Router = {
   '': [TauRpcApiInputTypes, TauRpcApiOutputTypes]
-  'events': [TauRpcEventsInputTypes, TauRpcEventsOutputTypes]
 }
