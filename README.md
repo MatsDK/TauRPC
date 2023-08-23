@@ -51,7 +51,7 @@ async fn main() {
 ```
 
 The `#[taurpc::procedures]` trait will generate everything necessary for handling calls and the type-generation. Now, you should run `pnpm tauri dev` to generate and export the TS types.
-The types will by default be exported to `node_modules/.taurpc`, but you can specify an export path by doing this `#[taurpc::procedures(export_to = "../bindings.ts")]`.
+The types will by default be exported to `bindings.ts` in the root of your project, but you can specify an export path by doing this `#[taurpc::procedures(export_to = "../src/types.ts")]`.
 
 Then on the frontend install the taurpc package.
 
@@ -59,11 +59,11 @@ Then on the frontend install the taurpc package.
 pnpm install taurpc
 ```
 
-Now on the frontend you import the generated types, if you specified the `export_to` attribute on your procedures you should import your from there. By default you can import from `.taurpc`.
+Now on the frontend you import the generated types, if you specified the `export_to` attribute on your procedures you should import your from there.
 With these types a typesafe proxy is generated that you can use to invoke commands and listen for events.
 
 ```typescript
-import { createTauRPCProxy } from '.taurpc'
+import { createTauRPCProxy } from '../bindings.ts'
 
 const taurpc = await createTauRPCProxy()
 await taurpc.hello_world()

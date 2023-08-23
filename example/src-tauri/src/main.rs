@@ -37,10 +37,10 @@ impl serde::Serialize for Error {
     }
 }
 
-#[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../bindings.ts")]
 // #[taurpc::procedures(event_trigger = ApiEventTrigger)]
+#[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../src/lib/bindings.ts")]
 trait Api {
-    async fn update_state(new_value: String);
+    async fn update_state(app_handle: AppHandle<tauri::Wry>, new_value: String);
 
     async fn get_window<R: Runtime>(window: tauri::Window<R>);
 
@@ -73,11 +73,17 @@ struct ApiImpl {
 
 #[taurpc::resolvers]
 impl Api for ApiImpl {
-    async fn update_state(self, new_value: String) {
+    async fn update_state(self, app_handle: AppHandle<tauri::Wry>, new_value: String) {
         let mut data = self.state.lock().unwrap();
         println!("Before {:?}", data);
         *data = new_value;
         println!("After {:?}", data);
+
+        let uppercase = data.to_uppercase();
+
+        TauRpcEventsEventTrigger::new(app_handle)
+            .state_changed(uppercase)
+            .unwrap();
     }
 
     async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
@@ -115,10 +121,14 @@ impl Api for ApiImpl {
     async fn multiple_args(self, arg: Vec<String>, arg2: String) {}
 }
 
-#[taurpc::procedures(path = "events", export_to = "../bindings.ts")]
+// #[taurpc::procedures(path = "events", export_to = "../bindings.ts")]
+#[taurpc::procedures(path = "events")]
 trait Events {
     #[taurpc(event)]
     async fn test_ev();
+
+    #[taurpc(event)]
+    async fn state_changed(new_state: String);
 }
 
 #[derive(Clone)]
@@ -154,23 +164,23 @@ async fn main() {
         Ok::<(), tauri::Error>(())
     });
 
-    // let router = Router::new()
-    //     .merge(
-    //         ApiImpl {
-    //             state: Arc::new(Mutex::new("state".to_string())),
-    //         }
-    //         .into_handler(),
-    //     )
-    //     .merge(EventsImpl.into_handler());
-
-    tauri::Builder::default()
-        // .invoke_handler(router.into_handler())
-        .invoke_handler(taurpc::create_ipc_handler(
+    let router = Router::new()
+        .merge(
             ApiImpl {
-                state: Arc::new(Mutex::new(String::from("test"))),
+                state: Arc::new(Mutex::new("state".to_string())),
             }
             .into_handler(),
-        ))
+        )
+        .merge(EventsImpl.into_handler());
+
+    tauri::Builder::default()
+        .invoke_handler(router.into_handler())
+        // .invoke_handler(taurpc::create_ipc_handler(
+        //     ApiImpl {
+        //         state: Arc::new(Mutex::new("state".to_string())),
+        //     }
+        //     .into_handler(),
+        // ))
         .setup(|app| {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();

@@ -76,15 +76,19 @@ fn generate_router_type(handlers: Vec<(String, String)>) -> String {
     output
 }
 
-// Generate the default path for exporting the types: `node_modules/.taurpc/index.ts`
-fn generate_default_export_path() -> PathBuf {
-    let path = std::env::current_dir()
-        .unwrap()
-        .parent()
-        .map(|p| p.join("node_modules\\.taurpc"));
+// // Generate the default path for exporting the types: `node_modules/.taurpc/index.ts`
+// fn generate_default_export_path() -> PathBuf {
+//     let path = std::env::current_dir()
+//         .unwrap()
+//         .parent()
+//         .map(|p| p.join("node_modules\\.taurpc"));
 
-    match path {
-        Some(path) => path.join("index.ts"),
-        None => panic!("Export path not found"),
-    }
+//     match path {
+//         Some(path) => path.join("index.ts"),
+//         None => panic!("Export path not found"),
+//     }
+// }
+
+fn generate_default_export_path() -> PathBuf {
+    std::env::current_dir().unwrap().join("../bindings.ts")
 }
