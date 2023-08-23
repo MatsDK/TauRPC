@@ -13,7 +13,7 @@ use tokio::sync::broadcast::Sender;
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod export;
-use export::export_files;
+use export::export_types;
 
 use serde::Serialize;
 use tauri::{AppHandle, Invoke, InvokeError, Manager, Runtime};
@@ -73,16 +73,12 @@ where
     H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
     let (trait_name, path_prefix, export_path) = H::handler_info();
-    export_files(export_path, vec![(path_prefix, trait_name)]);
 
-    move |invoke: Invoke<tauri::Wry>| {
-        let cmd = invoke.message.command();
+    let args_map = HashMap::from([("", H::args_map())]);
+    let args_map = serde_json::to_string(&args_map).unwrap();
+    export_types(export_path, vec![(path_prefix, trait_name)], args_map);
 
-        match cmd {
-            "TauRPC__setup" => invoke.resolver.respond(Ok(H::args_map())),
-            _ => procedures.clone().handle_incoming_request(invoke),
-        }
-    }
+    move |invoke: Invoke<tauri::Wry>| procedures.clone().handle_incoming_request(invoke)
 }
 
 #[derive(Serialize, Clone)]
@@ -240,19 +236,14 @@ impl Router {
     ///     .expect("error while running tauri application");
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) {
-        export_files(self.export_path.clone(), self.handler_paths.clone());
+        let args_map = serde_json::to_string(&self.args_map_json).unwrap();
+        export_types(
+            self.export_path.clone(),
+            self.handler_paths.clone(),
+            args_map,
+        );
 
-        move |invoke: Invoke<tauri::Wry>| {
-            let cmd = invoke.message.command();
-
-            match cmd {
-                "TauRPC__setup" => {
-                    let map = serde_json::to_string(&self.args_map_json).unwrap();
-                    invoke.resolver.respond(Ok(map))
-                }
-                _ => self.on_command(invoke),
-            }
-        }
+        move |invoke: Invoke<tauri::Wry>| self.on_command(invoke)
     }
 
     fn on_command(&self, invoke: Invoke<tauri::Wry>) {

@@ -3,11 +3,13 @@
     import { onMount, onDestroy } from "svelte";
 
     let value = "";
+
+    let state = "";
     const call_backend = async () => {
-        await taurpc.events.test_ev();
         await taurpc.update_state(value);
         await taurpc.get_window();
         await taurpc.method_with_alias();
+        await taurpc.multiple_args([], "test");
 
         try {
             const res = await taurpc.test_result({
@@ -29,13 +31,8 @@
         //     console.log("state updated", new_state);
         // });
         unlisten.push(
-            taurpc.update_state.on((val) => {
-                console.log("update_state", val);
-            })
-        );
-        unlisten.push(
-            taurpc.events.test_ev.on(() => {
-                console.log("events.test_ev");
+            taurpc.events.state_changed.on((val) => {
+                state = val;
             })
         );
     });
@@ -48,4 +45,7 @@
 <main class="container">
     Set managed state on backend <input type="text" bind:value />
     <button on:click={call_backend}>Call Backend code</button>
+
+    <br />
+    Current State (uppercase): {state}
 </main>

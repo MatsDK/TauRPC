@@ -19,6 +19,8 @@ type FnOutput<TOutputs extends TauRpcOutputs, TProc extends string> = Extract<
   { proc_name: TProc }
 >['output_type']
 
+type SingleParam = { type: unknown }
+
 type InvokeFn<
   TRoutes extends RoutesLayer,
   TProc extends string,
@@ -26,7 +28,8 @@ type InvokeFn<
   TOutput = Promise<FnOutput<TRoutes[1], TProc>>,
 > = TInput extends null ? (() => TOutput)
   : TInput extends Array<unknown> ? ((...p: TInput) => TOutput)
-  : ((p: TInput) => TOutput)
+  : TInput extends SingleParam ? ((p: TInput['type']) => TOutput)
+  : (() => TOutput)
 
 type ListenerFn<
   TRoutes extends RoutesLayer,
@@ -34,7 +37,8 @@ type ListenerFn<
   TInput = FnInput<TRoutes[0], TProc>,
 > = TInput extends null ? (() => void)
   : TInput extends Array<unknown> ? ((...p: TInput) => void)
-  : ((p: TInput) => void)
+  : TInput extends SingleParam ? ((p: TInput['type']) => void)
+  : (() => void)
 
 type UnlistenFn = () => void
 
@@ -58,23 +62,29 @@ type SplitKeyNested<
       : never
   }
 
-type SplitKey<TRouter extends NestedRoutes, T extends keyof TRouter> = T extends
-  `${infer A}.${infer B}` ? { [K in A]: SplitKeyNested<TRouter, T, B> }
+type RouterPathsToNestedObject<
+  TRouter extends NestedRoutes,
+  TPath extends keyof TRouter,
+> = TPath extends `${infer A}.${infer B}`
+  ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
   : {
-    [K in T]: TRouter[T] extends RoutesLayer ? InvokeLayer<TRouter[T]> : never
+    [K in TPath]: TRouter[TPath] extends RoutesLayer
+      ? InvokeLayer<TRouter[TPath]>
+      : never
   }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends
   ((k: infer I) => void) ? I : never
 
-type Convert<TRouter extends NestedRoutes> = UnionToIntersection<
-  SplitKey<TRouter, keyof TRouter>
+type ConvertToNestedObject<TRouter extends NestedRoutes> = UnionToIntersection<
+  RouterPathsToNestedObject<TRouter, keyof TRouter>
 >
 
 type TauRpcProxy<TRouter extends Router> =
   & (TRouter[''] extends RoutesLayer ? InvokeLayer<TRouter['']>
     : object)
-  & Convert<Omit<TRouter, ''>>
+  & ConvertToNestedObject<Omit<TRouter, ''>>
 
 type Payload = {
   event_name: string
@@ -84,8 +94,10 @@ type Payload = {
 type Listeners = Map<string, (args: unknown) => void>
 const TAURPC_EVENT_NAME = 'TauRpc_event'
 
-const createTauRPCProxy = async <TRouter extends Router>() => {
-  const args_map = await getArgsMap()
+const createTauRPCProxy = async <TRouter extends Router>(
+  args: Record<string, string>,
+) => {
+  const args_map = parseArgsMap(args)
   const listeners: Listeners = new Map()
 
   const event_handler: EventCallback<Payload> = (event) => {
@@ -169,10 +181,9 @@ const handleProxyCall = async (
   return response
 }
 
-const getArgsMap = async () => {
-  const setup: string = await invoke('TauRPC__setup')
+const parseArgsMap = (args: Record<string, string>) => {
   const args_map: Record<string, Record<string, string[]>> = {}
-  Object.entries(JSON.parse(setup) as Record<string, string>).map(
+  Object.entries(args).map(
     ([path, args]) => {
       args_map[path] = JSON.parse(args) as Record<string, string[]>
     },

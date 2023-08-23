@@ -37,16 +37,16 @@ impl serde::Serialize for Error {
     }
 }
 
-#[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../bindings.ts")]
 // #[taurpc::procedures(event_trigger = ApiEventTrigger)]
+#[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../src/lib/bindings.ts")]
 trait Api {
-    async fn update_state(new_value: String);
+    async fn update_state(app_handle: AppHandle<tauri::Wry>, new_value: String);
 
     async fn get_window<R: Runtime>(window: tauri::Window<R>);
 
     async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
 
-    async fn test_io(user: User, arg: u32) -> User;
+    async fn test_io(user: User) -> User;
 
     async fn test_option() -> Option<()>;
 
@@ -60,6 +60,10 @@ trait Api {
 
     #[taurpc(event)]
     async fn ev(updated_value: String);
+
+    async fn vec_test(arg: Vec<String>);
+
+    async fn multiple_args(arg: Vec<String>, arg2: String);
 }
 
 #[derive(Clone)]
@@ -69,11 +73,17 @@ struct ApiImpl {
 
 #[taurpc::resolvers]
 impl Api for ApiImpl {
-    async fn update_state(self, new_value: String) {
+    async fn update_state(self, app_handle: AppHandle<tauri::Wry>, new_value: String) {
         let mut data = self.state.lock().unwrap();
         println!("Before {:?}", data);
         *data = new_value;
         println!("After {:?}", data);
+
+        let uppercase = data.to_uppercase();
+
+        TauRpcEventsEventTrigger::new(app_handle)
+            .state_changed(uppercase)
+            .unwrap();
     }
 
     async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
@@ -105,12 +115,20 @@ impl Api for ApiImpl {
     async fn with_alias(self) {
         println!("method with alias called");
     }
+
+    async fn vec_test(self, arg: Vec<String>) {}
+
+    async fn multiple_args(self, arg: Vec<String>, arg2: String) {}
 }
 
-#[taurpc::procedures(path = "events", export_to = "../bindings.ts")]
+// #[taurpc::procedures(path = "events", export_to = "../bindings.ts")]
+#[taurpc::procedures(path = "events")]
 trait Events {
     #[taurpc(event)]
     async fn test_ev();
+
+    #[taurpc(event)]
+    async fn state_changed(new_state: String);
 }
 
 #[derive(Clone)]
@@ -157,6 +175,12 @@ async fn main() {
 
     tauri::Builder::default()
         .invoke_handler(router.into_handler())
+        // .invoke_handler(taurpc::create_ipc_handler(
+        //     ApiImpl {
+        //         state: Arc::new(Mutex::new("state".to_string())),
+        //     }
+        //     .into_handler(),
+        // ))
         .setup(|app| {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();
