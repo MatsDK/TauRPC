@@ -19,6 +19,8 @@ type FnOutput<TOutputs extends TauRpcOutputs, TProc extends string> = Extract<
   { proc_name: TProc }
 >['output_type']
 
+type SingleParam = { type: unknown }
+
 type InvokeFn<
   TRoutes extends RoutesLayer,
   TProc extends string,
@@ -26,7 +28,8 @@ type InvokeFn<
   TOutput = Promise<FnOutput<TRoutes[1], TProc>>,
 > = TInput extends null ? (() => TOutput)
   : TInput extends Array<unknown> ? ((...p: TInput) => TOutput)
-  : ((p: TInput) => TOutput)
+  : TInput extends SingleParam ? ((p: TInput['type']) => TOutput)
+  : (() => TOutput)
 
 type ListenerFn<
   TRoutes extends RoutesLayer,
@@ -34,7 +37,8 @@ type ListenerFn<
   TInput = FnInput<TRoutes[0], TProc>,
 > = TInput extends null ? (() => void)
   : TInput extends Array<unknown> ? ((...p: TInput) => void)
-  : ((p: TInput) => void)
+  : TInput extends SingleParam ? ((p: TInput['type']) => void)
+  : (() => void)
 
 type UnlistenFn = () => void
 

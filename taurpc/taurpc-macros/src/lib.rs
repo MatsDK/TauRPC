@@ -65,6 +65,7 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
         export_path: procedures_attrs.export_to,
         path_prefix: procedures_attrs.path,
         inputs_ident: &format_ident!("TauRpc{}Inputs", ident),
+        input_types_ident: &format_ident!("TauRpc{}InputTypes", ident),
         outputs_ident: &format_ident!("TauRpc{}Outputs", ident),
         output_types_ident: &format_ident!("TauRpc{}OutputTypes", ident),
         output_futures_ident: &format_ident!("TauRpc{}OutputFutures", ident),

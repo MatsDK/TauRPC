@@ -8,6 +8,7 @@
         await taurpc.update_state(value);
         await taurpc.get_window();
         await taurpc.method_with_alias();
+        await taurpc.multiple_args([], "test");
 
         try {
             const res = await taurpc.test_result({

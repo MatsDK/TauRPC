@@ -61,7 +61,7 @@ fn generate_router_type(handlers: Vec<(String, String)>) -> String {
 
     for (path, handler_name) in handlers {
         output += &format!(
-            "\t'{}': [TauRpc{}Inputs, TauRpc{}OutputTypes],\n",
+            "\t'{}': [TauRpc{}InputTypes, TauRpc{}OutputTypes],\n",
             path, handler_name, handler_name
         );
     }

@@ -46,7 +46,7 @@ trait Api {
 
     async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
 
-    async fn test_io(user: User, arg: u32) -> User;
+    async fn test_io(user: User) -> User;
 
     async fn test_option() -> Option<()>;
 
@@ -60,6 +60,10 @@ trait Api {
 
     #[taurpc(event)]
     async fn ev(updated_value: String);
+
+    async fn vec_test(arg: Vec<String>);
+
+    async fn multiple_args(arg: Vec<String>, arg2: String);
 }
 
 #[derive(Clone)]
@@ -105,6 +109,10 @@ impl Api for ApiImpl {
     async fn with_alias(self) {
         println!("method with alias called");
     }
+
+    async fn vec_test(self, arg: Vec<String>) {}
+
+    async fn multiple_args(self, arg: Vec<String>, arg2: String) {}
 }
 
 #[taurpc::procedures(path = "events", export_to = "../bindings.ts")]

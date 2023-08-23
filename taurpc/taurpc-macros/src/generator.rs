@@ -19,6 +19,7 @@ pub struct ProceduresGenerator<'a> {
     pub export_path: Option<String>,
     pub path_prefix: String,
     pub inputs_ident: &'a Ident,
+    pub input_types_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
     pub output_types_ident: &'a Ident,
     pub output_futures_ident: &'a Ident,
@@ -98,7 +99,7 @@ impl<'a> ProceduresGenerator<'a> {
                 .iter()
                 .zip(methods)
                 .map(|(ident, IpcMethod { args, .. })| {
-                    // Filter out Tauri's reserved arguments (state, window, app_handle), these args do not need TS types.
+                    // Filter out Tauri's reserved arguments (state, window, app_handle).
                     let types = args
                         .iter()
                         .filter(filter_reserved_args)
@@ -121,10 +122,57 @@ impl<'a> ProceduresGenerator<'a> {
                 });
 
         quote! {
-            #[derive(taurpc::specta::Type, taurpc::serde::Serialize, Clone)]
+            #[derive(taurpc::serde::Serialize, Clone)]
             #[serde(tag = "proc_name", content = "input_type")]
             #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
+                #( #inputs ),*
+            }
+        }
+    }
+
+    fn input_types_enum(&self) -> TokenStream2 {
+        let &Self {
+            methods,
+            vis,
+            input_types_ident,
+            alias_method_idents,
+            ..
+        } = self;
+
+        let inputs =
+            alias_method_idents
+                .iter()
+                .zip(methods)
+                .map(|(ident, IpcMethod { args, .. })| {
+                    // Filter out Tauri's reserved arguments (state, window, app_handle), these args do not need TS types.
+                    let filtered_args =
+                        args.iter().filter(filter_reserved_args).collect::<Vec<_>>();
+
+                    if filtered_args.len() == 1 {
+                        let arg = filtered_args[0];
+
+                        let ty = &arg.ty;
+                        quote! {
+                            #ident { r#type: #ty }
+                        }
+                    } else {
+                        let types = filtered_args
+                            .iter()
+                            .map(|PatType { ty, .. }| ty)
+                            .collect::<Vec<_>>();
+                        quote! {
+                            #ident(( #( #types ),* ))
+                        }
+                    }
+                });
+
+        quote! {
+
+            #[derive(taurpc::specta::Type, taurpc::serde::Serialize)]
+            #[serde(tag = "proc_name", content = "input_type")]
+            #[allow(non_camel_case_types)]
+            #vis enum #input_types_ident {
                 #( #inputs ),*
             }
         }
@@ -448,6 +496,7 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
             self.procedures_trait(),
             self.procedures_handler(),
             self.input_enum(),
+            self.input_types_enum(),
             self.output_enum(),
             self.output_types_enum(),
             self.output_futures(),
