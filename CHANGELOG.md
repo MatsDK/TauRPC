@@ -1,5 +1,11 @@
 # taurpc
 
+## 1.4.2
+
+### Patch Changes
+
+- [`0a87d07`](https://github.com/MatsDK/TauRPC/commit/0a87d0778c9b64af1e21e0d9ca5bcb8a9f746ff5) Thanks [@MatsDK](https://github.com/MatsDK)! - Fix issue when the only argument is of type Vec<T> or a tuple for events.
+
 ## 1.4.1
 
 ### Patch Changes
