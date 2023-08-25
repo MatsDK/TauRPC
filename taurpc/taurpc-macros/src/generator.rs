@@ -15,7 +15,6 @@ pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
     pub handler_ident: &'a Ident,
     pub event_trigger_ident: &'a Ident,
-    // pub export_path: String,
     pub export_path: Option<String>,
     pub path_prefix: String,
     pub inputs_ident: &'a Ident,
@@ -154,7 +153,7 @@ impl<'a> ProceduresGenerator<'a> {
 
                         let ty = &arg.ty;
                         quote! {
-                            #ident { r#type: #ty }
+                            #ident { __taurpc_type: #ty }
                         }
                     } else {
                         let types = filtered_args

@@ -129,6 +129,12 @@ trait Events {
 
     #[taurpc(event)]
     async fn state_changed(new_state: String);
+
+    #[taurpc(event)]
+    async fn vec_test(args: Vec<String>);
+
+    #[taurpc(event)]
+    async fn multiple_args(arg1: u16, arg2: Vec<String>);
 }
 
 #[derive(Clone)]
@@ -157,6 +163,10 @@ async fn main() {
                 .update_state("message scoped".to_string())?;
 
             api_trigger.update_state("message".to_string())?;
+
+            events_trigger.vec_test(vec![String::from("test"), String::from("test2")])?;
+
+            events_trigger.multiple_args(0, vec![String::from("test"), String::from("test2")])?;
 
             events_trigger.test_ev()?;
         }

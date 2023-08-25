@@ -19,7 +19,7 @@ type FnOutput<TOutputs extends TauRpcOutputs, TProc extends string> = Extract<
   { proc_name: TProc }
 >['output_type']
 
-type SingleParam = { type: unknown }
+type SingleParam = { __taurpc_type: unknown }
 
 type InvokeFn<
   TRoutes extends RoutesLayer,
@@ -28,7 +28,7 @@ type InvokeFn<
   TOutput = Promise<FnOutput<TRoutes[1], TProc>>,
 > = TInput extends null ? (() => TOutput)
   : TInput extends Array<unknown> ? ((...p: TInput) => TOutput)
-  : TInput extends SingleParam ? ((p: TInput['type']) => TOutput)
+  : TInput extends SingleParam ? ((p: TInput['__taurpc_type']) => TOutput)
   : (() => TOutput)
 
 type ListenerFn<
@@ -37,7 +37,7 @@ type ListenerFn<
   TInput = FnInput<TRoutes[0], TProc>,
 > = TInput extends null ? (() => void)
   : TInput extends Array<unknown> ? ((...p: TInput) => void)
-  : TInput extends SingleParam ? ((p: TInput['type']) => void)
+  : TInput extends SingleParam ? ((p: TInput['__taurpc_type']) => void)
   : (() => void)
 
 type UnlistenFn = () => void
@@ -101,10 +101,19 @@ const createTauRPCProxy = async <TRouter extends Router>(
   const listeners: Listeners = new Map()
 
   const event_handler: EventCallback<Payload> = (event) => {
+    const path_segments = event.payload.event_name.split('.')
+    const ev = path_segments.pop()
+    if (!ev) return
+
+    const args = args_map[path_segments.join('.')]?.[ev]
+    if (!args) return
+
     const listener = listeners.get(event.payload.event_name)
     if (!listener) return
 
-    if (Array.isArray(event.payload.event.input_type)) {
+    if (args.length === 1) {
+      listener(event.payload.event.input_type)
+    } else if (Array.isArray(event.payload.event.input_type)) {
       const _ = (listener as ((...args: unknown[]) => void))(
         ...event.payload.event.input_type as unknown[],
       )
