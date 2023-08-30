@@ -1,13 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::{Deserialize, Serialize};
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 use tauri::{AppHandle, Manager, Runtime};
 use taurpc::{Router, Windows};
-use tokio::{sync::oneshot, time::sleep};
+use tokio::{
+    sync::{oneshot, Mutex},
+    time::sleep,
+};
 
 // #[taurpc::ipc_type]
 #[derive(Serialize, Deserialize, specta::Type, Clone)]
@@ -74,7 +74,7 @@ struct ApiImpl {
 #[taurpc::resolvers]
 impl Api for ApiImpl {
     async fn update_state(self, app_handle: AppHandle<tauri::Wry>, new_value: String) {
-        let mut data = self.state.lock().unwrap();
+        let mut data = self.state.lock().await;
         println!("Before {:?}", data);
         *data = new_value;
         println!("After {:?}", data);

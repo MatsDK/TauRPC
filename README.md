@@ -103,7 +103,8 @@ You can use the `window` and `app_handle` arguments just like with Tauri's comma
 ```rust
 // src-tauri/src/main.rs
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tauri::{Manager, Runtime, State, Window};
 
 type MyState = Arc<Mutex<String>>;
