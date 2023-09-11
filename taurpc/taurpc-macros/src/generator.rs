@@ -355,7 +355,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
         let export_path = match export_path {
-            Some(path) => quote! { Some(#path.to_string()) },
+            Some(path) => quote! { Some(#path) },
             None => quote! { None },
         };
 
@@ -367,6 +367,10 @@ impl<'a> ProceduresGenerator<'a> {
 
             use ::tauri::command::private::*;
             impl<P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<tauri::Wry> for #handler_ident<P> {
+                const TRAIT_NAME: &'static str = stringify!(#trait_ident);
+                const PATH_PREFIX: &'static str = #path_prefix;
+                const EXPORT_PATH: Option<&'static str> = #export_path;
+
                 fn handle_incoming_request(self, #invoke: tauri::Invoke<tauri::Wry>) {
                     #[allow(unused_variables)]
                     let ::tauri::Invoke { message: #message, resolver: #resolver } = #invoke;
@@ -401,10 +405,6 @@ impl<'a> ProceduresGenerator<'a> {
 
                 fn args_map() -> String {
                     #serialized_args_map.to_string()
-                }
-
-                fn handler_info() -> (String, String, Option<String>) {
-                    (stringify!(#trait_ident).to_string(), #path_prefix.to_string(), #export_path)
                 }
             }
         }

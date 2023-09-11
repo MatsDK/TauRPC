@@ -21,16 +21,18 @@ use tauri::{AppHandle, Invoke, InvokeError, Manager, Runtime};
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.
 pub trait TauRpcHandler<R: Runtime>: Sized {
+    const TRAIT_NAME: &'static str;
+
+    const PATH_PREFIX: &'static str;
+
+    const EXPORT_PATH: Option<&'static str>;
+
     /// Handle a single incoming request
     fn handle_incoming_request(self, invoke: Invoke<R>);
 
     /// Spawn a new `tokio` thread that listens for and handles incoming request through a `tokio::broadcast::channel`.
     /// This is used for when you have multiple handlers inside a router.
     fn spawn(self) -> Sender<Arc<Invoke<tauri::Wry>>>;
-
-    /// Get info about that handler that is necessary for generating and exporthing the types on runtime.
-    /// Returns `(trait_name, trait_path_prefix, export_path)`
-    fn handler_info() -> (String, String, Option<String>);
 
     /// Returns a json object containing the arguments for the methods.
     /// This is used on the frontend to ensure the arguments are send with their correct idents to the backend.
@@ -72,11 +74,15 @@ pub fn create_ipc_handler<H>(procedures: H) -> impl Fn(Invoke<tauri::Wry>) + Sen
 where
     H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
-    let (trait_name, path_prefix, export_path) = H::handler_info();
+    // let (trait_name, path_prefix, export_path) = H::handler_info();
 
     let args_map = HashMap::from([("", H::args_map())]);
     let args_map = serde_json::to_string(&args_map).unwrap();
-    export_types(export_path, vec![(path_prefix, trait_name)], args_map);
+    export_types(
+        H::EXPORT_PATH,
+        vec![(H::PATH_PREFIX, H::TRAIT_NAME)],
+        args_map,
+    );
 
     move |invoke: Invoke<tauri::Wry>| procedures.clone().handle_incoming_request(invoke)
 }
@@ -191,9 +197,9 @@ impl EventTrigger {
 /// ```
 pub struct Router {
     handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
-    export_path: Option<String>,
-    args_map_json: HashMap<String, String>,
-    handler_paths: Vec<(String, String)>,
+    export_path: Option<&'static str>,
+    args_map_json: HashMap<&'static str, String>,
+    handler_paths: Vec<(&'static str, &'static str)>,
 }
 
 impl Router {
@@ -214,15 +220,14 @@ impl Router {
     ///     .merge(EventsImpl.into_handler());
     /// ```
     pub fn merge<H: TauRpcHandler<tauri::Wry>>(mut self, handler: H) -> Self {
-        let (trait_name, path_prefix, export_path) = H::handler_info();
-        if let Some(path) = export_path {
+        if let Some(path) = H::EXPORT_PATH {
             self.export_path = Some(path)
         }
 
-        self.handler_paths.push((path_prefix.clone(), trait_name));
-        self.args_map_json
-            .insert(path_prefix.clone(), H::args_map());
-        self.handlers.insert(path_prefix, handler.spawn());
+        self.handler_paths.push((H::PATH_PREFIX, H::TRAIT_NAME));
+        self.args_map_json.insert(H::PATH_PREFIX, H::args_map());
+        self.handlers
+            .insert(H::PATH_PREFIX.to_string(), handler.spawn());
         self
     }
 

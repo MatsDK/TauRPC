@@ -41,10 +41,10 @@ export type TauRpcApiInputTypes =
   | { proc_name: 'multiple_args'; input_type: [string[], string] }
 
 const ARGS_MAP = {
-  '':
-    '{"test_io":["user"],"ev":["updated_value"],"update_state":["new_value"],"get_window":[],"vec_test":["arg"],"with_sleep":[],"multiple_args":["arg","arg2"],"test_option":[],"method_with_alias":[],"get_app_handle":[],"test_result":["user"]}',
   'events':
-    '{"test_ev":[],"state_changed":["new_state"],"multiple_args":["arg1","arg2"],"vec_test":["args"]}',
+    '{"multiple_args":["arg1","arg2"],"state_changed":["new_state"],"vec_test":["args"],"test_ev":[]}',
+  '':
+    '{"test_io":["user"],"with_sleep":[],"vec_test":["arg"],"get_app_handle":[],"test_result":["user"],"update_state":["new_value"],"get_window":[],"method_with_alias":[],"multiple_args":["arg","arg2"],"test_option":[],"ev":["updated_value"]}',
 }
 import { createTauRPCProxy as createProxy } from 'taurpc'
 
