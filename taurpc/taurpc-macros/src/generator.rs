@@ -167,7 +167,6 @@ impl<'a> ProceduresGenerator<'a> {
                 });
 
         quote! {
-
             #[derive(taurpc::specta::Type, taurpc::serde::Serialize)]
             #[serde(tag = "proc_name", content = "input_type")]
             #[allow(non_camel_case_types)]

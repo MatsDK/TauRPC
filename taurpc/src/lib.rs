@@ -23,8 +23,10 @@ use tauri::{AppHandle, Invoke, InvokeError, Manager, Runtime};
 pub trait TauRpcHandler<R: Runtime>: Sized {
     const TRAIT_NAME: &'static str;
 
+    /// This handler's prefix in the TypeScript router.
     const PATH_PREFIX: &'static str;
 
+    /// Bindings export path optionally specified by the user.
     const EXPORT_PATH: Option<&'static str>;
 
     /// Handle a single incoming request
