@@ -370,9 +370,9 @@ impl<'a> ProceduresGenerator<'a> {
                 const PATH_PREFIX: &'static str = #path_prefix;
                 const EXPORT_PATH: Option<&'static str> = #export_path;
 
-                fn handle_incoming_request(self, #invoke: tauri::Invoke<tauri::Wry>) {
+                fn handle_incoming_request(self, #invoke: tauri::ipc::Invoke<tauri::Wry>) {
                     #[allow(unused_variables)]
-                    let ::tauri::Invoke { message: #message, resolver: #resolver } = #invoke;
+                    let ::tauri::ipc::Invoke { message: #message, resolver: #resolver } = #invoke;
 
                     // Remove `TauRpc__` prefix
                     let prefix = #message.command()[8..].to_string();
@@ -388,7 +388,7 @@ impl<'a> ProceduresGenerator<'a> {
                     };
                 }
 
-                fn spawn(self) -> tokio::sync::broadcast::Sender<std::sync::Arc<tauri::Invoke<tauri::Wry>>> {
+                fn spawn(self) -> tokio::sync::broadcast::Sender<std::sync::Arc<tauri::ipc::Invoke<tauri::Wry>>> {
                     let (tx, mut rx) = tokio::sync::broadcast::channel(32);
 
                     tokio::spawn(async move {

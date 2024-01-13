@@ -91,7 +91,7 @@ impl Api for ApiImpl {
     }
 
     async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
-        let app_dir = app_handle.path_resolver().app_config_dir();
+        let app_dir = app_handle.path().app_config_dir();
         println!("{:?}, {:?}", app_dir, app_handle.package_info());
     }
 
@@ -195,7 +195,7 @@ async fn main() {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();
 
-            tx.send(app.handle()).unwrap();
+            tx.send(app.handle().clone()).unwrap();
 
             Ok(())
         })

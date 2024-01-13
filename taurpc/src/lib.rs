@@ -16,7 +16,8 @@ mod export;
 use export::export_types;
 
 use serde::Serialize;
-use tauri::{AppHandle, Invoke, InvokeError, Manager, Runtime};
+use tauri::ipc::{Invoke, InvokeError};
+use tauri::{AppHandle, Manager, Runtime};
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.
@@ -148,7 +149,7 @@ impl EventTrigger {
         };
         let event = Event { event_name, event };
         match &self.scope {
-            Windows::All => self.app_handle.emit_all("TauRpc_event", event),
+            Windows::All => self.app_handle.emit("TauRpc_event", event),
             Windows::One(label) => self.app_handle.emit_to(&label, "TauRpc_event", event),
             Windows::N(labels) => {
                 for label in labels {
@@ -199,6 +200,7 @@ impl EventTrigger {
 /// ```
 pub struct Router {
     handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
+    // handlers: HashMap<String, Sender<Invoke<tauri::Wry>>>,
     export_path: Option<&'static str>,
     args_map_json: HashMap<&'static str, String>,
     handler_paths: Vec<(&'static str, &'static str)>,
@@ -242,7 +244,7 @@ impl Router {
     ///     .run(tauri::generate_context!())
     ///     .expect("error while running tauri application");
     /// ```
-    pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) {
+    pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) -> bool {
         let args_map = serde_json::to_string(&self.args_map_json).unwrap();
         export_types(
             self.export_path.clone(),
@@ -253,10 +255,10 @@ impl Router {
         move |invoke: Invoke<tauri::Wry>| self.on_command(invoke)
     }
 
-    fn on_command(&self, invoke: Invoke<tauri::Wry>) {
+    fn on_command(&self, invoke: Invoke<tauri::Wry>) -> bool {
         let cmd = invoke.message.command();
         if !cmd.starts_with("TauRPC__") {
-            return;
+            return false;
         }
 
         // Remove `TauRPC__`
@@ -267,11 +269,13 @@ impl Router {
 
         match self.handlers.get(&prefix.join(".")) {
             Some(handler) => {
-                handler.send(Arc::new(invoke)).unwrap();
+                let _ = handler.send(Arc::new(invoke));
             }
             None => invoke
                 .resolver
                 .invoke_error(InvokeError::from(format!("`{cmd}` not found"))),
         };
+
+        return true
     }
 }

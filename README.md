@@ -5,7 +5,7 @@
 This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/) and [events](https://tauri.app/v1/guides/features/events/).
 
 The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your TypeScript frontend framework of choice. This crate provides typesafe bidirectional IPC communication between the Rust backend and TypeScript frontend.
-[Specta](https://github.com/oscartbeaumont/specta) is used under the hood for the type-generation.
+[Specta](https://github.com/oscartbeaumont/specta) is used under the hood for the type-generation. The trait-based API structure was inspired by [tarpc](https://github.com/google/tarpc).
 
 # Usage🔧
 
