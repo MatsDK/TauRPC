@@ -4,7 +4,7 @@ use syn::{ext::IdentExt, spanned::Spanned, Ident, Pat, PatType};
 
 /// Generate the code that extracts and deserializes the args from the tauri message.
 pub(crate) fn parse_args(
-    args: &Vec<PatType>,
+    args: &[PatType],
     message: &Ident,
     proc_ident: &Ident,
 ) -> syn::Result<Vec<TokenStream2>> {
@@ -41,11 +41,9 @@ pub(crate) fn parse_arg_key(arg: &PatType) -> Result<String, syn::Error> {
         Pat::Wild(_) => Ok("".into()), // we always convert to camelCase, so "_" will end up empty anyways
         Pat::Struct(s) => Ok(s.path.segments.last_mut().unwrap().ident.to_string()),
         Pat::TupleStruct(s) => Ok(s.path.segments.last_mut().unwrap().ident.to_string()),
-        err => {
-            return Err(syn::Error::new(
-                err.span(),
-                "only named, wildcard, struct, and tuple struct arguments allowed",
-            ))
-        }
+        err => Err(syn::Error::new(
+            err.span(),
+            "only named, wildcard, struct, and tuple struct arguments allowed",
+        )),
     }
 }

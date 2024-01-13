@@ -5,7 +5,7 @@
 This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/) and [events](https://tauri.app/v1/guides/features/events/).
 
 The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your TypeScript frontend framework of choice. This crate provides typesafe bidirectional IPC communication between the Rust backend and TypeScript frontend.
-[Specta](https://github.com/oscartbeaumont/specta) is used under the hood for the type-generation.
+[Specta](https://github.com/oscartbeaumont/specta) is used under the hood for the type-generation. The trait-based API structure was inspired by [tarpc](https://github.com/google/tarpc).
 
 # Usage🔧
 
@@ -15,7 +15,8 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-taurpc = "0.2.3"
+// Using tauri v2.0.0-alpha.20
+taurpc = "0.3.0-alpha.1"
 
 specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }
@@ -56,7 +57,7 @@ The types will by default be exported to `bindings.ts` in the root of your proje
 Then on the frontend install the taurpc package.
 
 ```bash
-pnpm install taurpc
+pnpm install taurpc@next
 ```
 
 Now on the frontend you import the generated types, if you specified the `export_to` attribute on your procedures you should import your from there.

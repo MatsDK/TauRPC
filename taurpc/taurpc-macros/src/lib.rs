@@ -78,7 +78,7 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
             })
             .collect::<Vec<_>>(),
         alias_method_idents: &methods
-            .into_iter()
+            .iter()
             .map(|IpcMethod { ident, attrs, .. }| {
                 attrs
                     .alias
@@ -102,13 +102,10 @@ pub fn resolvers(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut types: Vec<ImplItemType> = Vec::new();
 
     for inner in &mut item.items {
-        match inner {
-            ImplItem::Fn(method) => {
-                if method.sig.asyncness.is_some() {
-                    types.push(transform_method(method));
-                }
+        if let ImplItem::Fn(method) = inner {
+            if method.sig.asyncness.is_some() {
+                types.push(transform_method(method));
             }
-            _ => {}
         }
     }
 

@@ -87,12 +87,12 @@ impl Api for ApiImpl {
     }
 
     async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
-        println!("{}", window.label());
+        println!("Window: {}", window.label());
     }
 
     async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
-        let app_dir = app_handle.path_resolver().app_config_dir();
-        println!("{:?}, {:?}", app_dir, app_handle.package_info());
+        let app_dir = app_handle.path().app_config_dir();
+        println!("App Handle: {:?}, {:?}", app_dir, app_handle.package_info());
     }
 
     async fn test_io(self, user: User) -> User {
@@ -195,7 +195,7 @@ async fn main() {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();
 
-            tx.send(app.handle()).unwrap();
+            tx.send(app.handle().clone()).unwrap();
 
             Ok(())
         })
