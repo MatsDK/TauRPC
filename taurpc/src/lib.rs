@@ -73,7 +73,9 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
 ///     .expect("error while running tauri application");
 /// }
 /// ```
-pub fn create_ipc_handler<H>(procedures: H) -> impl Fn(Invoke<tauri::Wry>) + Send + Sync + 'static
+pub fn create_ipc_handler<H>(
+    procedures: H,
+) -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync + 'static
 where
     H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
@@ -87,7 +89,10 @@ where
         args_map,
     );
 
-    move |invoke: Invoke<tauri::Wry>| procedures.clone().handle_incoming_request(invoke)
+    move |invoke: Invoke<tauri::Wry>| {
+        procedures.clone().handle_incoming_request(invoke);
+        true
+    }
 }
 
 #[derive(Serialize, Clone)]

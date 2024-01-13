@@ -16,7 +16,7 @@ First, add the following crates to your `Cargo.toml`:
 
 [dependencies]
 // Using tauri v2.0.0-alpha.20
-taurpc = "0.3.0-alpha.0"
+taurpc = "0.3.0-alpha.1"
 
 specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }
@@ -57,7 +57,7 @@ The types will by default be exported to `bindings.ts` in the root of your proje
 Then on the frontend install the taurpc package.
 
 ```bash
-pnpm install taurpc
+pnpm install taurpc@next
 ```
 
 Now on the frontend you import the generated types, if you specified the `export_to` attribute on your procedures you should import your from there.

@@ -3504,7 +3504,7 @@ dependencies = [
 
 [[package]]
 name = "taurpc"
-version = "0.2.3"
+version = "0.3.0-alpha.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -3530,7 +3530,7 @@ dependencies = [
 
 [[package]]
 name = "taurpc-macros"
-version = "0.2.3"
+version = "0.3.0-alpha.1"
 dependencies = [
  "proc-macro2",
  "quote",
