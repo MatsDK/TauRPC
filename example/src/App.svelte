@@ -10,6 +10,7 @@
         await taurpc.get_window();
         await taurpc.method_with_alias();
         await taurpc.multiple_args([], "test");
+        await taurpc.get_app_handle();
 
         try {
             const res = await taurpc.test_result({

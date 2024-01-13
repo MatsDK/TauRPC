@@ -2,14 +2,14 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::Path;
 
-static PACKAGE_JSON: &'static str = r#"
+static PACKAGE_JSON: &str = r#"
 {
     "name": ".taurpc",
     "types": "index.ts"
 }
 "#;
 
-static BOILERPLATE_TS_CODE: &'static str = r#"
+static BOILERPLATE_TS_CODE: &str = r#"
 import { createTauRPCProxy as createProxy } from "taurpc"
 
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
@@ -60,10 +60,10 @@ pub(super) fn export_types(
     if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
         let package_json_path = Path::new(&export_path)
             .parent()
-            .and_then(|path| Some(path.join("package.json")))
+            .map(|path| path.join("package.json"))
             .unwrap();
 
-        std::fs::write(package_json_path, &PACKAGE_JSON).unwrap();
+        std::fs::write(package_json_path, PACKAGE_JSON).unwrap();
     }
 }
 

@@ -9,7 +9,7 @@ use syn::{
     PathArguments, PathSegment, Type, TypePath, Visibility,
 };
 
-const RESERVED_ARGS: &'static [&'static str] = &["window", "state", "app_handle"];
+const RESERVED_ARGS: &[&str] = &["window", "state", "app_handle"];
 
 pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
@@ -259,7 +259,7 @@ impl<'a> ProceduresGenerator<'a> {
             .collect::<Vec<_>>();
 
         // If there are not commands, there are no future outputs and the generic P will be unused resulting in errors.
-        if outputs.len() == 0 {
+        if outputs.is_empty() {
             return quote! {};
         }
 
@@ -513,13 +513,10 @@ fn unwrap_result_ty(ty: &Type) -> &Type {
         None => return ty,
     };
 
-    match &result_seg.arguments {
-        PathArguments::AngleBracketed(path_args) => {
-            if let GenericArgument::Type(ty) = path_args.args.first().unwrap() {
-                return ty;
-            }
+    if let PathArguments::AngleBracketed(path_args) = &result_seg.arguments {
+        if let GenericArgument::Type(ty) = path_args.args.first().unwrap() {
+            return ty;
         }
-        _ => {}
     }
 
     ty
@@ -527,15 +524,12 @@ fn unwrap_result_ty(ty: &Type) -> &Type {
 
 // TODO: This might break with other result types e.g.: io::Result.
 fn is_ty_result(ty: &Type) -> Option<&PathSegment> {
-    match ty {
-        Type::Path(TypePath { path, .. }) => {
-            if let Some(seg) = path.segments.last() {
-                if seg.ident == "Result" {
-                    return Some(seg);
-                }
+    if let Type::Path(TypePath { path, .. }) = ty {
+        if let Some(seg) = path.segments.last() {
+            if seg.ident == "Result" {
+                return Some(seg);
             }
         }
-        _ => {}
     }
 
     None
