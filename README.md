@@ -15,8 +15,8 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-// Using tauri v2.0.0-alpha.20
-taurpc = "0.3.0-alpha.1"
+// Using tauri 2.0.0-beta.12
+taurpc = "=0.3.0-alpha.2"
 
 specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }
@@ -45,6 +45,7 @@ impl Api for ApiImpl {
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(taurpc::create_ipc_handler(ApiImpl.into_handler()))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

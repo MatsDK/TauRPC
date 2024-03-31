@@ -10,14 +10,14 @@ pub extern crate specta;
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use tokio::sync::broadcast::Sender;
 
+use serde::Serialize;
+use tauri::ipc::{Invoke, InvokeError};
+use tauri::{AppHandle, Manager, Runtime};
+
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod export;
 use export::export_types;
-
-use serde::Serialize;
-use tauri::ipc::{Invoke, InvokeError};
-use tauri::{AppHandle, Manager, Runtime};
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.

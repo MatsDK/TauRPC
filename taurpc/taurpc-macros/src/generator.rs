@@ -364,7 +364,7 @@ impl<'a> ProceduresGenerator<'a> {
                 methods: P,
             }
 
-            use ::tauri::command::private::*;
+            use ::tauri::ipc::private::*;
             impl<P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<tauri::Wry> for #handler_ident<P> {
                 const TRAIT_NAME: &'static str = stringify!(#trait_ident);
                 const PATH_PREFIX: &'static str = #path_prefix;
@@ -372,7 +372,7 @@ impl<'a> ProceduresGenerator<'a> {
 
                 fn handle_incoming_request(self, #invoke: tauri::ipc::Invoke<tauri::Wry>) {
                     #[allow(unused_variables)]
-                    let ::tauri::ipc::Invoke { message: #message, resolver: #resolver } = #invoke;
+                    let ::tauri::ipc::Invoke { message: #message, resolver: #resolver, .. } = #invoke;
 
                     // Remove `TauRpc__` prefix
                     let prefix = #message.command()[8..].to_string();

@@ -1,3 +1,4 @@
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::{Deserialize, Serialize};
@@ -183,18 +184,29 @@ async fn main() {
         )
         .merge(EventsImpl.into_handler());
 
+    // tauri::Builder::default()
+    //     .invoke_handler(router.into_handler())
+    //     // .invoke_handler(taurpc::create_ipc_handler(
+    //     //     ApiImpl {
+    //     //         state: Arc::new(Mutex::new("state".to_string())),
+    //     //     }
+    //     //     .into_handler(),
+    //     // ))
+    //     .setup(|app| {
+    //         #[cfg(debug_assertions)]
+    //         app.get_window("main").unwrap().open_devtools();
+
+    //         tx.send(app.handle().clone()).unwrap();
+
+    //         Ok(())
+    //     })
+    //     .run(tauri::generate_context!())
+    //     .expect("error while running tauri application");
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(router.into_handler())
-        // .invoke_handler(taurpc::create_ipc_handler(
-        //     ApiImpl {
-        //         state: Arc::new(Mutex::new("state".to_string())),
-        //     }
-        //     .into_handler(),
-        // ))
         .setup(|app| {
             #[cfg(debug_assertions)]
-            app.get_window("main").unwrap().open_devtools();
-
             tx.send(app.handle().clone()).unwrap();
 
             Ok(())
