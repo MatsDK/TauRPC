@@ -6,13 +6,13 @@ export type TauRpcEventsInputTypes =
   | { proc_name: 'vec_test'; input_type: { __taurpc_type: string[] } }
   | { proc_name: 'multiple_args'; input_type: [number, string[]] }
 
+export type User = { uid: number; first_name: string; last_name: string }
+
 export type TauRpcEventsOutputTypes =
   | { proc_name: 'test_ev'; output_type: null }
   | { proc_name: 'state_changed'; output_type: null }
   | { proc_name: 'vec_test'; output_type: null }
   | { proc_name: 'multiple_args'; output_type: null }
-
-export type User = { uid: number; first_name: string; last_name: string }
 
 export type TauRpcApiOutputTypes =
   | { proc_name: 'update_state'; output_type: null }
@@ -41,10 +41,10 @@ export type TauRpcApiInputTypes =
   | { proc_name: 'multiple_args'; input_type: [string[], string] }
 
 const ARGS_MAP = {
-  'events':
-    '{"multiple_args":["arg1","arg2"],"state_changed":["new_state"],"vec_test":["args"],"test_ev":[]}',
   '':
-    '{"test_io":["user"],"with_sleep":[],"vec_test":["arg"],"get_app_handle":[],"test_result":["user"],"update_state":["new_value"],"get_window":[],"method_with_alias":[],"multiple_args":["arg","arg2"],"test_option":[],"ev":["updated_value"]}',
+    '{"method_with_alias":[],"ev":["updated_value"],"update_state":["new_value"],"test_io":["user"],"vec_test":["arg"],"get_app_handle":[],"test_option":[],"test_result":["user"],"get_window":[],"with_sleep":[],"multiple_args":["arg","arg2"]}',
+  'events':
+    '{"vec_test":["args"],"test_ev":[],"state_changed":["new_state"],"multiple_args":["arg1","arg2"]}',
 }
 import { createTauRPCProxy as createProxy } from 'taurpc'
 

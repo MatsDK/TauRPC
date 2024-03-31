@@ -5,7 +5,7 @@
 This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/) and [events](https://tauri.app/v1/guides/features/events/).
 
 The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your TypeScript frontend framework of choice. This crate provides typesafe bidirectional IPC communication between the Rust backend and TypeScript frontend.
-[Specta](https://github.com/oscartbeaumont/specta) is used under the hood for the type-generation.
+[Specta](https://github.com/oscartbeaumont/specta) is used under the hood for the type-generation. The trait-based API structure was inspired by [tarpc](https://github.com/google/tarpc).
 
 # Usage🔧
 
@@ -15,7 +15,8 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-taurpc = "0.2.3"
+// Using tauri 2.0.0-beta.12
+taurpc = "=0.3.0-alpha.2"
 
 specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }
@@ -44,6 +45,7 @@ impl Api for ApiImpl {
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(taurpc::create_ipc_handler(ApiImpl.into_handler()))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -56,7 +58,7 @@ The types will by default be exported to `bindings.ts` in the root of your proje
 Then on the frontend install the taurpc package.
 
 ```bash
-pnpm install taurpc
+pnpm install taurpc@next
 ```
 
 Now on the frontend you import the generated types, if you specified the `export_to` attribute on your procedures you should import your from there.
@@ -75,10 +77,10 @@ You can find a complete example (using Svelte) [here](https://github.com/MatsDK/
 
 # Using structs
 
-If you want to you structs for the inputs/outputs of procedures, you should always add `#[taurpc::ipc_struct]` to make sure the coresponding ts types are generated. This make will derive serde `Serialize` and `Deserialize`, `Clone` and `specta::Type`.
+If you want to you structs for the inputs/outputs of procedures, you should always add `#[taurpc::ipc_type]` to make sure the coresponding ts types are generated. This make will derive serde `Serialize` and `Deserialize`, `Clone` and `specta::Type`.
 
 ```rust
-#[taurpc::ipc_struct]
+#[taurpc::ipc_type]
 // #[derive(serde::Serialize, serde::Deserialize, specta::Type, Clone)]
 struct User {
     user_id: u32,

@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api'
+import { invoke } from '@tauri-apps/api/core'
 import { type EventCallback, listen } from '@tauri-apps/api/event'
 
 type TauRpcInputs = { proc_name: string; input_type: unknown }
