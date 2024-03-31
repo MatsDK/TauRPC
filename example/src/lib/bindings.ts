@@ -42,9 +42,9 @@ export type TauRpcApiInputTypes =
 
 const ARGS_MAP = {
   'events':
-    '{"multiple_args":["arg1","arg2"],"state_changed":["new_state"],"vec_test":["args"],"test_ev":[]}',
+    '{"test_ev":[],"multiple_args":["arg1","arg2"],"state_changed":["new_state"],"vec_test":["args"]}',
   '':
-    '{"test_io":["user"],"with_sleep":[],"vec_test":["arg"],"get_app_handle":[],"test_result":["user"],"update_state":["new_value"],"get_window":[],"method_with_alias":[],"multiple_args":["arg","arg2"],"test_option":[],"ev":["updated_value"]}',
+    '{"get_window":[],"get_app_handle":[],"test_result":["user"],"test_option":[],"method_with_alias":[],"ev":["updated_value"],"multiple_args":["arg","arg2"],"update_state":["new_value"],"vec_test":["arg"],"with_sleep":[],"test_io":["user"]}',
 }
 import { createTauRPCProxy as createProxy } from 'taurpc'
 
