@@ -1,5 +1,12 @@
 # taurpc
 
+## 1.4.3
+
+### Patch Changes
+
+- [`2ffad75`](https://github.com/MatsDK/TauRPC/commit/2ffad7527a55b51fc926d90515331053777aa37a) Thanks [@MatsDK](https://github.com/MatsDK)! - - Allow doc comments on IPC types - [#21](https://github.com/MatsDK/TauRPC/issues/21)
+  - Allow users to declare a router without root procedures - [#22](https://github.com/MatsDK/TauRPC/issues/22)
+
 ## 1.4.2
 
 ### Patch Changes
