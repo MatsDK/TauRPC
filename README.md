@@ -75,10 +75,10 @@ You can find a complete example (using Svelte) [here](https://github.com/MatsDK/
 
 # Using structs
 
-If you want to you structs for the inputs/outputs of procedures, you should always add `#[taurpc::ipc_struct]` to make sure the coresponding ts types are generated. This make will derive serde `Serialize` and `Deserialize`, `Clone` and `specta::Type`.
+If you want to you structs for the inputs/outputs of procedures, you should always add `#[taurpc::ipc_type]` to make sure the coresponding ts types are generated. This make will derive serde `Serialize` and `Deserialize`, `Clone` and `specta::Type`.
 
 ```rust
-#[taurpc::ipc_struct]
+#[taurpc::ipc_type]
 // #[derive(serde::Serialize, serde::Deserialize, specta::Type, Clone)]
 struct User {
     user_id: u32,
