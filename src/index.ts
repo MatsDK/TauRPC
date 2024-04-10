@@ -136,9 +136,9 @@ const nestedProxy = (
       const method_name = p.toString()
       const nested_path = [...path, method_name]
       const args_map = args_maps[path.join('.')]
-      if (method_name === 'then' || !args_map) return {}
+      if (method_name === 'then') return {}
 
-      if (method_name in args_map) {
+      if (args_map && method_name in args_map) {
         return new window.Proxy(() => {
           // Empty fn
         }, {

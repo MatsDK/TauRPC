@@ -76,9 +76,7 @@ pub fn create_ipc_handler<H>(procedures: H) -> impl Fn(Invoke<tauri::Wry>) + Sen
 where
     H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
-    // let (trait_name, path_prefix, export_path) = H::handler_info();
-
-    let args_map = HashMap::from([("", H::args_map())]);
+    let args_map = HashMap::from([(H::PATH_PREFIX, H::args_map())]);
     let args_map = serde_json::to_string(&args_map).unwrap();
     export_types(
         H::EXPORT_PATH,

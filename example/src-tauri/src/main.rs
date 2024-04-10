@@ -1,6 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
 use tauri::{AppHandle, Manager, Runtime};
 use taurpc::{Router, Windows};
@@ -9,11 +8,15 @@ use tokio::{
     time::sleep,
 };
 
-// #[taurpc::ipc_type]
-#[derive(Serialize, Deserialize, specta::Type, Clone)]
+#[doc = "Doc comments are also generated"]
+#[taurpc::ipc_type]
+// #[derive(serde::Serialize, serde::Deserialize, specta::Type, Clone)]
 struct User {
+    /// The user's id
     uid: i32,
+    /// The user's first name
     first_name: String,
+    /// The user's last name
     last_name: String,
 }
 
@@ -121,8 +124,7 @@ impl Api for ApiImpl {
     async fn multiple_args(self, arg: Vec<String>, arg2: String) {}
 }
 
-// #[taurpc::procedures(path = "events", export_to = "../bindings.ts")]
-#[taurpc::procedures(path = "events")]
+#[taurpc::procedures(path = "events", export_to = "../src/lib/bindings.ts")]
 trait Events {
     #[taurpc(event)]
     async fn test_ev();
@@ -171,6 +173,7 @@ async fn main() {
             events_trigger.test_ev()?;
         }
 
+        #[allow(unreachable_code)]
         Ok::<(), tauri::Error>(())
     });
 
@@ -191,6 +194,7 @@ async fn main() {
         //     }
         //     .into_handler(),
         // ))
+        // .invoke_handler(taurpc::create_ipc_handler(EventsImpl.into_handler()))
         .setup(|app| {
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();
