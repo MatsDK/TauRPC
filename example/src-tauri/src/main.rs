@@ -145,6 +145,24 @@ struct EventsImpl;
 #[taurpc::resolvers]
 impl Events for EventsImpl {}
 
+#[taurpc::procedures(path = "api.ui", export_to = "../src/lib/bindings.ts")]
+trait UiApi {
+    async fn trigger();
+
+    #[taurpc(event)]
+    async fn test_ev();
+}
+
+#[derive(Clone)]
+struct UiApiImpl;
+
+#[taurpc::resolvers]
+impl UiApi for UiApiImpl {
+    async fn trigger(self) {
+        println!("Trigger ui event")
+    }
+}
+
 type GlobalState = Arc<Mutex<String>>;
 
 #[tokio::main]
@@ -154,7 +172,8 @@ async fn main() {
     tokio::spawn(async move {
         let app_handle = rx.await.unwrap();
         let api_trigger = ApiEventTrigger::new(app_handle.clone());
-        let events_trigger = TauRpcEventsEventTrigger::new(app_handle);
+        let events_trigger = TauRpcEventsEventTrigger::new(app_handle.clone());
+        let ui_trigger = TauRpcUiApiEventTrigger::new(app_handle);
 
         let mut interval = tokio::time::interval(Duration::from_secs(1));
         loop {
@@ -171,6 +190,7 @@ async fn main() {
             events_trigger.multiple_args(0, vec![String::from("test"), String::from("test2")])?;
 
             events_trigger.test_ev()?;
+            ui_trigger.test_ev()?;
         }
 
         #[allow(unreachable_code)]
@@ -184,7 +204,8 @@ async fn main() {
             }
             .into_handler(),
         )
-        .merge(EventsImpl.into_handler());
+        .merge(EventsImpl.into_handler())
+        .merge(UiApiImpl.into_handler());
 
     tauri::Builder::default()
         .invoke_handler(router.into_handler())

@@ -38,6 +38,14 @@ export type TauRpcEventsOutputTypes =
   | { proc_name: 'vec_test'; output_type: null }
   | { proc_name: 'multiple_args'; output_type: null }
 
+export type TauRpcUiApiInputTypes =
+  | { proc_name: 'trigger'; input_type: null }
+  | { proc_name: 'test_ev'; input_type: null }
+
+export type TauRpcUiApiOutputTypes =
+  | { proc_name: 'trigger'; output_type: null }
+  | { proc_name: 'test_ev'; output_type: null }
+
 /**
  * Doc comments are also generated
  */
@@ -58,9 +66,10 @@ export type User = {
 
 const ARGS_MAP = {
   'events':
-    '{"test_ev":[],"multiple_args":["arg1","arg2"],"state_changed":["new_state"],"vec_test":["args"]}',
+    '{"vec_test":["args"],"test_ev":[],"multiple_args":["arg1","arg2"],"state_changed":["new_state"]}',
   '':
-    '{"ev":["updated_value"],"multiple_args":["arg","arg2"],"get_app_handle":[],"get_window":[],"test_option":[],"vec_test":["arg"],"update_state":["new_value"],"method_with_alias":[],"test_result":["user"],"test_io":["user"],"with_sleep":[]}',
+    '{"test_io":["user"],"get_app_handle":[],"update_state":["new_value"],"with_sleep":[],"ev":["updated_value"],"multiple_args":["arg","arg2"],"test_result":["user"],"method_with_alias":[],"get_window":[],"vec_test":["arg"],"test_option":[]}',
+  'api.ui': '{"trigger":[],"test_ev":[]}',
 }
 import { createTauRPCProxy as createProxy } from 'taurpc'
 
@@ -69,4 +78,5 @@ export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 type Router = {
   '': [TauRpcApiInputTypes, TauRpcApiOutputTypes]
   'events': [TauRpcEventsInputTypes, TauRpcEventsOutputTypes]
+  'api.ui': [TauRpcUiApiInputTypes, TauRpcUiApiOutputTypes]
 }

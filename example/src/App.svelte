@@ -11,6 +11,8 @@
     await taurpc.method_with_alias();
     await taurpc.multiple_args([], "test");
 
+    await taurpc.api.ui.trigger();
+
     try {
       const res = await taurpc.test_result({
         first_name: "",
@@ -41,6 +43,11 @@
     unlisten.push(
       taurpc.events.multiple_args.on((arg1, arg2) => {
         console.log(arg1, arg2);
+      })
+    );
+    unlisten.push(
+      taurpc.api.ui.test_ev.on(() => {
+        console.log("Ui event triggered");
       })
     );
   });

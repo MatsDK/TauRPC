@@ -160,7 +160,12 @@ const nestedProxy = (
             )
           },
         })
-      } else if (nested_path.join('.') in args_maps) {
+      } else if (
+        nested_path.join('.') in args_maps
+        || Object.keys(args_maps).some(path =>
+          path.startsWith(`${nested_path.join('.')}.`)
+        )
+      ) {
         return nestedProxy(args_maps, listeners, nested_path)
       } else {
         throw new Error(`'${nested_path.join('.')}' not found`)
