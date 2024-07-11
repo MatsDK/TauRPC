@@ -78,6 +78,7 @@ where
 {
     let args_map = HashMap::from([(H::PATH_PREFIX, H::args_map())]);
     let args_map = serde_json::to_string(&args_map).unwrap();
+    #[cfg(debug_assertions)] // Only export in development builds
     export_types(
         H::EXPORT_PATH,
         vec![(H::PATH_PREFIX, H::TRAIT_NAME)],
@@ -242,6 +243,8 @@ impl Router {
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) {
         let args_map = serde_json::to_string(&self.args_map_json).unwrap();
+
+        #[cfg(debug_assertions)] // Only export in development builds
         export_types(
             self.export_path.clone(),
             self.handler_paths.clone(),
