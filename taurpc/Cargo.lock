@@ -1417,12 +1417,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indoc"
-version = "1.0.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfa799dd5ed20a7e349f3b4639aa80d74549c81716d9ec4f994c9b5815598306"
-
-[[package]]
 name = "infer"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1445,15 +1439,6 @@ name = "ipnet"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
-
-[[package]]
-name = "itertools"
-version = "0.10.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
-dependencies = [
- "either",
-]
 
 [[package]]
 name = "itoa"
@@ -2963,9 +2948,9 @@ dependencies = [
 
 [[package]]
 name = "specta"
-version = "1.0.5"
+version = "2.0.0-rc.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2240c3aa020aa61d2c569087d213baafbb212f4ceb9de9dd162376ea6aa0fe3"
+checksum = "af8580b695a79b639706ecbc6b8f15a4570f38c4b208ea9fafa8362aace66d17"
 dependencies = [
  "ctor 0.1.26",
  "document-features",
@@ -2973,23 +2958,20 @@ dependencies = [
  "once_cell",
  "paste",
  "serde",
- "serde_json",
  "specta-macros",
  "thiserror",
 ]
 
 [[package]]
 name = "specta-macros"
-version = "1.0.5"
+version = "2.0.0-rc.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4605306321c356e03873b8ee71d7592a5e7c508add325c3ed0677c16fdf1bcfb"
+checksum = "68025f0a8950e26fae19b7ac334bd523179f4ef4e8c60e6875583a5bece6358e"
 dependencies = [
  "Inflector",
- "itertools",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
- "termcolor",
 ]
 
 [[package]]

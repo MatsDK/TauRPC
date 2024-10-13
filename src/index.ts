@@ -136,9 +136,9 @@ const nestedProxy = (
       const method_name = p.toString()
       const nested_path = [...path, method_name]
       const args_map = args_maps[path.join('.')]
-      if (method_name === 'then' || !args_map) return {}
+      if (method_name === 'then') return {}
 
-      if (method_name in args_map) {
+      if (args_map && method_name in args_map) {
         return new window.Proxy(() => {
           // Empty fn
         }, {
@@ -160,7 +160,12 @@ const nestedProxy = (
             )
           },
         })
-      } else if (nested_path.join('.') in args_maps) {
+      } else if (
+        nested_path.join('.') in args_maps
+        || Object.keys(args_maps).some(path =>
+          path.startsWith(`${nested_path.join('.')}.`)
+        )
+      ) {
         return nestedProxy(args_maps, listeners, nested_path)
       } else {
         throw new Error(`'${nested_path.join('.')}' not found`)

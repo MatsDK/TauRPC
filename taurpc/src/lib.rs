@@ -79,10 +79,9 @@ pub fn create_ipc_handler<H>(
 where
     H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
-    // let (trait_name, path_prefix, export_path) = H::handler_info();
-
-    let args_map = HashMap::from([("", H::args_map())]);
+    let args_map = HashMap::from([(H::PATH_PREFIX, H::args_map())]);
     let args_map = serde_json::to_string(&args_map).unwrap();
+    #[cfg(debug_assertions)] // Only export in development builds
     export_types(
         H::EXPORT_PATH,
         vec![(H::PATH_PREFIX, H::TRAIT_NAME)],
@@ -246,7 +245,13 @@ impl Router {
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) -> bool {
         let args_map = serde_json::to_string(&self.args_map_json).unwrap();
-        export_types(self.export_path, self.handler_paths.clone(), args_map);
+
+        #[cfg(debug_assertions)] // Only export in development builds
+        export_types(
+            self.export_path.clone(),
+            self.handler_paths.clone(),
+            args_map,
+        );
 
         move |invoke: Invoke<tauri::Wry>| self.on_command(invoke)
     }
