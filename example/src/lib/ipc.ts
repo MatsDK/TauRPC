@@ -1,5 +1,1 @@
-import { createTauRPCProxy } from './bindings'
-
-const taurpc = await createTauRPCProxy()
-
-export { taurpc }
+export { createTauRPCProxy } from './bindings'

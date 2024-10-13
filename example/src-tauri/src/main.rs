@@ -1,3 +1,4 @@
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{sync::Arc, time::Duration};
@@ -90,12 +91,12 @@ impl Api for ApiImpl {
     }
 
     async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
-        println!("{}", window.label());
+        println!("Window: {}", window.label());
     }
 
     async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
-        let app_dir = app_handle.path_resolver().app_config_dir();
-        println!("{:?}, {:?}", app_dir, app_handle.package_info());
+        let app_dir = app_handle.path().app_config_dir();
+        println!("App Handle: {:?}, {:?}", app_dir, app_handle.package_info());
     }
 
     async fn test_io(self, user: User) -> User {
@@ -207,20 +208,30 @@ async fn main() {
         .merge(EventsImpl.into_handler())
         .merge(UiApiImpl.into_handler());
 
+    // tauri::Builder::default()
+    //     .invoke_handler(router.into_handler())
+    //     // .invoke_handler(taurpc::create_ipc_handler(
+    //     //     ApiImpl {
+    //     //         state: Arc::new(Mutex::new("state".to_string())),
+    //     //     }
+    //     //     .into_handler(),
+    //     // ))
+    //     .setup(|app| {
+    //         #[cfg(debug_assertions)]
+    //         app.get_window("main").unwrap().open_devtools();
+
+    //         tx.send(app.handle().clone()).unwrap();
+
+    //         Ok(())
+    //     })
+    //     .run(tauri::generate_context!())
+    //     .expect("error while running tauri application");
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(router.into_handler())
-        // .invoke_handler(taurpc::create_ipc_handler(
-        //     ApiImpl {
-        //         state: Arc::new(Mutex::new("state".to_string())),
-        //     }
-        //     .into_handler(),
-        // ))
-        // .invoke_handler(taurpc::create_ipc_handler(EventsImpl.into_handler()))
         .setup(|app| {
             #[cfg(debug_assertions)]
-            app.get_window("main").unwrap().open_devtools();
-
-            tx.send(app.handle()).unwrap();
+            tx.send(app.handle().clone()).unwrap();
 
             Ok(())
         })

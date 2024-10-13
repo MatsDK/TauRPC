@@ -9,7 +9,7 @@ use syn::{
     PathArguments, PathSegment, Type, TypePath, Visibility,
 };
 
-const RESERVED_ARGS: &'static [&'static str] = &["window", "state", "app_handle"];
+const RESERVED_ARGS: &[&str] = &["window", "state", "app_handle"];
 
 pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
@@ -259,7 +259,7 @@ impl<'a> ProceduresGenerator<'a> {
             .collect::<Vec<_>>();
 
         // If there are not commands, there are no future outputs and the generic P will be unused resulting in errors.
-        if outputs.len() == 0 {
+        if outputs.is_empty() {
             return quote! {};
         }
 
@@ -364,15 +364,15 @@ impl<'a> ProceduresGenerator<'a> {
                 methods: P,
             }
 
-            use ::tauri::command::private::*;
+            use ::tauri::ipc::private::*;
             impl<P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<tauri::Wry> for #handler_ident<P> {
                 const TRAIT_NAME: &'static str = stringify!(#trait_ident);
                 const PATH_PREFIX: &'static str = #path_prefix;
                 const EXPORT_PATH: Option<&'static str> = #export_path;
 
-                fn handle_incoming_request(self, #invoke: tauri::Invoke<tauri::Wry>) {
+                fn handle_incoming_request(self, #invoke: tauri::ipc::Invoke<tauri::Wry>) {
                     #[allow(unused_variables)]
-                    let ::tauri::Invoke { message: #message, resolver: #resolver } = #invoke;
+                    let ::tauri::ipc::Invoke { message: #message, resolver: #resolver, .. } = #invoke;
 
                     // Remove `TauRpc__` prefix
                     let prefix = #message.command()[8..].to_string();
@@ -388,7 +388,7 @@ impl<'a> ProceduresGenerator<'a> {
                     };
                 }
 
-                fn spawn(self) -> tokio::sync::broadcast::Sender<std::sync::Arc<tauri::Invoke<tauri::Wry>>> {
+                fn spawn(self) -> tokio::sync::broadcast::Sender<std::sync::Arc<tauri::ipc::Invoke<tauri::Wry>>> {
                     let (tx, mut rx) = tokio::sync::broadcast::channel(32);
 
                     tokio::spawn(async move {
@@ -513,13 +513,10 @@ fn unwrap_result_ty(ty: &Type) -> &Type {
         None => return ty,
     };
 
-    match &result_seg.arguments {
-        PathArguments::AngleBracketed(path_args) => {
-            if let GenericArgument::Type(ty) = path_args.args.first().unwrap() {
-                return ty;
-            }
+    if let PathArguments::AngleBracketed(path_args) = &result_seg.arguments {
+        if let GenericArgument::Type(ty) = path_args.args.first().unwrap() {
+            return ty;
         }
-        _ => {}
     }
 
     ty
@@ -527,15 +524,12 @@ fn unwrap_result_ty(ty: &Type) -> &Type {
 
 // TODO: This might break with other result types e.g.: io::Result.
 fn is_ty_result(ty: &Type) -> Option<&PathSegment> {
-    match ty {
-        Type::Path(TypePath { path, .. }) => {
-            if let Some(seg) = path.segments.last() {
-                if seg.ident == "Result" {
-                    return Some(seg);
-                }
+    if let Type::Path(TypePath { path, .. }) = ty {
+        if let Some(seg) = path.segments.last() {
+            if seg.ident == "Result" {
+                return Some(seg);
             }
         }
-        _ => {}
     }
 
     None

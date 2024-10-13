@@ -10,13 +10,14 @@ pub extern crate specta;
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use tokio::sync::broadcast::Sender;
 
+use serde::Serialize;
+use tauri::ipc::{Invoke, InvokeError};
+use tauri::{AppHandle, Emitter, Runtime};
+
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod export;
 use export::export_types;
-
-use serde::Serialize;
-use tauri::{AppHandle, Invoke, InvokeError, Manager, Runtime};
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.
@@ -72,7 +73,9 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
 ///     .expect("error while running tauri application");
 /// }
 /// ```
-pub fn create_ipc_handler<H>(procedures: H) -> impl Fn(Invoke<tauri::Wry>) + Send + Sync + 'static
+pub fn create_ipc_handler<H>(
+    procedures: H,
+) -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync + 'static
 where
     H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
@@ -85,7 +88,10 @@ where
         args_map,
     );
 
-    move |invoke: Invoke<tauri::Wry>| procedures.clone().handle_incoming_request(invoke)
+    move |invoke: Invoke<tauri::Wry>| {
+        procedures.clone().handle_incoming_request(invoke);
+        true
+    }
 }
 
 #[derive(Serialize, Clone)]
@@ -140,19 +146,19 @@ impl EventTrigger {
     }
 
     pub fn call<S: Serialize + Clone>(&self, proc_name: &str, event: S) -> tauri::Result<()> {
-        let event_name = if self.path_prefix.len() == 0 {
+        let event_name = if self.path_prefix.is_empty() {
             proc_name.to_string()
         } else {
             format!("{}.{}", self.path_prefix, proc_name)
         };
         let event = Event { event_name, event };
         match &self.scope {
-            Windows::All => self.app_handle.emit_all("TauRpc_event", event),
-            Windows::One(label) => self.app_handle.emit_to(&label, "TauRpc_event", event),
+            Windows::All => self.app_handle.emit("TauRpc_event", event),
+            Windows::One(label) => self.app_handle.emit_to(label, "TauRpc_event", event),
             Windows::N(labels) => {
                 for label in labels {
                     self.app_handle
-                        .emit_to(&label, "TauRpc_event", event.clone())?;
+                        .emit_to(label, "TauRpc_event", event.clone())?;
                 }
                 Ok(())
             }
@@ -196,6 +202,7 @@ impl EventTrigger {
 ///     .expect("error while running tauri application");
 /// }
 /// ```
+#[derive(Default)]
 pub struct Router {
     handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
     export_path: Option<&'static str>,
@@ -205,12 +212,7 @@ pub struct Router {
 
 impl Router {
     pub fn new() -> Self {
-        Self {
-            handlers: Default::default(),
-            args_map_json: Default::default(),
-            export_path: None,
-            handler_paths: vec![],
-        }
+        Self::default()
     }
 
     /// Add routes to the router, accepts a struct for which a `#[taurpc::procedures]` trait is implemented
@@ -241,7 +243,7 @@ impl Router {
     ///     .run(tauri::generate_context!())
     ///     .expect("error while running tauri application");
     /// ```
-    pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) {
+    pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) -> bool {
         let args_map = serde_json::to_string(&self.args_map_json).unwrap();
 
         #[cfg(debug_assertions)] // Only export in development builds
@@ -254,25 +256,27 @@ impl Router {
         move |invoke: Invoke<tauri::Wry>| self.on_command(invoke)
     }
 
-    fn on_command(&self, invoke: Invoke<tauri::Wry>) {
+    fn on_command(&self, invoke: Invoke<tauri::Wry>) -> bool {
         let cmd = invoke.message.command();
         if !cmd.starts_with("TauRPC__") {
-            return;
+            return false;
         }
 
         // Remove `TauRPC__`
         let prefix = cmd[8..].to_string();
-        let mut prefix = prefix.split(".").collect::<Vec<_>>();
+        let mut prefix = prefix.split('.').collect::<Vec<_>>();
         // Remove the actual name of the command
         prefix.pop().unwrap();
 
         match self.handlers.get(&prefix.join(".")) {
             Some(handler) => {
-                handler.send(Arc::new(invoke)).unwrap();
+                let _ = handler.send(Arc::new(invoke));
             }
             None => invoke
                 .resolver
                 .invoke_error(InvokeError::from(format!("`{cmd}` not found"))),
         };
+
+        true
     }
 }

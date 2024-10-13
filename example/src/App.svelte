@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { taurpc } from "./lib/ipc";
+  import { createTauRPCProxy } from "./lib/ipc";
   import { onMount, onDestroy } from "svelte";
 
   let value = "";
@@ -10,8 +10,7 @@
     await taurpc.get_window();
     await taurpc.method_with_alias();
     await taurpc.multiple_args([], "test");
-
-    await taurpc.api.ui.trigger();
+    await taurpc.get_app_handle();
 
     try {
       const res = await taurpc.test_result({
@@ -27,28 +26,24 @@
   };
 
   let unlisten = [];
+  let taurpc: Awaited<ReturnType<typeof createTauRPCProxy>>;
 
   onMount(async () => {
-    console.log(taurpc, taurpc.events);
+    taurpc = await createTauRPCProxy();
     unlisten.push(
       taurpc.events.vec_test.on((new_state) => {
         console.log("state updated", new_state);
-      })
+      }),
     );
     unlisten.push(
       taurpc.events.state_changed.on((val) => {
         state = val;
-      })
+      }),
     );
     unlisten.push(
       taurpc.events.multiple_args.on((arg1, arg2) => {
         console.log(arg1, arg2);
-      })
-    );
-    unlisten.push(
-      taurpc.api.ui.test_ev.on(() => {
-        console.log("Ui event triggered");
-      })
+      }),
     );
   });
 
