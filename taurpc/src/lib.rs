@@ -16,8 +16,8 @@ use tauri::{AppHandle, Emitter, Runtime};
 
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
-mod export;
-use export::export_types;
+pub mod export;
+pub use export::export_types;
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.
@@ -204,10 +204,10 @@ impl EventTrigger {
 /// ```
 #[derive(Default)]
 pub struct Router {
-    handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
-    export_path: Option<&'static str>,
-    args_map_json: HashMap<&'static str, String>,
-    handler_paths: Vec<(&'static str, &'static str)>,
+    pub handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
+    pub export_path: Option<&'static str>,
+    pub args_map_json: HashMap<&'static str, String>,
+    pub handler_paths: Vec<(&'static str, &'static str)>,
 }
 
 impl Router {
