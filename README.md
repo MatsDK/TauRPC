@@ -15,8 +15,8 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-// Using tauri 2.0.0-beta.12
-taurpc = "=0.3.0-alpha.2"
+// Using tauri v2.0.0
+taurpc = "0.3.0"
 
 specta = { version = "1.0.5", features = ["export"] }
 tokio = { version = "1", features = ["full"] }

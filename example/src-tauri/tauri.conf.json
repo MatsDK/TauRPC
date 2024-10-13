@@ -1,7 +1,7 @@
 {
   "productName": "example-v2-beta",
   "version": "0.0.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "example-taurpc",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
