@@ -57,7 +57,7 @@ The types will by default be exported to `bindings.ts` in the root of your proje
 Then on the frontend install the taurpc package.
 
 ```bash
-pnpm install taurpc@next
+pnpm install taurpc
 ```
 
 Now on the frontend you import the generated types, if you specified the `export_to` attribute on your procedures you should import your from there.
