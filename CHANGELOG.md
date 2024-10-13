@@ -1,5 +1,11 @@
 # taurpc
 
+## 1.6.0
+
+### Minor Changes
+
+- [`a2b457a`](https://github.com/MatsDK/TauRPC/commit/a2b457a0e4531fbd31ea5d5d6bb834e247375fec) Thanks [@MatsDK](https://github.com/MatsDK)! - support tauri@2.0.0
+
 ## 1.4.3
 
 ### Patch Changes
