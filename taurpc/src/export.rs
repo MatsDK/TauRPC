@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::Path;
+use itertools::Itertools;
 
 use specta_typescript::BigIntExportBehavior;
 
@@ -55,7 +57,14 @@ pub fn export_types(
         .open(path)
         .unwrap();
 
-    file.write_all(format!("const ARGS_MAP = {}", args_map).as_bytes())
+    let args_hash: HashMap<String,String> = serde_json::from_str(&args_map).unwrap();
+    let args_entries: String = args_hash
+                .iter()
+                .map(|(k, v)| format!("'{}':'{}'", k, v))
+                .join(", ");
+    let router_args = format!("{{{}}}", args_entries);
+             
+    file.write_all(format!("const ARGS_MAP = {}", router_args).as_bytes())
         .unwrap();
     file.write_all(BOILERPLATE_TS_CODE.as_bytes()).unwrap();
     file.write_all(generate_router_type(handlers).as_bytes())

@@ -17,7 +17,7 @@ members = [
 ]
 
 [dependencies]
-
+itertools = "0.13.0"
 taurpc-macros = { path = "./taurpc-macros", version = "=0.3.0" }
 specta = { version = "=2.0.0-rc.20" }
 tauri = "2.1.1"
