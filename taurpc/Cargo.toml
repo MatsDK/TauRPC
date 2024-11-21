@@ -10,7 +10,6 @@ repository = "https://github.com/MatsDK/TauRPC"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
 categories = []
-rust = "1.71"
 
 [workspace]
 members = [
@@ -20,8 +19,12 @@ members = [
 [dependencies]
 
 taurpc-macros = { path = "./taurpc-macros", version = "=0.3.0" }
-specta = { version = "=2.0.0-rc.9", features = ["export", "typescript"] }
-tauri = "2.0.3"
+specta = { version = "=2.0.0-rc.20" }
+tauri = "2.1.1"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.96"
 tokio = { version = "1", features = ["full"] }
+specta-serde = { version = "0.0.7", features = [] }
+specta-typescript = { version = "0.0.7", features = ["function"] }
+specta-util = { version = "0.0.7", features = ["export"] }
+specta-macros = { version = "2.0.0-rc.17" }

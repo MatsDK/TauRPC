@@ -6,6 +6,7 @@
 
 pub extern crate serde;
 pub extern crate specta;
+pub extern crate specta_macros;
 
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use tokio::sync::broadcast::Sender;
