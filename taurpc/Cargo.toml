@@ -10,6 +10,7 @@ repository = "https://github.com/MatsDK/TauRPC"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
 categories = []
+rust = "1.71"
 
 [workspace]
 members = [
