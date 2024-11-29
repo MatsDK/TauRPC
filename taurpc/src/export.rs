@@ -49,7 +49,7 @@ pub(super) fn export_types(
 
     specta_util::export()
         .export_to(specta_typescript::Typescript::default()
-        .bigint(BigIntExportBehavior::BigInt)
+        .bigint(BigIntExportBehavior::String)
         .formatter(specta_typescript::formatter::biome), path)
         .unwrap();
 
