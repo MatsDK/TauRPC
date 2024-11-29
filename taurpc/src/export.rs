@@ -48,7 +48,9 @@ pub(super) fn export_types(
     }
 
     specta_util::export()
-        .export_to(specta_typescript::Typescript::default().bigint(BigIntExportBehavior::String), path)
+        .export_to(specta_typescript::Typescript::default()
+        .bigint(BigIntExportBehavior::BigInt)
+        .formatter(specta_typescript::formatter::biome), path)
         .unwrap();
 
     let mut file = OpenOptions::new()
