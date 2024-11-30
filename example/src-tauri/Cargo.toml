@@ -11,13 +11,17 @@ edition = "2021"
 tauri-build = { version = "2.0.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.0.0", features = [] }
-tauri-plugin-shell = "2.0.0"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+tauri = { version = "2.1.1", features = [] }
+tauri-plugin-shell = "2.0.2"
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "1.0.133"
 
 tokio = { version = "1", features = ["full"] }
 thiserror = "1.0"
 
 taurpc = { path = "../../taurpc" }
-specta = { version = "1.0.5", features = ["export"] }
+specta = { version = "=2.0.0-rc.20", features = ["derive"] }
+specta-macros = { version = "2.0.0-rc.17" }
+specta-serde = { version = "0.0.7", features = [] }
+specta-typescript = { version = "0.0.7", features = ["function"] }
+specta-util = { version = "0.0.7", features = ["export"] }
