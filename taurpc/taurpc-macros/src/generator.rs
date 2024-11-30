@@ -167,7 +167,7 @@ impl<'a> ProceduresGenerator<'a> {
                 });
 
         quote! {
-            #[derive(taurpc::specta::Type, taurpc::serde::Serialize)]
+            #[derive(taurpc::specta_macros::Type, taurpc::serde::Serialize)]
             #[serde(tag = "proc_name", content = "input_type")]
             #[allow(non_camel_case_types)]
             #vis enum #input_types_ident {
@@ -225,7 +225,7 @@ impl<'a> ProceduresGenerator<'a> {
             });
 
         quote! {
-            #[derive(taurpc::specta::Type, taurpc::serde::Serialize)]
+            #[derive(taurpc::specta_macros::Type, taurpc::serde::Serialize)]
             #[serde(tag = "proc_name", content = "output_type")]
             #[allow(non_camel_case_types)]
             #vis enum #output_types_ident {
@@ -505,7 +505,7 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
 }
 
 // If a method returns a Result<T, E> type, we extract the first generic argument to use
-// inside the types enum. This is necessary because `specta::Type` is not implemented for Result.
+// inside the types enum. This is necessary because `specta_macros::Type` is not implemented for Result.
 // If the type is not a Result, return the original type.
 fn unwrap_result_ty(ty: &Type) -> &Type {
     let result_seg = match is_ty_result(ty) {

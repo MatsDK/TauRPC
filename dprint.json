@@ -17,7 +17,8 @@
     "**/node_modules",
     "pnpm-lock.yaml",
     "dist",
-    "**/target"
+    "**/target",
+    "**/gen"
   ],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.78.0.wasm",

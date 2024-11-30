@@ -1,3 +1,5 @@
+use itertools::Itertools;
+use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::Path;
@@ -23,7 +25,7 @@ export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 pub(super) fn export_types(
     export_path: Option<&'static str>,
     handlers: Vec<(&'static str, &'static str)>,
-    args_map: String,
+    args_map: HashMap<String, String>,
 ) {
     let export_path = export_path.map(|p| p.to_string()).unwrap_or(
         std::env::current_dir()
@@ -43,7 +45,9 @@ pub(super) fn export_types(
         std::fs::create_dir_all(parent).unwrap();
     }
 
-    specta::export::ts(&export_path).unwrap();
+    specta_util::export()
+        .export_to(specta_typescript::Typescript::default(), path)
+        .unwrap();
 
     let mut file = OpenOptions::new()
         .write(true)
@@ -51,7 +55,13 @@ pub(super) fn export_types(
         .open(path)
         .unwrap();
 
-    file.write_all(format!("const ARGS_MAP = {}", args_map).as_bytes())
+    let args_entries: String = args_map
+        .iter()
+        .map(|(k, v)| format!("'{}':'{}'", k, v))
+        .join(", ");
+    let router_args = format!("{{{}}}", args_entries);
+
+    file.write_all(format!("const ARGS_MAP = {}", router_args).as_bytes())
         .unwrap();
     file.write_all(BOILERPLATE_TS_CODE.as_bytes()).unwrap();
     file.write_all(generate_router_type(handlers).as_bytes())

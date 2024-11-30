@@ -1,5 +1,25 @@
 {
-  "app": {
+  "core": {
+    "default_permission": {
+      "identifier": "default",
+      "description": "Default core plugins set which includes:\n- 'core:path:default'\n- 'core:event:default'\n- 'core:window:default'\n- 'core:webview:default'\n- 'core:app:default'\n- 'core:image:default'\n- 'core:resources:default'\n- 'core:menu:default'\n- 'core:tray:default'\n",
+      "permissions": [
+        "core:path:default",
+        "core:event:default",
+        "core:window:default",
+        "core:webview:default",
+        "core:app:default",
+        "core:image:default",
+        "core:resources:default",
+        "core:menu:default",
+        "core:tray:default"
+      ]
+    },
+    "permissions": {},
+    "permission_sets": {},
+    "global_scope_schema": null
+  },
+  "core:app": {
     "default_permission": {
       "identifier": "default",
       "description": "Default permissions for the plugin.",
@@ -16,10 +36,20 @@
         "description": "Enables the app_show command without any pre-configured scope.",
         "commands": { "allow": ["app_show"], "deny": [] }
       },
+      "allow-default-window-icon": {
+        "identifier": "allow-default-window-icon",
+        "description": "Enables the default_window_icon command without any pre-configured scope.",
+        "commands": { "allow": ["default_window_icon"], "deny": [] }
+      },
       "allow-name": {
         "identifier": "allow-name",
         "description": "Enables the name command without any pre-configured scope.",
         "commands": { "allow": ["name"], "deny": [] }
+      },
+      "allow-set-app-theme": {
+        "identifier": "allow-set-app-theme",
+        "description": "Enables the set_app_theme command without any pre-configured scope.",
+        "commands": { "allow": ["set_app_theme"], "deny": [] }
       },
       "allow-tauri-version": {
         "identifier": "allow-tauri-version",
@@ -41,10 +71,20 @@
         "description": "Denies the app_show command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["app_show"] }
       },
+      "deny-default-window-icon": {
+        "identifier": "deny-default-window-icon",
+        "description": "Denies the default_window_icon command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["default_window_icon"] }
+      },
       "deny-name": {
         "identifier": "deny-name",
         "description": "Denies the name command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["name"] }
+      },
+      "deny-set-app-theme": {
+        "identifier": "deny-set-app-theme",
+        "description": "Denies the set_app_theme command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["set_app_theme"] }
       },
       "deny-tauri-version": {
         "identifier": "deny-tauri-version",
@@ -60,7 +100,7 @@
     "permission_sets": {},
     "global_scope_schema": null
   },
-  "event": {
+  "core:event": {
     "default_permission": {
       "identifier": "default",
       "description": "Default permissions for the plugin.",
@@ -116,7 +156,7 @@
     "permission_sets": {},
     "global_scope_schema": null
   },
-  "image": {
+  "core:image": {
     "default_permission": {
       "identifier": "default",
       "description": "Default permissions for the plugin.",
@@ -183,11 +223,34 @@
     "permission_sets": {},
     "global_scope_schema": null
   },
-  "menu": {
+  "core:menu": {
     "default_permission": {
       "identifier": "default",
       "description": "Default permissions for the plugin.",
-      "permissions": []
+      "permissions": [
+        "allow-new",
+        "allow-append",
+        "allow-prepend",
+        "allow-insert",
+        "allow-remove",
+        "allow-remove-at",
+        "allow-items",
+        "allow-get",
+        "allow-popup",
+        "allow-create-default",
+        "allow-set-as-app-menu",
+        "allow-set-as-window-menu",
+        "allow-text",
+        "allow-set-text",
+        "allow-is-enabled",
+        "allow-set-enabled",
+        "allow-set-accelerator",
+        "allow-set-as-windows-menu-for-nsapp",
+        "allow-set-as-help-menu-for-nsapp",
+        "allow-is-checked",
+        "allow-set-checked",
+        "allow-set-icon"
+      ]
     },
     "permissions": {
       "allow-append": {
@@ -414,7 +477,7 @@
     "permission_sets": {},
     "global_scope_schema": null
   },
-  "path": {
+  "core:path": {
     "default_permission": {
       "identifier": "default",
       "description": "Default permissions for the plugin.",
@@ -514,7 +577,7 @@
     "permission_sets": {},
     "global_scope_schema": null
   },
-  "resources": {
+  "core:resources": {
     "default_permission": {
       "identifier": "default",
       "description": "Default permissions for the plugin.",
@@ -535,119 +598,23 @@
     "permission_sets": {},
     "global_scope_schema": null
   },
-  "shell": {
-    "default_permission": null,
-    "permissions": {
-      "allow-execute": {
-        "identifier": "allow-execute",
-        "description": "Enables the execute command without any pre-configured scope.",
-        "commands": { "allow": ["execute"], "deny": [] }
-      },
-      "allow-kill": {
-        "identifier": "allow-kill",
-        "description": "Enables the kill command without any pre-configured scope.",
-        "commands": { "allow": ["kill"], "deny": [] }
-      },
-      "allow-open": {
-        "identifier": "allow-open",
-        "description": "Enables the open command without any pre-configured scope.",
-        "commands": { "allow": ["open"], "deny": [] }
-      },
-      "allow-stdin-write": {
-        "identifier": "allow-stdin-write",
-        "description": "Enables the stdin_write command without any pre-configured scope.",
-        "commands": { "allow": ["stdin_write"], "deny": [] }
-      },
-      "deny-execute": {
-        "identifier": "deny-execute",
-        "description": "Denies the execute command without any pre-configured scope.",
-        "commands": { "allow": [], "deny": ["execute"] }
-      },
-      "deny-kill": {
-        "identifier": "deny-kill",
-        "description": "Denies the kill command without any pre-configured scope.",
-        "commands": { "allow": [], "deny": ["kill"] }
-      },
-      "deny-open": {
-        "identifier": "deny-open",
-        "description": "Denies the open command without any pre-configured scope.",
-        "commands": { "allow": [], "deny": ["open"] }
-      },
-      "deny-stdin-write": {
-        "identifier": "deny-stdin-write",
-        "description": "Denies the stdin_write command without any pre-configured scope.",
-        "commands": { "allow": [], "deny": ["stdin_write"] }
-      }
-    },
-    "permission_sets": {},
-    "global_scope_schema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "definitions": {
-        "ShellAllowedArg": {
-          "anyOf": [
-            {
-              "description": "A non-configurable argument that is passed to the command in the order it was specified.",
-              "type": "string"
-            },
-            {
-              "additionalProperties": false,
-              "description": "A variable that is set while calling the command from the webview API.",
-              "properties": {
-                "validator": {
-                  "description": "[regex] validator to require passed values to conform to an expected input.\n\nThis will require the argument value passed to this variable to match the `validator` regex before it will be executed.\n\n[regex]: https://docs.rs/regex/latest/regex/#syntax",
-                  "type": "string"
-                }
-              },
-              "required": ["validator"],
-              "type": "object"
-            }
-          ],
-          "description": "A command argument allowed to be executed by the webview API."
-        },
-        "ShellAllowedArgs": {
-          "anyOf": [
-            {
-              "description": "Use a simple boolean to allow all or disable all arguments to this command configuration.",
-              "type": "boolean"
-            },
-            {
-              "description": "A specific set of [`ShellAllowedArg`] that are valid to call for the command configuration.",
-              "items": { "$ref": "#/definitions/ShellAllowedArg" },
-              "type": "array"
-            }
-          ],
-          "description": "A set of command arguments allowed to be executed by the webview API.\n\nA value of `true` will allow any arguments to be passed to the command. `false` will disable all arguments. A list of [`ShellAllowedArg`] will set those arguments as the only valid arguments to be passed to the attached command configuration."
-        }
-      },
-      "description": "A command allowed to be executed by the webview API.",
-      "properties": {
-        "args": {
-          "allOf": [{ "$ref": "#/definitions/ShellAllowedArgs" }],
-          "description": "The allowed arguments for the command execution."
-        },
-        "cmd": {
-          "description": "The command name. It can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$APP`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
-          "type": "string"
-        },
-        "name": {
-          "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
-          "type": "string"
-        },
-        "sidecar": {
-          "description": "If this command is a sidecar command.",
-          "type": "boolean"
-        }
-      },
-      "required": ["args", "cmd", "name", "sidecar"],
-      "title": "Entry",
-      "type": "object"
-    }
-  },
-  "tray": {
+  "core:tray": {
     "default_permission": {
       "identifier": "default",
       "description": "Default permissions for the plugin.",
-      "permissions": []
+      "permissions": [
+        "allow-new",
+        "allow-get-by-id",
+        "allow-remove-by-id",
+        "allow-set-icon",
+        "allow-set-menu",
+        "allow-set-tooltip",
+        "allow-set-title",
+        "allow-set-visible",
+        "allow-set-temp-dir-path",
+        "allow-set-icon-as-template",
+        "allow-set-show-menu-on-left-click"
+      ]
     },
     "permissions": {
       "allow-get-by-id": {
@@ -764,17 +731,23 @@
     "permission_sets": {},
     "global_scope_schema": null
   },
-  "webview": {
+  "core:webview": {
     "default_permission": {
       "identifier": "default",
       "description": "Default permissions for the plugin.",
       "permissions": [
+        "allow-get-all-webviews",
         "allow-webview-position",
         "allow-webview-size",
         "allow-internal-toggle-devtools"
       ]
     },
     "permissions": {
+      "allow-clear-all-browsing-data": {
+        "identifier": "allow-clear-all-browsing-data",
+        "description": "Enables the clear_all_browsing_data command without any pre-configured scope.",
+        "commands": { "allow": ["clear_all_browsing_data"], "deny": [] }
+      },
       "allow-create-webview": {
         "identifier": "allow-create-webview",
         "description": "Enables the create_webview command without any pre-configured scope.",
@@ -784,6 +757,11 @@
         "identifier": "allow-create-webview-window",
         "description": "Enables the create_webview_window command without any pre-configured scope.",
         "commands": { "allow": ["create_webview_window"], "deny": [] }
+      },
+      "allow-get-all-webviews": {
+        "identifier": "allow-get-all-webviews",
+        "description": "Enables the get_all_webviews command without any pre-configured scope.",
+        "commands": { "allow": ["get_all_webviews"], "deny": [] }
       },
       "allow-internal-toggle-devtools": {
         "identifier": "allow-internal-toggle-devtools",
@@ -815,20 +793,40 @@
         "description": "Enables the set_webview_size command without any pre-configured scope.",
         "commands": { "allow": ["set_webview_size"], "deny": [] }
       },
+      "allow-set-webview-zoom": {
+        "identifier": "allow-set-webview-zoom",
+        "description": "Enables the set_webview_zoom command without any pre-configured scope.",
+        "commands": { "allow": ["set_webview_zoom"], "deny": [] }
+      },
       "allow-webview-close": {
         "identifier": "allow-webview-close",
         "description": "Enables the webview_close command without any pre-configured scope.",
         "commands": { "allow": ["webview_close"], "deny": [] }
+      },
+      "allow-webview-hide": {
+        "identifier": "allow-webview-hide",
+        "description": "Enables the webview_hide command without any pre-configured scope.",
+        "commands": { "allow": ["webview_hide"], "deny": [] }
       },
       "allow-webview-position": {
         "identifier": "allow-webview-position",
         "description": "Enables the webview_position command without any pre-configured scope.",
         "commands": { "allow": ["webview_position"], "deny": [] }
       },
+      "allow-webview-show": {
+        "identifier": "allow-webview-show",
+        "description": "Enables the webview_show command without any pre-configured scope.",
+        "commands": { "allow": ["webview_show"], "deny": [] }
+      },
       "allow-webview-size": {
         "identifier": "allow-webview-size",
         "description": "Enables the webview_size command without any pre-configured scope.",
         "commands": { "allow": ["webview_size"], "deny": [] }
+      },
+      "deny-clear-all-browsing-data": {
+        "identifier": "deny-clear-all-browsing-data",
+        "description": "Denies the clear_all_browsing_data command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["clear_all_browsing_data"] }
       },
       "deny-create-webview": {
         "identifier": "deny-create-webview",
@@ -839,6 +837,11 @@
         "identifier": "deny-create-webview-window",
         "description": "Denies the create_webview_window command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["create_webview_window"] }
+      },
+      "deny-get-all-webviews": {
+        "identifier": "deny-get-all-webviews",
+        "description": "Denies the get_all_webviews command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["get_all_webviews"] }
       },
       "deny-internal-toggle-devtools": {
         "identifier": "deny-internal-toggle-devtools",
@@ -870,15 +873,30 @@
         "description": "Denies the set_webview_size command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["set_webview_size"] }
       },
+      "deny-set-webview-zoom": {
+        "identifier": "deny-set-webview-zoom",
+        "description": "Denies the set_webview_zoom command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["set_webview_zoom"] }
+      },
       "deny-webview-close": {
         "identifier": "deny-webview-close",
         "description": "Denies the webview_close command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["webview_close"] }
       },
+      "deny-webview-hide": {
+        "identifier": "deny-webview-hide",
+        "description": "Denies the webview_hide command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["webview_hide"] }
+      },
       "deny-webview-position": {
         "identifier": "deny-webview-position",
         "description": "Denies the webview_position command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["webview_position"] }
+      },
+      "deny-webview-show": {
+        "identifier": "deny-webview-show",
+        "description": "Denies the webview_show command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["webview_show"] }
       },
       "deny-webview-size": {
         "identifier": "deny-webview-size",
@@ -889,11 +907,12 @@
     "permission_sets": {},
     "global_scope_schema": null
   },
-  "window": {
+  "core:window": {
     "default_permission": {
       "identifier": "default",
       "description": "Default permissions for the plugin.",
       "permissions": [
+        "allow-get-all-windows",
         "allow-scale-factor",
         "allow-inner-position",
         "allow-outer-position",
@@ -909,10 +928,13 @@
         "allow-is-minimizable",
         "allow-is-closable",
         "allow-is-visible",
+        "allow-is-enabled",
         "allow-title",
         "allow-current-monitor",
         "allow-primary-monitor",
+        "allow-monitor-from-point",
         "allow-available-monitors",
+        "allow-cursor-position",
         "allow-theme",
         "allow-internal-toggle-maximize"
       ]
@@ -943,10 +965,20 @@
         "description": "Enables the current_monitor command without any pre-configured scope.",
         "commands": { "allow": ["current_monitor"], "deny": [] }
       },
+      "allow-cursor-position": {
+        "identifier": "allow-cursor-position",
+        "description": "Enables the cursor_position command without any pre-configured scope.",
+        "commands": { "allow": ["cursor_position"], "deny": [] }
+      },
       "allow-destroy": {
         "identifier": "allow-destroy",
         "description": "Enables the destroy command without any pre-configured scope.",
         "commands": { "allow": ["destroy"], "deny": [] }
+      },
+      "allow-get-all-windows": {
+        "identifier": "allow-get-all-windows",
+        "description": "Enables the get_all_windows command without any pre-configured scope.",
+        "commands": { "allow": ["get_all_windows"], "deny": [] }
       },
       "allow-hide": {
         "identifier": "allow-hide",
@@ -977,6 +1009,11 @@
         "identifier": "allow-is-decorated",
         "description": "Enables the is_decorated command without any pre-configured scope.",
         "commands": { "allow": ["is_decorated"], "deny": [] }
+      },
+      "allow-is-enabled": {
+        "identifier": "allow-is-enabled",
+        "description": "Enables the is_enabled command without any pre-configured scope.",
+        "commands": { "allow": ["is_enabled"], "deny": [] }
       },
       "allow-is-focused": {
         "identifier": "allow-is-focused",
@@ -1027,6 +1064,11 @@
         "identifier": "allow-minimize",
         "description": "Enables the minimize command without any pre-configured scope.",
         "commands": { "allow": ["minimize"], "deny": [] }
+      },
+      "allow-monitor-from-point": {
+        "identifier": "allow-monitor-from-point",
+        "description": "Enables the monitor_from_point command without any pre-configured scope.",
+        "commands": { "allow": ["monitor_from_point"], "deny": [] }
       },
       "allow-outer-position": {
         "identifier": "allow-outer-position",
@@ -1103,6 +1145,11 @@
         "description": "Enables the set_effects command without any pre-configured scope.",
         "commands": { "allow": ["set_effects"], "deny": [] }
       },
+      "allow-set-enabled": {
+        "identifier": "allow-set-enabled",
+        "description": "Enables the set_enabled command without any pre-configured scope.",
+        "commands": { "allow": ["set_enabled"], "deny": [] }
+      },
       "allow-set-focus": {
         "identifier": "allow-set-focus",
         "description": "Enables the set_focus command without any pre-configured scope.",
@@ -1168,15 +1215,30 @@
         "description": "Enables the set_size command without any pre-configured scope.",
         "commands": { "allow": ["set_size"], "deny": [] }
       },
+      "allow-set-size-constraints": {
+        "identifier": "allow-set-size-constraints",
+        "description": "Enables the set_size_constraints command without any pre-configured scope.",
+        "commands": { "allow": ["set_size_constraints"], "deny": [] }
+      },
       "allow-set-skip-taskbar": {
         "identifier": "allow-set-skip-taskbar",
         "description": "Enables the set_skip_taskbar command without any pre-configured scope.",
         "commands": { "allow": ["set_skip_taskbar"], "deny": [] }
       },
+      "allow-set-theme": {
+        "identifier": "allow-set-theme",
+        "description": "Enables the set_theme command without any pre-configured scope.",
+        "commands": { "allow": ["set_theme"], "deny": [] }
+      },
       "allow-set-title": {
         "identifier": "allow-set-title",
         "description": "Enables the set_title command without any pre-configured scope.",
         "commands": { "allow": ["set_title"], "deny": [] }
+      },
+      "allow-set-title-bar-style": {
+        "identifier": "allow-set-title-bar-style",
+        "description": "Enables the set_title_bar_style command without any pre-configured scope.",
+        "commands": { "allow": ["set_title_bar_style"], "deny": [] }
       },
       "allow-set-visible-on-all-workspaces": {
         "identifier": "allow-set-visible-on-all-workspaces",
@@ -1192,6 +1254,11 @@
         "identifier": "allow-start-dragging",
         "description": "Enables the start_dragging command without any pre-configured scope.",
         "commands": { "allow": ["start_dragging"], "deny": [] }
+      },
+      "allow-start-resize-dragging": {
+        "identifier": "allow-start-resize-dragging",
+        "description": "Enables the start_resize_dragging command without any pre-configured scope.",
+        "commands": { "allow": ["start_resize_dragging"], "deny": [] }
       },
       "allow-theme": {
         "identifier": "allow-theme",
@@ -1243,10 +1310,20 @@
         "description": "Denies the current_monitor command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["current_monitor"] }
       },
+      "deny-cursor-position": {
+        "identifier": "deny-cursor-position",
+        "description": "Denies the cursor_position command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["cursor_position"] }
+      },
       "deny-destroy": {
         "identifier": "deny-destroy",
         "description": "Denies the destroy command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["destroy"] }
+      },
+      "deny-get-all-windows": {
+        "identifier": "deny-get-all-windows",
+        "description": "Denies the get_all_windows command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["get_all_windows"] }
       },
       "deny-hide": {
         "identifier": "deny-hide",
@@ -1277,6 +1354,11 @@
         "identifier": "deny-is-decorated",
         "description": "Denies the is_decorated command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["is_decorated"] }
+      },
+      "deny-is-enabled": {
+        "identifier": "deny-is-enabled",
+        "description": "Denies the is_enabled command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["is_enabled"] }
       },
       "deny-is-focused": {
         "identifier": "deny-is-focused",
@@ -1327,6 +1409,11 @@
         "identifier": "deny-minimize",
         "description": "Denies the minimize command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["minimize"] }
+      },
+      "deny-monitor-from-point": {
+        "identifier": "deny-monitor-from-point",
+        "description": "Denies the monitor_from_point command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["monitor_from_point"] }
       },
       "deny-outer-position": {
         "identifier": "deny-outer-position",
@@ -1403,6 +1490,11 @@
         "description": "Denies the set_effects command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["set_effects"] }
       },
+      "deny-set-enabled": {
+        "identifier": "deny-set-enabled",
+        "description": "Denies the set_enabled command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["set_enabled"] }
+      },
       "deny-set-focus": {
         "identifier": "deny-set-focus",
         "description": "Denies the set_focus command without any pre-configured scope.",
@@ -1468,15 +1560,30 @@
         "description": "Denies the set_size command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["set_size"] }
       },
+      "deny-set-size-constraints": {
+        "identifier": "deny-set-size-constraints",
+        "description": "Denies the set_size_constraints command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["set_size_constraints"] }
+      },
       "deny-set-skip-taskbar": {
         "identifier": "deny-set-skip-taskbar",
         "description": "Denies the set_skip_taskbar command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["set_skip_taskbar"] }
       },
+      "deny-set-theme": {
+        "identifier": "deny-set-theme",
+        "description": "Denies the set_theme command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["set_theme"] }
+      },
       "deny-set-title": {
         "identifier": "deny-set-title",
         "description": "Denies the set_title command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["set_title"] }
+      },
+      "deny-set-title-bar-style": {
+        "identifier": "deny-set-title-bar-style",
+        "description": "Denies the set_title_bar_style command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["set_title_bar_style"] }
       },
       "deny-set-visible-on-all-workspaces": {
         "identifier": "deny-set-visible-on-all-workspaces",
@@ -1492,6 +1599,11 @@
         "identifier": "deny-start-dragging",
         "description": "Denies the start_dragging command without any pre-configured scope.",
         "commands": { "allow": [], "deny": ["start_dragging"] }
+      },
+      "deny-start-resize-dragging": {
+        "identifier": "deny-start-resize-dragging",
+        "description": "Denies the start_resize_dragging command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["start_resize_dragging"] }
       },
       "deny-theme": {
         "identifier": "deny-theme",
@@ -1521,5 +1633,152 @@
     },
     "permission_sets": {},
     "global_scope_schema": null
+  },
+  "shell": {
+    "default_permission": {
+      "identifier": "default",
+      "description": "This permission set configures which\nshell functionality is exposed by default.\n\n#### Granted Permissions\n\nIt allows to use the `open` functionality without any specific\nscope pre-configured. It will allow opening `http(s)://`,\n`tel:` and `mailto:` links.\n",
+      "permissions": ["allow-open"]
+    },
+    "permissions": {
+      "allow-execute": {
+        "identifier": "allow-execute",
+        "description": "Enables the execute command without any pre-configured scope.",
+        "commands": { "allow": ["execute"], "deny": [] }
+      },
+      "allow-kill": {
+        "identifier": "allow-kill",
+        "description": "Enables the kill command without any pre-configured scope.",
+        "commands": { "allow": ["kill"], "deny": [] }
+      },
+      "allow-open": {
+        "identifier": "allow-open",
+        "description": "Enables the open command without any pre-configured scope.",
+        "commands": { "allow": ["open"], "deny": [] }
+      },
+      "allow-spawn": {
+        "identifier": "allow-spawn",
+        "description": "Enables the spawn command without any pre-configured scope.",
+        "commands": { "allow": ["spawn"], "deny": [] }
+      },
+      "allow-stdin-write": {
+        "identifier": "allow-stdin-write",
+        "description": "Enables the stdin_write command without any pre-configured scope.",
+        "commands": { "allow": ["stdin_write"], "deny": [] }
+      },
+      "deny-execute": {
+        "identifier": "deny-execute",
+        "description": "Denies the execute command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["execute"] }
+      },
+      "deny-kill": {
+        "identifier": "deny-kill",
+        "description": "Denies the kill command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["kill"] }
+      },
+      "deny-open": {
+        "identifier": "deny-open",
+        "description": "Denies the open command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["open"] }
+      },
+      "deny-spawn": {
+        "identifier": "deny-spawn",
+        "description": "Denies the spawn command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["spawn"] }
+      },
+      "deny-stdin-write": {
+        "identifier": "deny-stdin-write",
+        "description": "Denies the stdin_write command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["stdin_write"] }
+      }
+    },
+    "permission_sets": {},
+    "global_scope_schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "args": {
+              "allOf": [{ "$ref": "#/definitions/ShellScopeEntryAllowedArgs" }],
+              "description": "The allowed arguments for the command execution."
+            },
+            "cmd": {
+              "description": "The command name. It can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
+              "type": "string"
+            },
+            "name": {
+              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
+              "type": "string"
+            }
+          },
+          "required": ["cmd", "name"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "args": {
+              "allOf": [{ "$ref": "#/definitions/ShellScopeEntryAllowedArgs" }],
+              "description": "The allowed arguments for the command execution."
+            },
+            "name": {
+              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
+              "type": "string"
+            },
+            "sidecar": {
+              "description": "If this command is a sidecar command.",
+              "type": "boolean"
+            }
+          },
+          "required": ["name", "sidecar"],
+          "type": "object"
+        }
+      ],
+      "definitions": {
+        "ShellScopeEntryAllowedArg": {
+          "anyOf": [
+            {
+              "description": "A non-configurable argument that is passed to the command in the order it was specified.",
+              "type": "string"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A variable that is set while calling the command from the webview API.",
+              "properties": {
+                "raw": {
+                  "default": false,
+                  "description": "Marks the validator as a raw regex, meaning the plugin should not make any modification at runtime.\n\nThis means the regex will not match on the entire string by default, which might be exploited if your regex allow unexpected input to be considered valid. When using this option, make sure your regex is correct.",
+                  "type": "boolean"
+                },
+                "validator": {
+                  "description": "[regex] validator to require passed values to conform to an expected input.\n\nThis will require the argument value passed to this variable to match the `validator` regex before it will be executed.\n\nThe regex string is by default surrounded by `^...$` to match the full string. For example the `https?://\\w+` regex would be registered as `^https?://\\w+$`.\n\n[regex]: <https://docs.rs/regex/latest/regex/#syntax>",
+                  "type": "string"
+                }
+              },
+              "required": ["validator"],
+              "type": "object"
+            }
+          ],
+          "description": "A command argument allowed to be executed by the webview API."
+        },
+        "ShellScopeEntryAllowedArgs": {
+          "anyOf": [
+            {
+              "description": "Use a simple boolean to allow all or disable all arguments to this command configuration.",
+              "type": "boolean"
+            },
+            {
+              "description": "A specific set of [`ShellScopeEntryAllowedArg`] that are valid to call for the command configuration.",
+              "items": { "$ref": "#/definitions/ShellScopeEntryAllowedArg" },
+              "type": "array"
+            }
+          ],
+          "description": "A set of command arguments allowed to be executed by the webview API.\n\nA value of `true` will allow any arguments to be passed to the command. `false` will disable all arguments. A list of [`ShellScopeEntryAllowedArg`] will set those arguments as the only valid arguments to be passed to the attached command configuration."
+        }
+      },
+      "description": "Shell scope entry.",
+      "title": "ShellScopeEntry"
+    }
   }
 }

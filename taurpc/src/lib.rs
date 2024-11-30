@@ -6,6 +6,7 @@
 
 pub extern crate serde;
 pub extern crate specta;
+pub extern crate specta_macros;
 
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use tokio::sync::broadcast::Sender;
@@ -79,8 +80,7 @@ pub fn create_ipc_handler<H>(
 where
     H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
 {
-    let args_map = HashMap::from([(H::PATH_PREFIX, H::args_map())]);
-    let args_map = serde_json::to_string(&args_map).unwrap();
+    let args_map = HashMap::from([(H::PATH_PREFIX.to_string(), H::args_map())]);
     #[cfg(debug_assertions)] // Only export in development builds
     export_types(
         H::EXPORT_PATH,
@@ -206,7 +206,7 @@ impl EventTrigger {
 pub struct Router {
     handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
     export_path: Option<&'static str>,
-    args_map_json: HashMap<&'static str, String>,
+    args_map_json: HashMap<String, String>,
     handler_paths: Vec<(&'static str, &'static str)>,
 }
 
@@ -228,7 +228,8 @@ impl Router {
         }
 
         self.handler_paths.push((H::PATH_PREFIX, H::TRAIT_NAME));
-        self.args_map_json.insert(H::PATH_PREFIX, H::args_map());
+        self.args_map_json
+            .insert(H::PATH_PREFIX.to_string(), H::args_map());
         self.handlers
             .insert(H::PATH_PREFIX.to_string(), handler.spawn());
         self
@@ -244,13 +245,11 @@ impl Router {
     ///     .expect("error while running tauri application");
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) -> bool {
-        let args_map = serde_json::to_string(&self.args_map_json).unwrap();
-
         #[cfg(debug_assertions)] // Only export in development builds
         export_types(
             self.export_path.clone(),
             self.handler_paths.clone(),
-            args_map,
+            self.args_map_json.clone(),
         );
 
         move |invoke: Invoke<tauri::Wry>| self.on_command(invoke)
