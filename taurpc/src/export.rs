@@ -25,7 +25,7 @@ export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 pub(super) fn export_types(
     export_path: Option<&'static str>,
     handlers: Vec<(&'static str, &'static str)>,
-    args_map: String,
+    args_map: HashMap<String, String>,
 ) {
     let export_path = export_path.map(|p| p.to_string()).unwrap_or(
         std::env::current_dir()
@@ -55,8 +55,7 @@ pub(super) fn export_types(
         .open(path)
         .unwrap();
 
-    let args_hash: HashMap<String, String> = serde_json::from_str(&args_map).unwrap();
-    let args_entries: String = args_hash
+    let args_entries: String = args_map
         .iter()
         .map(|(k, v)| format!("'{}':'{}'", k, v))
         .join(", ");

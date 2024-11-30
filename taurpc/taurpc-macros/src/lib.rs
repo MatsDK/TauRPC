@@ -35,7 +35,7 @@ pub fn ipc_type(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
 
     quote! {
-        #[derive(taurpc::serde::Serialize, taurpc::serde::Deserialize, specta_macros::Type, Clone)]
+        #[derive(taurpc::serde::Serialize, taurpc::serde::Deserialize, taurpc::specta_macros::Type, Clone)]
         #input
     }
     .into()

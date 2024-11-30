@@ -66,10 +66,10 @@ export type User = {
 
 const ARGS_MAP = {
   'events':
-    '{"state_changed":["new_state"],"vec_test":["args"],"test_ev":[],"multiple_args":["arg1","arg2"]}',
-  '':
-    '{"test_option":[],"with_sleep":[],"get_app_handle":[],"test_result":["user"],"vec_test":["arg"],"multiple_args":["arg","arg2"],"ev":["updated_value"],"get_window":[],"update_state":["new_value"],"test_io":["user"],"method_with_alias":[]}',
+    '{"multiple_args":["arg1","arg2"],"state_changed":["new_state"],"vec_test":["args"],"test_ev":[]}',
   'api.ui': '{"trigger":[],"test_ev":[]}',
+  '':
+    '{"get_window":[],"test_io":["user"],"vec_test":["arg"],"with_sleep":[],"get_app_handle":[],"test_result":["user"],"update_state":["new_value"],"method_with_alias":[],"test_option":[],"ev":["updated_value"],"multiple_args":["arg","arg2"]}',
 }
 import { createTauRPCProxy as createProxy } from 'taurpc'
 
