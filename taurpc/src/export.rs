@@ -1,8 +1,8 @@
+use itertools::Itertools;
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::Path;
-use itertools::Itertools;
 
 static PACKAGE_JSON: &str = r#"
 {
@@ -55,13 +55,13 @@ pub(super) fn export_types(
         .open(path)
         .unwrap();
 
-    let args_hash: HashMap<String,String> = serde_json::from_str(&args_map).unwrap();
+    let args_hash: HashMap<String, String> = serde_json::from_str(&args_map).unwrap();
     let args_entries: String = args_hash
-                .iter()
-                .map(|(k, v)| format!("'{}':'{}'", k, v))
-                .join(", ");
+        .iter()
+        .map(|(k, v)| format!("'{}':'{}'", k, v))
+        .join(", ");
     let router_args = format!("{{{}}}", args_entries);
-             
+
     file.write_all(format!("const ARGS_MAP = {}", router_args).as_bytes())
         .unwrap();
     file.write_all(BOILERPLATE_TS_CODE.as_bytes()).unwrap();
