@@ -4,8 +4,6 @@ use std::io::prelude::*;
 use std::path::Path;
 use itertools::Itertools;
 
-use specta_typescript::BigIntExportBehavior;
-
 static PACKAGE_JSON: &str = r#"
 {
     "name": ".taurpc",
@@ -48,9 +46,7 @@ pub(super) fn export_types(
     }
 
     specta_util::export()
-        .export_to(specta_typescript::Typescript::default()
-        .bigint(BigIntExportBehavior::String)
-        .formatter(specta_typescript::formatter::biome), path)
+        .export_to(specta_typescript::Typescript::default(), path)
         .unwrap();
 
     let mut file = OpenOptions::new()
