@@ -19,6 +19,7 @@ taurpc = "0.3.1"
 
 specta = { version = "=2.0.0-rc.20", features = ["derive"] }
 specta-util = { version = "0.0.7", features = ["export"] }
+# specta-typescript = "0.0.7"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -237,7 +238,7 @@ const unlisten = taurpc.events.event.on(() => {
 # Typescript export configuration
 
 You can specify a `Specta` typescript export configuration on the `Router`. These options will overwrite `Specta`'s defaults. Make sure to install the latest version of `specta_typescript`.
-All available options can be found in [`specta_typescript` docs](https://docs.rs/specta-typescript/latest/specta_typescript/struct.Typescript.html).
+All available options can be found in [specta_typescript's docs](https://docs.rs/specta-typescript/latest/specta_typescript/struct.Typescript.html).
 
 ```rust
 let router = Router::new()
@@ -249,7 +250,6 @@ let router = Router::new()
     )
     .merge(ApiImpl.into_handler())
     .merge(EventsImpl.into_handler());
-
 ```
 
 # Calling the frontend
