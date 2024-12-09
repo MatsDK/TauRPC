@@ -234,6 +234,24 @@ const unlisten = taurpc.events.event.on(() => {
 })
 ```
 
+# Typescript export configuration
+
+You can specify a `Specta` typescript export configuration on the `Router`. These options will overwrite `Specta`'s defaults. Make sure to install the latest version of `specta_typescript`.
+All available options can be found in [`specta_typescript` docs](https://docs.rs/specta-typescript/latest/specta_typescript/struct.Typescript.html).
+
+```rust
+let router = Router::new()
+    .export_config(
+        specta_typescript::Typescript::default()
+            .remove_default_header()
+            .header("// My header\n")
+            .bigint(specta_typescript::BigIntExportBehavior::String),
+    )
+    .merge(ApiImpl.into_handler())
+    .merge(EventsImpl.into_handler());
+
+```
+
 # Calling the frontend
 
 Trigger [events](https://tauri.app/v1/guides/features/events/) on your TypeScript frontend from your Rust backend with a fully-typed experience.
