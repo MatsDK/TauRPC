@@ -217,6 +217,20 @@ impl Router {
         Self::default()
     }
 
+    /// Overwrite `specta` default TypeScript export options, look at the docs for
+    /// `specta_typescript::Typescript` for all the configuration options.
+    ///
+    /// Example:
+    /// ```rust
+    ///    let router = Router::new()
+    ///        .export_config(
+    ///            specta_typescript::Typescript::default()
+    ///                .remove_default_header()
+    ///                .header("// My header\n")
+    ///                .bigint(specta_typescript::BigIntExportBehavior::String),
+    ///        )
+    ///        .merge(...);
+    /// ```
     pub fn export_config(mut self, config: specta_typescript::Typescript) -> Self {
         self.export_config = config;
         self
@@ -225,9 +239,9 @@ impl Router {
     /// Add routes to the router, accepts a struct for which a `#[taurpc::procedures]` trait is implemented
     ///
     /// ```rust
-    ///   let router = Router::new()
-    ///     .merge(ApiImpl.into_handler())
-    ///     .merge(EventsImpl.into_handler());
+    ///    let router = Router::new()
+    ///      .merge(ApiImpl.into_handler())
+    ///      .merge(EventsImpl.into_handler());
     /// ```
     pub fn merge<H: TauRpcHandler<tauri::Wry>>(mut self, handler: H) -> Self {
         if let Some(path) = H::EXPORT_PATH {
@@ -246,10 +260,10 @@ impl Router {
     /// and generate the corresponding types. Use this inside `.invoke_handler()` on the tauri::Builder.
     ///
     /// ```rust
-    ///   tauri::Builder::default()
-    ///     .invoke_handler(router.into_handler())
-    ///     .run(tauri::generate_context!())
-    ///     .expect("error while running tauri application");
+    ///    tauri::Builder::default()
+    ///      .invoke_handler(router.into_handler())
+    ///      .run(tauri::generate_context!())
+    ///      .expect("error while running tauri application");
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) -> bool {
         #[cfg(debug_assertions)] // Only export in development builds
