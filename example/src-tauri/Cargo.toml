@@ -23,5 +23,5 @@ taurpc = { path = "../../taurpc" }
 specta = { version = "=2.0.0-rc.20", features = ["derive"] }
 # specta-macros = { version = "2.0.0-rc.17" }
 # specta-serde = { version = "0.0.7", features = [] }
-# specta-typescript = { version = "0.0.7", features = ["function"] }
+specta-typescript = { version = "0.0.7", features = [] }
 specta-util = { version = "0.0.7", features = ["export"] }

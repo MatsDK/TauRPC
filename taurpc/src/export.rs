@@ -26,6 +26,7 @@ pub(super) fn export_types(
     export_path: Option<&'static str>,
     handlers: Vec<(&'static str, &'static str)>,
     args_map: HashMap<String, String>,
+    export_config: specta_typescript::Typescript,
 ) {
     let export_path = export_path.map(|p| p.to_string()).unwrap_or(
         std::env::current_dir()
@@ -45,15 +46,15 @@ pub(super) fn export_types(
         std::fs::create_dir_all(parent).unwrap();
     }
 
-    specta_util::export()
-        .export_to(specta_typescript::Typescript::default(), path)
-        .unwrap();
+    let types = specta_util::export().export(export_config).unwrap();
 
     let mut file = OpenOptions::new()
+        .truncate(true)
         .write(true)
-        .append(true)
         .open(path)
         .unwrap();
+
+    file.write_all(types.as_bytes()).unwrap();
 
     let args_entries: String = args_map
         .iter()

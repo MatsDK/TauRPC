@@ -86,6 +86,7 @@ where
         H::EXPORT_PATH,
         vec![(H::PATH_PREFIX, H::TRAIT_NAME)],
         args_map,
+        specta_typescript::Typescript::default(),
     );
 
     move |invoke: Invoke<tauri::Wry>| {
@@ -208,11 +209,17 @@ pub struct Router {
     export_path: Option<&'static str>,
     args_map_json: HashMap<String, String>,
     handler_paths: Vec<(&'static str, &'static str)>,
+    export_config: specta_typescript::Typescript,
 }
 
 impl Router {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn export_config(mut self, config: specta_typescript::Typescript) -> Self {
+        self.export_config = config;
+        self
     }
 
     /// Add routes to the router, accepts a struct for which a `#[taurpc::procedures]` trait is implemented
@@ -250,6 +257,7 @@ impl Router {
             self.export_path.clone(),
             self.handler_paths.clone(),
             self.args_map_json.clone(),
+            self.export_config.clone(),
         );
 
         move |invoke: Invoke<tauri::Wry>| self.on_command(invoke)

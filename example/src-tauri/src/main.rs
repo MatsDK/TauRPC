@@ -68,6 +68,8 @@ trait Api {
     async fn vec_test(arg: Vec<String>);
 
     async fn multiple_args(arg: Vec<String>, arg2: String);
+
+    async fn test_bigint(num: i64) -> i64;
 }
 
 #[derive(Clone)]
@@ -123,6 +125,10 @@ impl Api for ApiImpl {
     async fn vec_test(self, arg: Vec<String>) {}
 
     async fn multiple_args(self, arg: Vec<String>, arg2: String) {}
+
+    async fn test_bigint(self, num: i64) -> i64 {
+        num
+    }
 }
 
 #[taurpc::procedures(path = "events", export_to = "../src/lib/bindings.ts")]
@@ -199,6 +205,12 @@ async fn main() {
     });
 
     let router = Router::new()
+        .export_config(
+            specta_typescript::Typescript::default()
+                .remove_default_header()
+                .header("// My header\n")
+                .bigint(specta_typescript::BigIntExportBehavior::String),
+        )
         .merge(
             ApiImpl {
                 state: Arc::new(Mutex::new("state".to_string())),
