@@ -38,12 +38,16 @@ pub(super) fn export_types(
     );
     let path = Path::new(&export_path);
 
-    if path.is_dir() {
+    if path.is_dir() || !export_path.ends_with(".ts") {
         panic!("`export_to` path should be a ts file");
     }
 
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).unwrap();
+    }
+
+    if !path.exists() {
+        std::fs::File::create(path).unwrap();
     }
 
     let types = specta_util::export().export(export_config).unwrap();
