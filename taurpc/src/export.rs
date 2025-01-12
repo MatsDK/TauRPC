@@ -46,13 +46,10 @@ pub(super) fn export_types(
         std::fs::create_dir_all(parent).unwrap();
     }
 
-    if !path.exists() {
-        std::fs::File::create(path).unwrap();
-    }
-
     let types = specta_util::export().export(export_config).unwrap();
 
     let mut file = OpenOptions::new()
+        .create(true)
         .truncate(true)
         .write(true)
         .open(path)
