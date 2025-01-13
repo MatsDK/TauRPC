@@ -118,7 +118,7 @@ const nestedProxy = (
           get: (_target, prop, _receiver) => {
             if (prop !== 'on') return
 
-            let event_name = nested_path.join('.')
+            const event_name = nested_path.join('.')
             return (listener: (args: unknown) => void) => {
               return listen(
                 TAURPC_EVENT_NAME,
