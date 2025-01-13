@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { type EventCallback, listen } from '@tauri-apps/api/event'
+import { type EventCallback, listen, UnlistenFn } from '@tauri-apps/api/event'
 
 type TauRpcInputs = { proc_name: string; input_type: unknown }
 type TauRpcOutputs = { proc_name: string; output_type: unknown }
@@ -40,14 +40,12 @@ type ListenerFn<
   : TInput extends SingleParam ? ((p: TInput['__taurpc_type']) => void)
   : (() => void)
 
-type UnlistenFn = () => void
-
 type InvokeLayer<
   TRoutes extends RoutesLayer,
   TProcedures extends string = TRoutes[0]['proc_name'],
 > = {
   [TProc in TProcedures]: InvokeFn<TRoutes, TProc> & {
-    on: (listener: ListenerFn<TRoutes, TProc>) => UnlistenFn
+    on: (listener: ListenerFn<TRoutes, TProc>) => Promise<UnlistenFn>
   }
 }
 
@@ -90,45 +88,20 @@ type Payload = {
   event_name: string
   event: { proc_name: string; input_type: unknown }
 }
+type ListenFn = (args: unknown) => void
+type ArgsMap = Record<string, Record<string, string[]>>
 
-type Listeners = Map<string, (args: unknown) => void>
 const TAURPC_EVENT_NAME = 'TauRpc_event'
 
-const createTauRPCProxy = async <TRouter extends Router>(
+const createTauRPCProxy = <TRouter extends Router>(
   args: Record<string, string>,
 ) => {
   const args_map = parseArgsMap(args)
-  const listeners: Listeners = new Map()
-
-  const event_handler: EventCallback<Payload> = (event) => {
-    const path_segments = event.payload.event_name.split('.')
-    const ev = path_segments.pop()
-    if (!ev) return
-
-    const args = args_map[path_segments.join('.')]?.[ev]
-    if (!args) return
-
-    const listener = listeners.get(event.payload.event_name)
-    if (!listener) return
-
-    if (args.length === 1) {
-      listener(event.payload.event.input_type)
-    } else if (Array.isArray(event.payload.event.input_type)) {
-      const _ = (listener as ((...args: unknown[]) => void))(
-        ...event.payload.event.input_type as unknown[],
-      )
-    } else {
-      listener(event.payload.event.input_type)
-    }
-  }
-
-  await listen(TAURPC_EVENT_NAME, event_handler)
-  return nestedProxy(args_map, listeners) as TauRpcProxy<TRouter>
+  return nestedProxy(args_map) as TauRpcProxy<TRouter>
 }
 
 const nestedProxy = (
-  args_maps: Record<string, Record<string, string[]>>,
-  listeners: Listeners,
+  args_maps: ArgsMap,
   path: string[] = [],
 ) => {
   return new window.Proxy({}, {
@@ -145,10 +118,12 @@ const nestedProxy = (
           get: (_target, prop, _receiver) => {
             if (prop !== 'on') return
 
+            let event_name = nested_path.join('.')
             return (listener: (args: unknown) => void) => {
-              listeners.set(nested_path.join('.'), listener)
-
-              return () => listeners.delete(nested_path.join('.'))
+              return listen(
+                TAURPC_EVENT_NAME,
+                createEventHandlder(event_name, listener, args_map),
+              )
             }
           },
           apply(_target, _thisArg, args) {
@@ -166,7 +141,7 @@ const nestedProxy = (
           path.startsWith(`${nested_path.join('.')}.`)
         )
       ) {
-        return nestedProxy(args_maps, listeners, nested_path)
+        return nestedProxy(args_maps, nested_path)
       } else {
         throw new Error(`'${nested_path.join('.')}' not found`)
       }
@@ -193,6 +168,33 @@ const handleProxyCall = async (
     args_object,
   )
   return response
+}
+
+const createEventHandlder = (
+  event_name: string,
+  listener: ListenFn,
+  args_map: ArgsMap[string],
+): EventCallback<Payload> => {
+  return (event) => {
+    if (event_name !== event.payload.event_name) return
+
+    const path_segments = event.payload.event_name.split('.')
+    const ev = path_segments.pop()
+    if (!ev) return
+
+    const args = args_map[ev]
+    if (!args) return
+
+    if (args.length === 1) {
+      listener(event.payload.event.input_type)
+    } else if (Array.isArray(event.payload.event.input_type)) {
+      const _ = (listener as ((...args: unknown[]) => void))(
+        ...event.payload.event.input_type as unknown[],
+      )
+    } else {
+      listener(event.payload.event.input_type)
+    }
+  }
 }
 
 const parseArgsMap = (args: Record<string, string>) => {

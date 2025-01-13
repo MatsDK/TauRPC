@@ -68,7 +68,7 @@ With these types a typesafe proxy is generated that you can use to invoke comman
 ```typescript
 import { createTauRPCProxy } from '../bindings.ts'
 
-const taurpc = await createTauRPCProxy()
+const taurpc = createTauRPCProxy()
 await taurpc.hello_world()
 ```
 
@@ -230,7 +230,7 @@ Now on the frontend you can use the proxy client.
 await taurpc.hello_world()
 
 // Listen for `event` on the `events` layer
-const unlisten = taurpc.events.event.on(() => {
+const unlisten = await taurpc.events.event.on(() => {
   console.log('Hello World!')
 })
 ```
@@ -295,7 +295,7 @@ async fn main() {
 Then, on the frontend you can listen for the events with types:
 
 ```typescript
-const unlisten = taurpc.hello_world.on(() => {
+const unlisten = await taurpc.hello_world.on(() => {
   console.log('Hello World!')
 })
 
