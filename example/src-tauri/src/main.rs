@@ -207,7 +207,6 @@ async fn main() {
     let router = Router::new()
         .export_config(
             specta_typescript::Typescript::default()
-                .remove_default_header()
                 .header("// My header\n")
                 .bigint(specta_typescript::BigIntExportBehavior::String),
         )

@@ -46,7 +46,7 @@ pub(super) fn export_types(
         std::fs::create_dir_all(parent).unwrap();
     }
 
-    let types = specta_util::export().export(export_config).unwrap();
+    let types = export_config.export(&specta::export()).unwrap();
 
     let mut file = OpenOptions::new()
         .create(true)

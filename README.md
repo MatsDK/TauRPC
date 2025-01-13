@@ -17,9 +17,8 @@ First, add the following crates to your `Cargo.toml`:
 [dependencies]
 taurpc = "0.3.4"
 
-specta = { version = "=2.0.0-rc.20", features = ["derive"] }
-specta-util = { version = "0.0.7", features = ["export"] }
-# specta-typescript = "0.0.7"
+specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+# specta-typescript = "0.0.9"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -244,7 +243,6 @@ All available options can be found in [specta_typescript's docs](https://docs.rs
 let router = Router::new()
     .export_config(
         specta_typescript::Typescript::default()
-            .remove_default_header()
             .header("// My header\n")
             .bigint(specta_typescript::BigIntExportBehavior::String),
     )

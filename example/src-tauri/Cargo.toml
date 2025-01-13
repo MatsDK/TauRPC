@@ -20,6 +20,5 @@ tokio = { version = "1", features = ["full"] }
 thiserror = "1.0"
 
 taurpc = { path = "../../taurpc" }
-specta = { version = "=2.0.0-rc.20", features = ["derive"] }
-specta-typescript = { version = "0.0.7", features = [] }
-specta-util = { version = "0.0.7", features = ["export"] }
+specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+specta-typescript = { version = "0.0.9", features = [] }
