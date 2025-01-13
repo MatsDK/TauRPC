@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { UnlistenFn } from "@tauri-apps/api/event";
   import { createTauRPCProxy } from "./lib/ipc";
   import { onMount, onDestroy } from "svelte";
 
@@ -25,23 +26,23 @@
     }
   };
 
-  let unlisten = [];
-  let taurpc: Awaited<ReturnType<typeof createTauRPCProxy>>;
+  let unlisten: UnlistenFn[] = [];
+  let taurpc: ReturnType<typeof createTauRPCProxy>;
 
   onMount(async () => {
-    taurpc = await createTauRPCProxy();
+    taurpc = createTauRPCProxy();
     unlisten.push(
-      taurpc.events.vec_test.on((new_state) => {
+      await taurpc.events.vec_test.on((new_state) => {
         console.log("state updated", new_state);
       }),
     );
     unlisten.push(
-      taurpc.events.state_changed.on((val) => {
+      await taurpc.events.state_changed.on((val) => {
         state = val;
       }),
     );
     unlisten.push(
-      taurpc.events.multiple_args.on((arg1, arg2) => {
+      await taurpc.events.multiple_args.on((arg1, arg2) => {
         console.log(arg1, arg2);
       }),
     );
