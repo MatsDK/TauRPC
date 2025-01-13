@@ -1,5 +1,11 @@
 # taurpc
 
+## 1.7.0
+
+### Minor Changes
+
+- [`3df869f`](https://github.com/MatsDK/TauRPC/commit/3df869fc85f7f1fcc41525207e504558b81bedee) Thanks [@MatsDK](https://github.com/MatsDK)! - Fix unnecessary await for event handlers [#38](https://github.com/MatsDK/TauRPC/issues/38).
+
 ## 1.6.0
 
 ### Minor Changes
