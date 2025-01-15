@@ -465,7 +465,7 @@ impl<'a> ProceduresGenerator<'a> {
         quote! {
             impl #event_trigger_ident {
                 /// Generate a new client to trigger events on the client-side.
-                #vis fn new<R: Runtime>(app_handle: tauri::AppHandle<R>) -> Self {
+                #vis fn new(app_handle: tauri::AppHandle) -> Self {
                     let trigger = taurpc::EventTrigger::new(app_handle, String::from(#path_prefix));
 
                     Self(trigger)

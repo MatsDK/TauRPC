@@ -109,7 +109,7 @@ impl Api for ApiImpl {
         Some(())
     }
 
-    async fn test_result(self, user: User) -> Result<User, Error> {
+    async fn test_result(self, _user: User) -> Result<User, Error> {
         Err(Error::Other("Some error message".to_string()))
         // Ok(user)
     }
