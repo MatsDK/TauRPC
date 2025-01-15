@@ -44,7 +44,7 @@ impl serde::Serialize for Error {
 // #[taurpc::procedures(event_trigger = ApiEventTrigger)]
 #[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../src/lib/bindings.ts")]
 trait Api {
-    async fn update_state(app_handle: AppHandle<tauri::Wry>, new_value: String);
+    async fn update_state<R: Runtime>(app_handle: AppHandle<R>, new_value: String);
 
     async fn get_window<R: Runtime>(window: tauri::Window<R>);
 
@@ -79,7 +79,7 @@ struct ApiImpl {
 
 #[taurpc::resolvers]
 impl Api for ApiImpl {
-    async fn update_state(self, app_handle: AppHandle<tauri::Wry>, new_value: String) {
+    async fn update_state<R: Runtime>(self, app_handle: AppHandle<R>, new_value: String) {
         let mut data = self.state.lock().await;
         println!("Before {:?}", data);
         *data = new_value;
@@ -122,9 +122,9 @@ impl Api for ApiImpl {
         println!("method with alias called");
     }
 
-    async fn vec_test(self, arg: Vec<String>) {}
+    async fn vec_test(self, _arg: Vec<String>) {}
 
-    async fn multiple_args(self, arg: Vec<String>, arg2: String) {}
+    async fn multiple_args(self, _arg: Vec<String>, _arg2: String) {}
 
     async fn test_bigint(self, num: i64) -> i64 {
         num
@@ -188,9 +188,9 @@ async fn main() {
 
             api_trigger
                 .send_to(Windows::One("main".to_string()))
-                .update_state("message scoped".to_string())?;
+                .update_state::<tauri::Wry>("message scoped".to_string())?;
 
-            api_trigger.update_state("message".to_string())?;
+            api_trigger.update_state::<tauri::Wry>("message".to_string())?;
 
             events_trigger.vec_test(vec![String::from("test"), String::from("test2")])?;
 
