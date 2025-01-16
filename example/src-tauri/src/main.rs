@@ -9,6 +9,16 @@ use tokio::{
     time::sleep,
 };
 
+/// maybe we could export function types isntead of exporting the inputs and outputs type
+/// seaparatly, this would allow us to have the entire procedure signature in one TS type, and this
+/// would make it easier to handle the types on the frontend als also to give users named argument
+/// types, this is currently not supported since parameter names can not be infered from typescript
+/// types(maybe only export/ remove args_map),
+#[specta::specta]
+fn test_fn(user: User) -> () {
+    todo!();
+}
+
 #[doc = "Doc comments are also generated"]
 #[taurpc::ipc_type]
 // #[derive(serde::Serialize, serde::Deserialize, specta::Type, Clone)]
@@ -176,6 +186,8 @@ type GlobalState = Arc<Mutex<String>>;
 async fn main() {
     let (tx, rx) = oneshot::channel::<AppHandle>();
 
+    let typ = specta::function::fn_datatype!(test_fn)(&mut specta::TypeCollection::default());
+    println!("{:?}", typ);
     tokio::spawn(async move {
         let app_handle = rx.await.unwrap();
         let api_trigger = ApiEventTrigger::new(app_handle.clone());
