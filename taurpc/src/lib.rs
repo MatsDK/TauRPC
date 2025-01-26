@@ -117,13 +117,13 @@ pub enum Windows {
 /// By default the events are send to all windows with `emit_all`, if you want to send to a specific window by label,
 /// use `new_scoped` or `new_scoped_from_trigger`.
 #[derive(Debug)]
-pub struct EventTrigger<U: Runtime> {
-    app_handle: AppHandle<U>,
+pub struct EventTrigger<RT: Runtime> {
+    app_handle: AppHandle<RT>,
     path_prefix: String,
     scope: Windows,
 }
 
-impl<U: Runtime> Clone for EventTrigger<U> {
+impl<RT: Runtime> Clone for EventTrigger<RT> {
     fn clone(&self) -> Self {
         Self {
             app_handle: self.app_handle.clone(),
@@ -133,8 +133,8 @@ impl<U: Runtime> Clone for EventTrigger<U> {
     }
 }
 
-impl<U: Runtime> EventTrigger<U> {
-    pub fn new(app_handle: AppHandle<U>, path_prefix: String) -> Self {
+impl<RT: Runtime> EventTrigger<RT> {
+    pub fn new(app_handle: AppHandle<RT>, path_prefix: String) -> Self {
         Self {
             app_handle,
             path_prefix,
@@ -142,7 +142,7 @@ impl<U: Runtime> EventTrigger<U> {
         }
     }
 
-    pub fn new_scoped(app_handle: AppHandle<U>, path_prefix: String, scope: Windows) -> Self {
+    pub fn new_scoped(app_handle: AppHandle<RT>, path_prefix: String, scope: Windows) -> Self {
         Self {
             app_handle,
             path_prefix,

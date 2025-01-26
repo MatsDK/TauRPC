@@ -418,7 +418,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(Clone, Debug)]
-            #vis struct #event_trigger_ident<U: Runtime>(taurpc::EventTrigger<U>);
+            #vis struct #event_trigger_ident<RT: Runtime>(taurpc::EventTrigger<RT>);
         }
     }
 
@@ -463,9 +463,9 @@ impl<'a> ProceduresGenerator<'a> {
             .collect::<Vec<_>>();
 
         quote! {
-            impl<U: Runtime> #event_trigger_ident<U> {
+            impl<RT: Runtime> #event_trigger_ident<RT> {
                 /// Generate a new client to trigger events on the client-side.
-                #vis fn new(app_handle: tauri::AppHandle<U>) -> Self {
+                #vis fn new(app_handle: tauri::AppHandle<RT>) -> Self {
                     let trigger = taurpc::EventTrigger::new(app_handle, String::from(#path_prefix));
 
                     Self(trigger)
