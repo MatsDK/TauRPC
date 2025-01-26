@@ -78,7 +78,7 @@ pub(super) fn export_types(
         .unwrap();
     file.write_all(generate_router_type(handlers).as_bytes())
         .unwrap();
-    
+
     file.write_all(BOILERPLATE_TS_EXPORT.as_bytes()).unwrap();
 
     if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
