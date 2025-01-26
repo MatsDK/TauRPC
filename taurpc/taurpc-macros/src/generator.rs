@@ -43,6 +43,28 @@ impl<'a> ProceduresGenerator<'a> {
             ..
         } = self;
 
+        let fn_types = methods.iter().map(
+            |IpcMethod {
+                 ident,
+                 args,
+                 generics,
+                 ..
+             }| {
+                // TODO: filter out tauri types like window, app handle,
+                let args = args.iter().filter(filter_reserved_args);
+                // TODO: do we support generics?
+                // TODO: handle channels
+                let fn_ident = format_ident!("taurpc_fn__{trait_ident}_{ident}");
+                println!("{fn_ident}");
+                quote! {
+                    #[specta::specta]
+                    fn #fn_ident #generics( #( #args ),*) -> Result<() ,() > {
+                        Ok(())
+                    }
+                }
+            },
+        );
+
         let types_and_fns = methods.iter().zip(method_output_types.iter()).filter_map(
             |(
                 IpcMethod {
@@ -72,6 +94,8 @@ impl<'a> ProceduresGenerator<'a> {
         );
 
         quote! {
+            #( #fn_types )*
+
             #( #attrs )*
             #vis trait #trait_ident #generics: Sized {
                 #( #types_and_fns )*
@@ -310,7 +334,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         let invoke = format_ident!("__tauri__invoke__");
         let message = format_ident!("__tauri__message__");
-        let resolver = format_ident!("__tauri__resolver__");
+        let resolver = format_ident!("__tauri_resolver");
 
         let procedure_handlers = alias_method_idents.iter().zip(methods.iter()).filter_map(
             |(
@@ -358,6 +382,11 @@ impl<'a> ProceduresGenerator<'a> {
             None => quote! { None },
         };
 
+        // let fn_mod_ident = format_ident!("{trait_ident}__fns");
+        let fn_names = methods
+            .iter()
+            .map(|IpcMethod { ident, .. }| format_ident!("taurpc_fn__{trait_ident}_{ident}"));
+
         quote! {
             #[derive(Clone)]
             #vis struct #handler_ident<P> {
@@ -404,6 +433,10 @@ impl<'a> ProceduresGenerator<'a> {
 
                 fn args_map() -> String {
                     #serialized_args_map.to_string()
+                }
+
+                fn collect_fn_types(mut types_map: &mut specta::TypeCollection) -> Vec<specta::datatype::Function> {
+                    specta::function::collect_functions![#( #fn_names ),*](&mut types_map)
                 }
             }
         }

@@ -120,7 +120,7 @@ const nestedProxy = (
 
             const event_name = nested_path.join('.')
             return (listener: (args: unknown) => void) => {
-              return listen(
+              listen(
                 TAURPC_EVENT_NAME,
                 createEventHandlder(event_name, listener, args_map),
               )

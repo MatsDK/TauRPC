@@ -1,4 +1,8 @@
+use heck::ToLowerCamelCase;
 use itertools::Itertools;
+use specta::datatype::{Function, FunctionResultVariant};
+use specta::TypeCollection;
+use specta_typescript::ExportError;
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -27,7 +31,66 @@ pub(super) fn export_types(
     handlers: Vec<(&'static str, &'static str)>,
     args_map: HashMap<String, String>,
     export_config: specta_typescript::Typescript,
+    functions: HashMap<String, Vec<Function>>,
+    type_map: TypeCollection,
 ) {
+    let functions = functions
+        .iter()
+        .map(|(path, functions)| {
+            let functions = functions
+                .iter()
+                .map(|function| {
+                    let arg_defs = function
+                        .args()
+                        .map(|(name, typ)| {
+                            specta_typescript::datatype(
+                                &export_config,
+                                &FunctionResultVariant::Value(typ.clone()),
+                                &type_map,
+                            )
+                            .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
+                        })
+                        //TODO: remove unwrap
+                        .collect::<Result<Vec<_>, _>>()
+                        .unwrap();
+
+                    // let ret_type =
+                    //     js_ts::handle_result(function, &cfg.type_map, ts, cfg.error_handling)?;
+
+                    //                 let docs = {
+                    //                     let mut builder = js_doc::Builder::default();
+
+                    //                     if let Some(d) = &function.deprecated() {
+                    //                         builder.push_deprecated(d);
+                    //                     }
+
+                    //                     if !function.docs().is_empty() {
+                    //                         builder.extend(function.docs().split("\n"));
+                    //                     }
+
+                    //                     builder.build()
+                    //                 };
+                    Ok(generate_function(
+                        // &docs,
+                        // &function.name().to_lower_camel_case(),
+                        &function.name(),
+                        &arg_defs,
+                        // Some(&ret_type),
+                        // &js_ts::command_body(&cfg.plugin_name, function, true, cfg.error_handling),
+                    ))
+                })
+                .collect::<Result<Vec<_>, ()>>()
+                .unwrap()
+                .join(", \n");
+
+            format!("'{path}': {{ {functions} }}")
+            // println!("{functions}");
+            // functions
+        })
+        .collect::<Vec<String>>()
+        .join(",\n");
+    println!("{functions}");
+
     let export_path = export_path.map(|p| p.to_string()).unwrap_or(
         std::env::current_dir()
             .unwrap()
@@ -77,6 +140,17 @@ pub(super) fn export_types(
 
         std::fs::write(package_json_path, PACKAGE_JSON).unwrap();
     }
+}
+
+fn generate_function(
+    // docs: &str,
+    name: &str,
+    args: &[String],
+    // return_type: Option<&str>,
+    // body: &str,
+) -> String {
+    let args = args.join(", ");
+    format!(r#"{name}: ({args}) => Promise<unknown>"#)
 }
 
 fn generate_router_type(handlers: Vec<(&'static str, &'static str)>) -> String {

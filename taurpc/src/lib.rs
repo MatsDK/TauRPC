@@ -7,6 +7,8 @@
 pub extern crate serde;
 pub extern crate specta;
 pub extern crate specta_macros;
+use specta::datatype::Function;
+use specta::TypeCollection;
 pub use specta_typescript::Typescript;
 
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
@@ -42,6 +44,8 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     /// Returns a json object containing the arguments for the methods.
     /// This is used on the frontend to ensure the arguments are send with their correct idents to the backend.
     fn args_map() -> String;
+
+    fn collect_fn_types(type_map: &mut TypeCollection) -> Vec<Function>;
 }
 
 /// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
@@ -83,13 +87,12 @@ where
 {
     let args_map = HashMap::from([(H::PATH_PREFIX.to_string(), H::args_map())]);
     #[cfg(debug_assertions)] // Only export in development builds
-    export_types(
-        H::EXPORT_PATH,
-        vec![(H::PATH_PREFIX, H::TRAIT_NAME)],
-        args_map,
-        specta_typescript::Typescript::default(),
-    );
-
+    // export_types(
+    //     H::EXPORT_PATH,
+    //     vec![(H::PATH_PREFIX, H::TRAIT_NAME)],
+    //     args_map,
+    //     specta_typescript::Typescript::default(),
+    // );
     move |invoke: Invoke<tauri::Wry>| {
         procedures.clone().handle_incoming_request(invoke);
         true
@@ -207,8 +210,10 @@ impl EventTrigger {
 #[derive(Default)]
 pub struct Router {
     handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
+    types: TypeCollection,
     export_path: Option<&'static str>,
     args_map_json: HashMap<String, String>,
+    fns_map: HashMap<String, Vec<Function>>,
     handler_paths: Vec<(&'static str, &'static str)>,
     export_config: specta_typescript::Typescript,
 }
@@ -253,6 +258,10 @@ impl Router {
             .insert(H::PATH_PREFIX.to_string(), H::args_map());
         self.handlers
             .insert(H::PATH_PREFIX.to_string(), handler.spawn());
+        self.fns_map.insert(
+            H::PATH_PREFIX.to_string(),
+            H::collect_fn_types(&mut self.types),
+        );
         self
     }
 
@@ -266,12 +275,15 @@ impl Router {
     ///      .expect("error while running tauri application");
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) -> bool {
+        // println!("Export types: {:?}", self.types);
         #[cfg(debug_assertions)] // Only export in development builds
         export_types(
             self.export_path.clone(),
             self.handler_paths.clone(),
             self.args_map_json.clone(),
             self.export_config.clone(),
+            self.fns_map.clone(),
+            self.types.clone(),
         );
 
         move |invoke: Invoke<tauri::Wry>| self.on_command(invoke)

@@ -2,22 +2,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{sync::Arc, time::Duration};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::AppHandle;
 use taurpc::{Router, Windows};
 use tokio::{
     sync::{oneshot, Mutex},
     time::sleep,
 };
-
-/// maybe we could export function types isntead of exporting the inputs and outputs type
-/// seaparatly, this would allow us to have the entire procedure signature in one TS type, and this
-/// would make it easier to handle the types on the frontend als also to give users named argument
-/// types, this is currently not supported since parameter names can not be infered from typescript
-/// types(maybe only export/ remove args_map),
-#[specta::specta]
-fn test_fn(user: User) -> () {
-    todo!();
-}
 
 #[doc = "Doc comments are also generated"]
 #[taurpc::ipc_type]
@@ -56,9 +46,9 @@ impl serde::Serialize for Error {
 trait Api {
     async fn update_state(app_handle: AppHandle<tauri::Wry>, new_value: String);
 
-    async fn get_window<R: Runtime>(window: tauri::Window<R>);
+    // async fn get_window<R: Runtime>(window: tauri::Window<R>);
 
-    async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
+    // async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
 
     async fn test_io(user: User) -> User;
 
@@ -102,14 +92,14 @@ impl Api for ApiImpl {
             .unwrap();
     }
 
-    async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
-        println!("Window: {}", window.label());
-    }
+    //     async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
+    //         println!("Window: {}", window.label());
+    //     }
 
-    async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
-        let app_dir = app_handle.path().app_config_dir();
-        println!("App Handle: {:?}, {:?}", app_dir, app_handle.package_info());
-    }
+    //     async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
+    //         let app_dir = app_handle.path().app_config_dir();
+    //         println!("App Handle: {:?}, {:?}", app_dir, app_handle.package_info());
+    //     }
 
     async fn test_io(self, user: User) -> User {
         user
@@ -186,8 +176,6 @@ type GlobalState = Arc<Mutex<String>>;
 async fn main() {
     let (tx, rx) = oneshot::channel::<AppHandle>();
 
-    let typ = specta::function::fn_datatype!(test_fn)(&mut specta::TypeCollection::default());
-    println!("{:?}", typ);
     tokio::spawn(async move {
         let app_handle = rx.await.unwrap();
         let api_trigger = ApiEventTrigger::new(app_handle.clone());

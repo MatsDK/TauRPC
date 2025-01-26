@@ -3418,6 +3418,7 @@ dependencies = [
 name = "taurpc"
 version = "0.3.5"
 dependencies = [
+ "heck 0.5.0",
  "itertools",
  "serde",
  "serde_json",

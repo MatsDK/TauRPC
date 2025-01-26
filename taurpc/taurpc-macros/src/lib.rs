@@ -117,7 +117,7 @@ pub fn resolvers(_attr: TokenStream, item: TokenStream) -> TokenStream {
     quote!(#item).into()
 }
 
-// Transform an async method into a sync one that returns a Pin<Box<Future<Output = ...  >> .
+/// Transform an async method into a sync one that returns a `Pin<Box<Future<Output = ...  >>`.
 fn transform_method(method: &mut ImplItemFn) -> ImplItemType {
     method.sig.asyncness = None;
 
