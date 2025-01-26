@@ -14,8 +14,9 @@ use tokio::sync::broadcast::Sender;
 
 use serde::Serialize;
 use tauri::ipc::{Invoke, InvokeError};
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter};
 
+pub use tauri::Runtime;
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod export;
@@ -115,15 +116,25 @@ pub enum Windows {
 /// A structure used for triggering [tauri events](https://tauri.app/v1/guides/features/events/) on the frontend.
 /// By default the events are send to all windows with `emit_all`, if you want to send to a specific window by label,
 /// use `new_scoped` or `new_scoped_from_trigger`.
-#[derive(Debug, Clone)]
-pub struct EventTrigger {
-    app_handle: AppHandle,
+#[derive(Debug)]
+pub struct EventTrigger<U: Runtime> {
+    app_handle: AppHandle<U>,
     path_prefix: String,
     scope: Windows,
 }
 
-impl EventTrigger {
-    pub fn new(app_handle: AppHandle, path_prefix: String) -> Self {
+impl<U: Runtime> Clone for EventTrigger<U> {
+    fn clone(&self) -> Self {
+        Self {
+            app_handle: self.app_handle.clone(),
+            path_prefix: self.path_prefix.clone(),
+            scope: self.scope.clone(),
+        }
+    }
+}
+
+impl<U: Runtime> EventTrigger<U> {
+    pub fn new(app_handle: AppHandle<U>, path_prefix: String) -> Self {
         Self {
             app_handle,
             path_prefix,
@@ -131,7 +142,7 @@ impl EventTrigger {
         }
     }
 
-    pub fn new_scoped(app_handle: AppHandle, path_prefix: String, scope: Windows) -> Self {
+    pub fn new_scoped(app_handle: AppHandle<U>, path_prefix: String, scope: Windows) -> Self {
         Self {
             app_handle,
             path_prefix,
