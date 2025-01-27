@@ -90,7 +90,14 @@ pub(super) fn export_types(
         std::fs::write(package_json_path, PACKAGE_JSON).unwrap();
     }
 
-    export_config.format(path).unwrap();
+    match export_config.format(path) {
+        Ok(_) => {
+            println!("File formatted successfully");
+        }
+        Err(e) => {
+            println!("Error formatting file: {}", e);
+        }
+    }
 }
 
 fn generate_router_type(handlers: Vec<(&'static str, &'static str)>) -> String {
