@@ -214,7 +214,8 @@ async fn run<R: Runtime, F: FnOnce(&tauri::App<R>) + Send + 'static>(
     let router = Router::new()
         .export_config(
             specta_typescript::Typescript::default()
-                .header("// My header\n")
+                .header("// My header\n\n")
+                .formatter(specta_typescript::formatter::prettier)
                 .bigint(specta_typescript::BigIntExportBehavior::String),
         )
         .merge(
