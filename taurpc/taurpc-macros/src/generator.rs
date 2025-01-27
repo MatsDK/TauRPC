@@ -48,6 +48,7 @@ impl<'a> ProceduresGenerator<'a> {
                  ident,
                  args,
                  generics,
+                 output,
                  ..
              }| {
                 // TODO: filter out tauri types like window, app handle,
@@ -55,11 +56,12 @@ impl<'a> ProceduresGenerator<'a> {
                 // TODO: do we support generics?
                 // TODO: handle channels
                 let fn_ident = format_ident!("taurpc_fn__{trait_ident}_{ident}");
-                println!("{fn_ident}");
+                // println!("{fn_ident}");
                 quote! {
                     #[specta::specta]
-                    fn #fn_ident #generics( #( #args ),*) -> Result<() ,() > {
-                        Ok(())
+                    fn #fn_ident #generics( #( #args ),*) #output {
+                        // Ok(())
+                        unimplemented!();
                     }
                 }
             },

@@ -54,7 +54,7 @@ trait Api {
 
     async fn test_option() -> Option<()>;
 
-    async fn test_result(user: User) -> Result<User, Error>;
+    // async fn test_result(user: User) -> Result<User, Error>;
 
     // #[taurpc(skip)]
     async fn with_sleep();
@@ -109,10 +109,10 @@ impl Api for ApiImpl {
         Some(())
     }
 
-    async fn test_result(self, user: User) -> Result<User, Error> {
-        Err(Error::Other("Some error message".to_string()))
-        // Ok(user)
-    }
+    // async fn test_result(self, user: User) -> Result<User, Error> {
+    //     Err(Error::Other("Some error message".to_string()))
+    //     // Ok(user)
+    // }
 
     async fn with_sleep(self) {
         sleep(Duration::from_millis(2000)).await;

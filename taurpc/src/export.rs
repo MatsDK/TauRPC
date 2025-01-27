@@ -2,7 +2,6 @@ use heck::ToLowerCamelCase;
 use itertools::Itertools;
 use specta::datatype::{Function, FunctionResultVariant};
 use specta::TypeCollection;
-use specta_typescript::ExportError;
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -34,6 +33,7 @@ pub(super) fn export_types(
     functions: HashMap<String, Vec<Function>>,
     type_map: TypeCollection,
 ) {
+    println!("{functions:?}");
     let functions = functions
         .iter()
         .map(|(path, functions)| {
@@ -53,6 +53,8 @@ pub(super) fn export_types(
                         //TODO: remove unwrap
                         .collect::<Result<Vec<_>, _>>()
                         .unwrap();
+
+                    println!("{:?}", function.result());
 
                     // let ret_type =
                     //     js_ts::handle_result(function, &cfg.type_map, ts, cfg.error_handling)?;
@@ -90,6 +92,9 @@ pub(super) fn export_types(
         .collect::<Vec<String>>()
         .join(",\n");
     println!("{functions}");
+    // let ret_type =
+    // let ret_type =
+    // let ret_type =
 
     let export_path = export_path.map(|p| p.to_string()).unwrap_or(
         std::env::current_dir()
