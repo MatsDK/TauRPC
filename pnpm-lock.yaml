@@ -26,7 +26,7 @@ importers:
         version: 20.2.5
       '@typescript-eslint/eslint-plugin':
         specifier: ^5.59.7
-        version: 5.59.7(@typescript-eslint/parser@5.59.7)(eslint@8.41.0)(typescript@5.0.4)
+        version: 5.59.7(@typescript-eslint/parser@5.59.7(eslint@8.41.0)(typescript@5.0.4))(eslint@8.41.0)(typescript@5.0.4)
       '@typescript-eslint/parser':
         specifier: ^5.59.7
         version: 5.59.7(eslint@8.41.0)(typescript@5.0.4)
@@ -2240,7 +2240,7 @@ snapshots:
 
   '@types/semver@7.5.0': {}
 
-  '@typescript-eslint/eslint-plugin@5.59.7(@typescript-eslint/parser@5.59.7)(eslint@8.41.0)(typescript@5.0.4)':
+  '@typescript-eslint/eslint-plugin@5.59.7(@typescript-eslint/parser@5.59.7(eslint@8.41.0)(typescript@5.0.4))(eslint@8.41.0)(typescript@5.0.4)':
     dependencies:
       '@eslint-community/regexpp': 4.5.1
       '@typescript-eslint/parser': 5.59.7(eslint@8.41.0)(typescript@5.0.4)
@@ -2254,6 +2254,7 @@ snapshots:
       natural-compare-lite: 1.4.0
       semver: 7.5.1
       tsutils: 3.21.0(typescript@5.0.4)
+    optionalDependencies:
       typescript: 5.0.4
     transitivePeerDependencies:
       - supports-color
@@ -2277,6 +2278,7 @@ snapshots:
       '@typescript-eslint/typescript-estree': 5.59.7(typescript@5.0.4)
       debug: 4.3.4
       eslint: 8.41.0
+    optionalDependencies:
       typescript: 5.0.4
     transitivePeerDependencies:
       - supports-color
@@ -2293,6 +2295,7 @@ snapshots:
       debug: 4.3.4
       eslint: 8.41.0
       tsutils: 3.21.0(typescript@5.0.4)
+    optionalDependencies:
       typescript: 5.0.4
     transitivePeerDependencies:
       - supports-color
@@ -2311,6 +2314,7 @@ snapshots:
       lodash: 4.17.21
       semver: 7.5.1
       tsutils: 3.21.0(typescript@5.0.4)
+    optionalDependencies:
       typescript: 5.0.4
     transitivePeerDependencies:
       - supports-color
@@ -2324,6 +2328,7 @@ snapshots:
       is-glob: 4.0.3
       semver: 7.5.1
       tsutils: 3.21.0(typescript@5.0.4)
+    optionalDependencies:
       typescript: 5.0.4
     transitivePeerDependencies:
       - supports-color
@@ -3676,6 +3681,7 @@ snapshots:
       source-map: 0.8.0-beta.0
       sucrase: 3.32.0
       tree-kill: 1.2.2
+    optionalDependencies:
       typescript: 5.0.4
     transitivePeerDependencies:
       - supports-color
