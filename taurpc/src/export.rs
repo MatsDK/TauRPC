@@ -52,8 +52,8 @@ pub(super) fn export_types(
 
     let types = export_config.export(&specta::export()).unwrap();
 
-    let framework_header: &str = export_config.framework_header.as_ref();
-
+    // Put headers always at the top of the file, followed by the module imports.
+    let framework_header = export_config.framework_header.as_ref();
     let body = types.split_once(framework_header).unwrap().1;
 
     let mut file = OpenOptions::new()
@@ -78,7 +78,6 @@ pub(super) fn export_types(
         .unwrap();
     file.write_all(generate_router_type(handlers).as_bytes())
         .unwrap();
-
     file.write_all(BOILERPLATE_TS_EXPORT.as_bytes()).unwrap();
 
     if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
@@ -90,12 +89,11 @@ pub(super) fn export_types(
         std::fs::write(package_json_path, PACKAGE_JSON).unwrap();
     }
 
-    match export_config.format(path) {
-        Ok(_) => {
-            println!("File formatted successfully");
-        }
-        Err(e) => {
-            println!("Error formatting file: {}", e);
+    // Format the output file if the user specified a formatter on `export_config`.
+    if export_config.formatter.is_some() {
+        match export_config.format(path) {
+            Ok(_) => println!("Bindings file formatted successfully!"),
+            Err(e) => eprintln!("Error formatting bindings file: {}", e),
         }
     }
 }

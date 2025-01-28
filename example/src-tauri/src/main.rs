@@ -215,7 +215,8 @@ async fn run<R: Runtime, F: FnOnce(&tauri::App<R>) + Send + 'static>(
         .export_config(
             specta_typescript::Typescript::default()
                 .header("// My header\n\n")
-                .formatter(specta_typescript::formatter::prettier)
+                // Make sure prettier is installed before using this.
+                // .formatter(specta_typescript::formatter::prettier)
                 .bigint(specta_typescript::BigIntExportBehavior::String),
         )
         .merge(
