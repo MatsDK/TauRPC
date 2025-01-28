@@ -174,14 +174,7 @@ type GlobalState = Arc<Mutex<String>>;
 
 #[tokio::main]
 async fn main() {
-    run(tauri::Builder::default(), |_app| {}).await
-}
-
-async fn run<R: Runtime, F: FnOnce(&tauri::App<R>) + Send + 'static>(
-    builder: tauri::Builder<R>,
-    _setup: F,
-) {
-    let (tx, rx) = oneshot::channel::<AppHandle<R>>();
+    let (tx, rx) = oneshot::channel::<AppHandle<tauri::Wry>>();
 
     tokio::spawn(async move {
         let app_handle = rx.await.unwrap();
@@ -195,9 +188,9 @@ async fn run<R: Runtime, F: FnOnce(&tauri::App<R>) + Send + 'static>(
 
             api_trigger
                 .send_to(Windows::One("main".to_string()))
-                .update_state::<R>("message scoped".to_string())?;
+                .update_state::<tauri::Wry>("message scoped".to_string())?;
 
-            api_trigger.update_state::<R>("message".to_string())?;
+            api_trigger.update_state::<tauri::Wry>("message".to_string())?;
 
             events_trigger.vec_test(vec![String::from("test"), String::from("test2")])?;
 
@@ -246,7 +239,7 @@ async fn run<R: Runtime, F: FnOnce(&tauri::App<R>) + Send + 'static>(
     //     })
     //     .run(tauri::generate_context!())
     //     .expect("error while running tauri application");
-    builder
+    tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(router.into_handler())
         .setup(|app| {
