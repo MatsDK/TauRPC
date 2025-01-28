@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{sync::Arc, time::Duration};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime, Window};
 use taurpc::{Router, Windows};
 use tokio::{
     sync::{oneshot, Mutex},
@@ -46,9 +46,9 @@ impl serde::Serialize for Error {
 trait Api {
     async fn update_state<R: Runtime>(app_handle: AppHandle<R>, new_value: String);
 
-    async fn get_window<R: Runtime>(window: tauri::Window<R>);
+    async fn get_window<R: Runtime>(window: Window<R>);
 
-    async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
+    async fn get_app_handle<R: Runtime>(app_handle: AppHandle<R>);
 
     async fn test_io(user: User) -> User;
 
@@ -92,11 +92,11 @@ impl Api for ApiImpl {
             .unwrap();
     }
 
-    async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
+    async fn get_window<R: Runtime>(self, window: Window<R>) {
         println!("Window: {}", window.label());
     }
 
-    async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
+    async fn get_app_handle<R: Runtime>(self, app_handle: AppHandle<R>) {
         let app_dir = app_handle.path().app_config_dir();
         println!("App Handle: {:?}, {:?}", app_dir, app_handle.package_info());
     }
@@ -174,18 +174,10 @@ type GlobalState = Arc<Mutex<String>>;
 
 #[tokio::main]
 async fn main() {
-    run(tauri::Builder::default(), |_app| {}).await
-}
-
-async fn run<R: Runtime, F: FnOnce(&tauri::App<R>) + Send + 'static>(
-    builder: tauri::Builder<R>,
-    _setup: F,
-) {
-    let (tx, rx) = oneshot::channel::<AppHandle<R>>();
+    let (tx, rx) = oneshot::channel::<AppHandle>();
 
     tokio::spawn(async move {
         let app_handle = rx.await.unwrap();
-        let api_trigger = ApiEventTrigger::new(app_handle.clone());
         let events_trigger = TauRpcEventsEventTrigger::new(app_handle.clone());
         let ui_trigger = TauRpcUiApiEventTrigger::new(app_handle);
 
@@ -193,13 +185,11 @@ async fn run<R: Runtime, F: FnOnce(&tauri::App<R>) + Send + 'static>(
         loop {
             interval.tick().await;
 
-            api_trigger
-                .send_to(Windows::One("main".to_string()))
-                .update_state::<R>("message scoped".to_string())?;
-
-            api_trigger.update_state::<R>("message".to_string())?;
-
             events_trigger.vec_test(vec![String::from("test"), String::from("test2")])?;
+
+            // events_trigger.
+            //     .send_to(Windows::One("main".to_string()))
+            //     .vec_test(vec![String::from("test"), String::from("test2")])?;
 
             events_trigger.multiple_args(0, vec![String::from("test"), String::from("test2")])?;
 
@@ -237,20 +227,18 @@ async fn run<R: Runtime, F: FnOnce(&tauri::App<R>) + Send + 'static>(
     //     //     .into_handler(),
     //     // ))
     //     .setup(|app| {
-    //         #[cfg(debug_assertions)]
-    //         app.get_window("main").unwrap().open_devtools();
-
     //         tx.send(app.handle().clone()).unwrap();
-
     //         Ok(())
     //     })
     //     .run(tauri::generate_context!())
     //     .expect("error while running tauri application");
-    builder
+    tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(router.into_handler())
         .setup(|app| {
             #[cfg(debug_assertions)]
+            app.get_webview_window("main").unwrap().open_devtools();
+
             tx.send(app.handle().clone()).unwrap();
 
             Ok(())

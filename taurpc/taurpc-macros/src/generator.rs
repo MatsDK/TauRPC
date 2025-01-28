@@ -308,9 +308,9 @@ impl<'a> ProceduresGenerator<'a> {
             ..
         } = self;
 
-        let invoke = format_ident!("__tauri__invoke__");
-        let message = format_ident!("__tauri__message__");
-        let resolver = format_ident!("__tauri__resolver__");
+        let invoke = format_ident!("__tauri_invoke__");
+        let message = format_ident!("__tauri_message__");
+        let resolver = format_ident!("__tauri_resolver__");
 
         let procedure_handlers = alias_method_idents.iter().zip(methods.iter()).filter_map(
             |(
@@ -436,20 +436,26 @@ impl<'a> ProceduresGenerator<'a> {
         let method_triggers = alias_method_idents
             .iter()
             .zip(methods)
-            .map(
+            .filter_map(
                 |(
                     alias_ident,
                     IpcMethod {
                         ident,
                         args,
                         generics,
+                        attrs,
                         ..
                     },
                 )| {
+                    // skip methods that are not marked as events
+                    if !attrs.is_event {
+                        return None;
+                    }
+
                     let args = args.iter().filter(filter_reserved_args).collect::<Vec<_>>();
                     let arg_pats = args.iter().map(|arg| &*arg.pat).collect::<Vec<_>>();
 
-                    quote! {
+                    Some(quote! {
                         #[allow(unused)]
                         #vis fn #ident #generics(&self, #( #args ),*) -> tauri::Result<()> {
                             let proc_name = stringify!(#alias_ident);
@@ -457,7 +463,7 @@ impl<'a> ProceduresGenerator<'a> {
 
                             self.0.call(proc_name, req)
                         }
-                    }
+                    })
                 },
             )
             .collect::<Vec<_>>();

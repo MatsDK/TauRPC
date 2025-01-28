@@ -14,9 +14,8 @@ use tokio::sync::broadcast::Sender;
 
 use serde::Serialize;
 use tauri::ipc::{Invoke, InvokeError};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
-pub use tauri::Runtime;
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod export;
