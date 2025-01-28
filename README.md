@@ -245,6 +245,8 @@ let router = Router::new()
         specta_typescript::Typescript::default()
             .header("// My header\n")
             .bigint(specta_typescript::BigIntExportBehavior::String),
+            // Make sure you have the specified formatter installed on your system.
+            .formatter(specta_typescript::formatter::prettier)
     )
     .merge(ApiImpl.into_handler())
     .merge(EventsImpl.into_handler());
