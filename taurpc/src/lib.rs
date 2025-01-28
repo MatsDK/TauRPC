@@ -37,7 +37,7 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
 
     /// Spawn a new `tokio` thread that listens for and handles incoming request through a `tokio::broadcast::channel`.
     /// This is used for when you have multiple handlers inside a router.
-    fn spawn(self) -> Sender<Arc<Invoke<tauri::Wry>>>;
+    fn spawn(self) -> Sender<Arc<Invoke<R>>>;
 
     /// Returns a json object containing the arguments for the methods.
     /// This is used on the frontend to ensure the arguments are send with their correct idents to the backend.
@@ -75,11 +75,11 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
 ///     .expect("error while running tauri application");
 /// }
 /// ```
-pub fn create_ipc_handler<H>(
+pub fn create_ipc_handler<H, R: Runtime>(
     procedures: H,
-) -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync + 'static
+) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static
 where
-    H: TauRpcHandler<tauri::Wry> + Send + Sync + 'static + Clone,
+    H: TauRpcHandler<R> + Send + Sync + 'static + Clone,
 {
     let args_map = HashMap::from([(H::PATH_PREFIX.to_string(), H::args_map())]);
     #[cfg(debug_assertions)] // Only export in development builds
@@ -90,7 +90,7 @@ where
         specta_typescript::Typescript::default(),
     );
 
-    move |invoke: Invoke<tauri::Wry>| {
+    move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
         true
     }
@@ -115,15 +115,25 @@ pub enum Windows {
 /// A structure used for triggering [tauri events](https://tauri.app/v1/guides/features/events/) on the frontend.
 /// By default the events are send to all windows with `emit_all`, if you want to send to a specific window by label,
 /// use `new_scoped` or `new_scoped_from_trigger`.
-#[derive(Debug, Clone)]
-pub struct EventTrigger {
-    app_handle: AppHandle,
+#[derive(Debug)]
+pub struct EventTrigger<RT: Runtime> {
+    app_handle: AppHandle<RT>,
     path_prefix: String,
     scope: Windows,
 }
 
-impl EventTrigger {
-    pub fn new(app_handle: AppHandle, path_prefix: String) -> Self {
+impl<RT: Runtime> Clone for EventTrigger<RT> {
+    fn clone(&self) -> Self {
+        Self {
+            app_handle: self.app_handle.clone(),
+            path_prefix: self.path_prefix.clone(),
+            scope: self.scope.clone(),
+        }
+    }
+}
+
+impl<RT: Runtime> EventTrigger<RT> {
+    pub fn new(app_handle: AppHandle<RT>, path_prefix: String) -> Self {
         Self {
             app_handle,
             path_prefix,
@@ -131,7 +141,7 @@ impl EventTrigger {
         }
     }
 
-    pub fn new_scoped(app_handle: AppHandle, path_prefix: String, scope: Windows) -> Self {
+    pub fn new_scoped(app_handle: AppHandle<RT>, path_prefix: String, scope: Windows) -> Self {
         Self {
             app_handle,
             path_prefix,
@@ -205,17 +215,23 @@ impl EventTrigger {
 /// }
 /// ```
 #[derive(Default)]
-pub struct Router {
-    handlers: HashMap<String, Sender<Arc<Invoke<tauri::Wry>>>>,
+pub struct Router<R: Runtime> {
+    handlers: HashMap<String, Sender<Arc<Invoke<R>>>>,
     export_path: Option<&'static str>,
     args_map_json: HashMap<String, String>,
     handler_paths: Vec<(&'static str, &'static str)>,
     export_config: specta_typescript::Typescript,
 }
 
-impl Router {
+impl<R: Runtime> Router<R> {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            handlers: HashMap::new(),
+            export_path: None,
+            args_map_json: HashMap::new(),
+            handler_paths: Vec::new(),
+            export_config: specta_typescript::Typescript::default(),
+        }
     }
 
     /// Overwrite `specta` default TypeScript export options, look at the docs for
@@ -243,7 +259,7 @@ impl Router {
     ///      .merge(ApiImpl.into_handler())
     ///      .merge(EventsImpl.into_handler());
     /// ```
-    pub fn merge<H: TauRpcHandler<tauri::Wry>>(mut self, handler: H) -> Self {
+    pub fn merge<H: TauRpcHandler<R>>(mut self, handler: H) -> Self {
         if let Some(path) = H::EXPORT_PATH {
             self.export_path = Some(path)
         }
@@ -265,7 +281,7 @@ impl Router {
     ///      .run(tauri::generate_context!())
     ///      .expect("error while running tauri application");
     /// ```
-    pub fn into_handler(self) -> impl Fn(Invoke<tauri::Wry>) -> bool {
+    pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
         #[cfg(debug_assertions)] // Only export in development builds
         export_types(
             self.export_path.clone(),
@@ -274,10 +290,10 @@ impl Router {
             self.export_config.clone(),
         );
 
-        move |invoke: Invoke<tauri::Wry>| self.on_command(invoke)
+        move |invoke: Invoke<R>| self.on_command(invoke)
     }
 
-    fn on_command(&self, invoke: Invoke<tauri::Wry>) -> bool {
+    fn on_command(&self, invoke: Invoke<R>) -> bool {
         let cmd = invoke.message.command();
         if !cmd.starts_with("TauRPC__") {
             return false;

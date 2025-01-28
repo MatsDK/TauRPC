@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{sync::Arc, time::Duration};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime, Window};
 use taurpc::{Router, Windows};
 use tokio::{
     sync::{oneshot, Mutex},
@@ -44,11 +44,11 @@ impl serde::Serialize for Error {
 // #[taurpc::procedures(event_trigger = ApiEventTrigger)]
 #[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../src/lib/bindings.ts")]
 trait Api {
-    async fn update_state(app_handle: AppHandle<tauri::Wry>, new_value: String);
+    async fn update_state<R: Runtime>(app_handle: AppHandle<R>, new_value: String);
 
-    async fn get_window<R: Runtime>(window: tauri::Window<R>);
+    async fn get_window<R: Runtime>(window: Window<R>);
 
-    async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
+    async fn get_app_handle<R: Runtime>(app_handle: AppHandle<R>);
 
     async fn test_io(user: User) -> User;
 
@@ -79,7 +79,7 @@ struct ApiImpl {
 
 #[taurpc::resolvers]
 impl Api for ApiImpl {
-    async fn update_state(self, app_handle: AppHandle<tauri::Wry>, new_value: String) {
+    async fn update_state<R: Runtime>(self, app_handle: AppHandle<R>, new_value: String) {
         let mut data = self.state.lock().await;
         println!("Before {:?}", data);
         *data = new_value;
@@ -92,11 +92,11 @@ impl Api for ApiImpl {
             .unwrap();
     }
 
-    async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
+    async fn get_window<R: Runtime>(self, window: Window<R>) {
         println!("Window: {}", window.label());
     }
 
-    async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
+    async fn get_app_handle<R: Runtime>(self, app_handle: AppHandle<R>) {
         let app_dir = app_handle.path().app_config_dir();
         println!("App Handle: {:?}, {:?}", app_dir, app_handle.package_info());
     }
@@ -109,7 +109,7 @@ impl Api for ApiImpl {
         Some(())
     }
 
-    async fn test_result(self, user: User) -> Result<User, Error> {
+    async fn test_result(self, _user: User) -> Result<User, Error> {
         Err(Error::Other("Some error message".to_string()))
         // Ok(user)
     }
@@ -122,9 +122,9 @@ impl Api for ApiImpl {
         println!("method with alias called");
     }
 
-    async fn vec_test(self, arg: Vec<String>) {}
+    async fn vec_test(self, _arg: Vec<String>) {}
 
-    async fn multiple_args(self, arg: Vec<String>, arg2: String) {}
+    async fn multiple_args(self, _arg: Vec<String>, _arg2: String) {}
 
     async fn test_bigint(self, num: i64) -> i64 {
         num
@@ -178,7 +178,6 @@ async fn main() {
 
     tokio::spawn(async move {
         let app_handle = rx.await.unwrap();
-        let api_trigger = ApiEventTrigger::new(app_handle.clone());
         let events_trigger = TauRpcEventsEventTrigger::new(app_handle.clone());
         let ui_trigger = TauRpcUiApiEventTrigger::new(app_handle);
 
@@ -186,13 +185,11 @@ async fn main() {
         loop {
             interval.tick().await;
 
-            api_trigger
-                .send_to(Windows::One("main".to_string()))
-                .update_state("message scoped".to_string())?;
-
-            api_trigger.update_state("message".to_string())?;
-
             events_trigger.vec_test(vec![String::from("test"), String::from("test2")])?;
+
+            // events_trigger.
+            //     .send_to(Windows::One("main".to_string()))
+            //     .vec_test(vec![String::from("test"), String::from("test2")])?;
 
             events_trigger.multiple_args(0, vec![String::from("test"), String::from("test2")])?;
 
@@ -230,11 +227,7 @@ async fn main() {
     //     //     .into_handler(),
     //     // ))
     //     .setup(|app| {
-    //         #[cfg(debug_assertions)]
-    //         app.get_window("main").unwrap().open_devtools();
-
     //         tx.send(app.handle().clone()).unwrap();
-
     //         Ok(())
     //     })
     //     .run(tauri::generate_context!())
@@ -244,6 +237,8 @@ async fn main() {
         .invoke_handler(router.into_handler())
         .setup(|app| {
             #[cfg(debug_assertions)]
+            app.get_webview_window("main").unwrap().open_devtools();
+
             tx.send(app.handle().clone()).unwrap();
 
             Ok(())
