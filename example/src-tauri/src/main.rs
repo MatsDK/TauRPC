@@ -3,7 +3,7 @@
 
 use std::{sync::Arc, time::Duration};
 use tauri::{AppHandle, Manager, Runtime, Window};
-use taurpc::{Router, Windows};
+use taurpc::Router;
 use tokio::{
     sync::{oneshot, Mutex},
     time::sleep,
