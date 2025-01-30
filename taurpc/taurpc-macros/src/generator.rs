@@ -334,9 +334,9 @@ impl<'a> ProceduresGenerator<'a> {
             ..
         } = self;
 
-        let invoke = format_ident!("__tauri__invoke__");
-        let message = format_ident!("__tauri__message__");
-        let resolver = format_ident!("__tauri_resolver");
+        let invoke = format_ident!("__tauri_invoke__");
+        let message = format_ident!("__tauri_message__");
+        let resolver = format_ident!("__tauri_resolver__");
 
         let procedure_handlers = alias_method_idents.iter().zip(methods.iter()).filter_map(
             |(
@@ -396,12 +396,12 @@ impl<'a> ProceduresGenerator<'a> {
             }
 
             use ::tauri::ipc::private::*;
-            impl<P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<tauri::Wry> for #handler_ident<P> {
+            impl<R: Runtime, P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<R> for #handler_ident<P> {
                 const TRAIT_NAME: &'static str = stringify!(#trait_ident);
                 const PATH_PREFIX: &'static str = #path_prefix;
                 const EXPORT_PATH: Option<&'static str> = #export_path;
 
-                fn handle_incoming_request(self, #invoke: tauri::ipc::Invoke<tauri::Wry>) {
+                fn handle_incoming_request(self, #invoke: tauri::ipc::Invoke<R>) {
                     #[allow(unused_variables)]
                     let ::tauri::ipc::Invoke { message: #message, resolver: #resolver, .. } = #invoke;
 
@@ -419,7 +419,7 @@ impl<'a> ProceduresGenerator<'a> {
                     };
                 }
 
-                fn spawn(self) -> tokio::sync::broadcast::Sender<std::sync::Arc<tauri::ipc::Invoke<tauri::Wry>>> {
+                fn spawn(self) -> tokio::sync::broadcast::Sender<std::sync::Arc<tauri::ipc::Invoke<R>>> {
                     let (tx, mut rx) = tokio::sync::broadcast::channel(32);
 
                     tokio::spawn(async move {
@@ -453,7 +453,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[derive(Clone, Debug)]
-            #vis struct #event_trigger_ident(taurpc::EventTrigger);
+            #vis struct #event_trigger_ident<RT: Runtime>(taurpc::EventTrigger<RT>);
         }
     }
 
@@ -471,20 +471,26 @@ impl<'a> ProceduresGenerator<'a> {
         let method_triggers = alias_method_idents
             .iter()
             .zip(methods)
-            .map(
+            .filter_map(
                 |(
                     alias_ident,
                     IpcMethod {
                         ident,
                         args,
                         generics,
+                        attrs,
                         ..
                     },
                 )| {
+                    // skip methods that are not marked as events
+                    if !attrs.is_event {
+                        return None;
+                    }
+
                     let args = args.iter().filter(filter_reserved_args).collect::<Vec<_>>();
                     let arg_pats = args.iter().map(|arg| &*arg.pat).collect::<Vec<_>>();
 
-                    quote! {
+                    Some(quote! {
                         #[allow(unused)]
                         #vis fn #ident #generics(&self, #( #args ),*) -> tauri::Result<()> {
                             let proc_name = stringify!(#alias_ident);
@@ -492,15 +498,15 @@ impl<'a> ProceduresGenerator<'a> {
 
                             self.0.call(proc_name, req)
                         }
-                    }
+                    })
                 },
             )
             .collect::<Vec<_>>();
 
         quote! {
-            impl #event_trigger_ident {
+            impl<RT: Runtime> #event_trigger_ident<RT> {
                 /// Generate a new client to trigger events on the client-side.
-                #vis fn new(app_handle: tauri::AppHandle) -> Self {
+                #vis fn new(app_handle: tauri::AppHandle<RT>) -> Self {
                     let trigger = taurpc::EventTrigger::new(app_handle, String::from(#path_prefix));
 
                     Self(trigger)

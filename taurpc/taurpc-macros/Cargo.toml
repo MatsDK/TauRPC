@@ -1,6 +1,6 @@
 [package]
 name = "taurpc-macros"
-version = "0.3.5"
+version = "0.3.6"
 edition = "2021"
 description = "Macros for the taurpc crate"
 documentation = "https://docs.rs/taurpc"

@@ -14,8 +14,12 @@ static PACKAGE_JSON: &str = r#"
 }
 "#;
 
-static BOILERPLATE_TS_CODE: &str = r#"
+static BOILERPLATE_TS_IMPORT: &str = r#"
+
 import { createTauRPCProxy as createProxy } from "taurpc"
+"#;
+
+static BOILERPLATE_TS_EXPORT: &str = r#"
 
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 "#;
@@ -116,6 +120,10 @@ pub(super) fn export_types(
 
     let types = export_config.export(&specta::export()).unwrap();
 
+    // Put headers always at the top of the file, followed by the module imports.
+    let framework_header = export_config.framework_header.as_ref();
+    let body = types.split_once(framework_header).unwrap().1;
+
     let mut file = OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -123,7 +131,10 @@ pub(super) fn export_types(
         .open(path)
         .unwrap();
 
-    file.write_all(types.as_bytes()).unwrap();
+    file.write_all(export_config.header.as_bytes()).unwrap();
+    file.write_all(framework_header.as_bytes()).unwrap();
+    file.write_all(BOILERPLATE_TS_IMPORT.as_bytes()).unwrap();
+    file.write_all(body.as_bytes()).unwrap();
 
     let args_entries: String = args_map
         .iter()
@@ -133,9 +144,9 @@ pub(super) fn export_types(
 
     file.write_all(format!("const ARGS_MAP = {}", router_args).as_bytes())
         .unwrap();
-    file.write_all(BOILERPLATE_TS_CODE.as_bytes()).unwrap();
     file.write_all(generate_router_type(handlers).as_bytes())
         .unwrap();
+    file.write_all(BOILERPLATE_TS_EXPORT.as_bytes()).unwrap();
 
     if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
         let package_json_path = Path::new(&export_path)
@@ -145,6 +156,9 @@ pub(super) fn export_types(
 
         std::fs::write(package_json_path, PACKAGE_JSON).unwrap();
     }
+
+    // Format the output file if the user specified a formatter on `export_config`.
+    export_config.format(path).unwrap();
 }
 
 fn generate_function(
