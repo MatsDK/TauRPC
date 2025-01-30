@@ -3405,7 +3405,7 @@ dependencies = [
 
 [[package]]
 name = "taurpc"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "itertools",
  "serde",
@@ -3421,7 +3421,7 @@ dependencies = [
 
 [[package]]
 name = "taurpc-macros"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -71,11 +71,11 @@ export type User = {
 }
 
 const ARGS_MAP = {
-  'events':
-    '{"state_changed":["new_state"],"vec_test":["args"],"multiple_args":["arg1","arg2"],"test_ev":[]}',
   '':
-    '{"test_option":[],"update_state":["new_value"],"get_app_handle":[],"ev":["updated_value"],"test_bigint":["num"],"method_with_alias":[],"multiple_args":["arg","arg2"],"get_window":[],"with_sleep":[],"test_io":["user"],"test_result":["user"],"vec_test":["arg"]}',
-  'api.ui': '{"test_ev":[],"trigger":[]}',
+    '{"multiple_args":["arg","arg2"],"with_sleep":[],"test_result":["user"],"update_state":["new_value"],"test_option":[],"get_window":[],"test_io":["user"],"get_app_handle":[],"method_with_alias":[],"vec_test":["arg"],"ev":["updated_value"],"test_bigint":["num"]}',
+  'api.ui': '{"trigger":[],"test_ev":[]}',
+  'events':
+    '{"test_ev":[],"vec_test":["args"],"multiple_args":["arg1","arg2"],"state_changed":["new_state"]}',
 }
 type Router = {
   '': [TauRpcApiInputTypes, TauRpcApiOutputTypes]
