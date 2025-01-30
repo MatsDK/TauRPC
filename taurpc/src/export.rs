@@ -90,7 +90,12 @@ pub(super) fn export_types(
     }
 
     // Format the output file if the user specified a formatter on `export_config`.
-    export_config.format(path).unwrap();
+    if export_config.formatter.is_some() {
+        match export_config.format(path) {
+            Ok(_) => println!("Bindings file formatted successfully!"),
+            Err(e) => eprintln!("Error formatting bindings file: {}", e),
+        }
+    }
 }
 
 fn generate_router_type(handlers: Vec<(&'static str, &'static str)>) -> String {
