@@ -1,48 +1,34 @@
 import { invoke } from '@tauri-apps/api/core'
 import { type EventCallback, listen, UnlistenFn } from '@tauri-apps/api/event'
 
-type TauRpcInputs = { proc_name: string; input_type: unknown }
-type TauRpcOutputs = { proc_name: string; output_type: unknown }
-
-type RoutesLayer = [TauRpcInputs, TauRpcOutputs]
+type RoutesLayer = { [key: string]: (...args: any) => any }
 type NestedRoutes = {
   [route: string]: RoutesLayer | NestedRoutes
 }
 type Router = NestedRoutes & { ''?: RoutesLayer }
 
-type FnInput<TInputs extends TauRpcInputs, TProc extends string> = Extract<
-  TInputs,
-  { proc_name: TProc }
->['input_type']
-type FnOutput<TOutputs extends TauRpcOutputs, TProc extends string> = Extract<
-  TOutputs,
-  { proc_name: TProc }
->['output_type']
-
-type SingleParam = { __taurpc_type: unknown }
-
 type InvokeFn<
   TRoutes extends RoutesLayer,
   TProc extends string,
-  TInput = FnInput<TRoutes[0], TProc>,
-  TOutput = Promise<FnOutput<TRoutes[1], TProc>>,
-> = TInput extends null ? (() => TOutput)
-  : TInput extends Array<unknown> ? ((...p: TInput) => TOutput)
-  : TInput extends SingleParam ? ((p: TInput['__taurpc_type']) => TOutput)
-  : (() => TOutput)
+> = TRoutes[TProc]
+
+// Helper type to swap the return type of functions returning Promise<T> to void
+type SwapReturnTypeToVoid<T> = T extends (...args: infer A) => Promise<any>
+  ? (...args: A) => void
+  : never
 
 type ListenerFn<
   TRoutes extends RoutesLayer,
   TProc extends string,
-  TInput = FnInput<TRoutes[0], TProc>,
-> = TInput extends null ? (() => void)
-  : TInput extends Array<unknown> ? ((...p: TInput) => void)
-  : TInput extends SingleParam ? ((p: TInput['__taurpc_type']) => void)
-  : (() => void)
+> = SwapReturnTypeToVoid<TRoutes[TProc]>
 
 type InvokeLayer<
   TRoutes extends RoutesLayer,
-  TProcedures extends string = TRoutes[0]['proc_name'],
+  // TProcedures extends keyof TRoutes = keyof TRoutes
+  TProcedures extends Extract<keyof TRoutes, string> = Extract<
+    keyof TRoutes,
+    string
+  >,
 > = {
   [TProc in TProcedures]: InvokeFn<TRoutes, TProc> & {
     on: (listener: ListenerFn<TRoutes, TProc>) => Promise<UnlistenFn>
@@ -81,7 +67,7 @@ type ConvertToNestedObject<TRouter extends NestedRoutes> = UnionToIntersection<
 
 type TauRpcProxy<TRouter extends Router> =
   & (TRouter[''] extends RoutesLayer ? InvokeLayer<TRouter['']>
-    : object)
+    : { test: boolean })
   & ConvertToNestedObject<Omit<TRouter, ''>>
 
 type Payload = {

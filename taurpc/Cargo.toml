@@ -31,6 +31,7 @@ specta-serde = { version = "0.0.9", features = [] }
 specta-typescript = { version = "0.0.9", features = ["function"] }
 specta-macros = { version = "2.0.0-rc.17" }
 heck = "0.5.0"
+anyhow = "1.0.95"
 
 [workspace]
 members = [

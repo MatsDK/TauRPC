@@ -40,26 +40,21 @@ impl<'a> ProceduresGenerator<'a> {
             generics,
             attrs,
             method_output_types,
+            alias_method_idents,
             ..
         } = self;
 
-        let fn_types = methods.iter().map(
-            |IpcMethod {
-                 ident,
-                 args,
-                 generics,
-                 output,
-                 ..
-             }| {
+        let fn_types = alias_method_idents.iter().zip(methods).map(
+            |(ident, IpcMethod { output, args, .. })| {
                 // TODO: filter out tauri types like window, app handle,
                 let args = args.iter().filter(filter_reserved_args);
                 // TODO: do we support generics?
                 // TODO: handle channels
-                let fn_ident = format_ident!("taurpc_fn__{trait_ident}_{ident}");
+                let fn_ident = fn_ident(trait_ident, ident);
                 // println!("{fn_ident}");
                 quote! {
                     #[specta::specta]
-                    fn #fn_ident #generics( #( #args ),*) #output {
+                    fn #fn_ident( #( #args ),*) #output {
                         // Ok(())
                         unimplemented!();
                     }
@@ -296,7 +291,7 @@ impl<'a> ProceduresGenerator<'a> {
 
         quote! {
             #[allow(non_camel_case_types)]
-            #vis enum #output_futures_ident<P: #trait_ident> {
+            #vis enum #output_futures_ident<P: #trait_ident>{
                 #( #outputs ),*
             }
 
@@ -384,10 +379,9 @@ impl<'a> ProceduresGenerator<'a> {
             None => quote! { None },
         };
 
-        // let fn_mod_ident = format_ident!("{trait_ident}__fns");
-        let fn_names = methods
+        let fn_names = alias_method_idents
             .iter()
-            .map(|IpcMethod { ident, .. }| format_ident!("taurpc_fn__{trait_ident}_{ident}"));
+            .map(|ident| fn_ident(trait_ident, ident));
 
         quote! {
             #[derive(Clone)]
@@ -586,4 +580,8 @@ fn filter_reserved_args(arg: &&PatType) -> bool {
         }
         _ => false,
     }
+}
+
+fn fn_ident(trait_ident: &Ident, fn_ident: &Ident) -> Ident {
+    format_ident!("{trait_ident}_taurpc_fn__{fn_ident}")
 }

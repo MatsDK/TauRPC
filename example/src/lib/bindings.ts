@@ -4,47 +4,7 @@
 
 import { createTauRPCProxy as createProxy } from 'taurpc'
 
-export type TauRpcApiInputTypes =
-  | { proc_name: 'update_state'; input_type: { __taurpc_type: string } }
-  | { proc_name: 'test_io'; input_type: { __taurpc_type: User } }
-  | { proc_name: 'test_option'; input_type: null }
-  | { proc_name: 'with_sleep'; input_type: null }
-  | { proc_name: 'method_with_alias'; input_type: null }
-  | { proc_name: 'ev'; input_type: { __taurpc_type: string } }
-  | { proc_name: 'vec_test'; input_type: { __taurpc_type: string[] } }
-  | { proc_name: 'multiple_args'; input_type: [string[], string] }
-  | { proc_name: 'test_bigint'; input_type: { __taurpc_type: string } }
-
-export type TauRpcApiOutputTypes =
-  | { proc_name: 'update_state'; output_type: null }
-  | { proc_name: 'test_io'; output_type: User }
-  | { proc_name: 'test_option'; output_type: null | null }
-  | { proc_name: 'with_sleep'; output_type: null }
-  | { proc_name: 'method_with_alias'; output_type: null }
-  | { proc_name: 'ev'; output_type: null }
-  | { proc_name: 'vec_test'; output_type: null }
-  | { proc_name: 'multiple_args'; output_type: null }
-  | { proc_name: 'test_bigint'; output_type: string }
-
-export type TauRpcEventsInputTypes =
-  | { proc_name: 'test_ev'; input_type: null }
-  | { proc_name: 'state_changed'; input_type: { __taurpc_type: string } }
-  | { proc_name: 'vec_test'; input_type: { __taurpc_type: string[] } }
-  | { proc_name: 'multiple_args'; input_type: [number, string[]] }
-
-export type TauRpcEventsOutputTypes =
-  | { proc_name: 'test_ev'; output_type: null }
-  | { proc_name: 'state_changed'; output_type: null }
-  | { proc_name: 'vec_test'; output_type: null }
-  | { proc_name: 'multiple_args'; output_type: null }
-
-export type TauRpcUiApiInputTypes =
-  | { proc_name: 'trigger'; input_type: null }
-  | { proc_name: 'test_ev'; input_type: null }
-
-export type TauRpcUiApiOutputTypes =
-  | { proc_name: 'trigger'; output_type: null }
-  | { proc_name: 'test_ev'; output_type: null }
+export type Error = { type: 'Io' } | { type: 'Other'; data: string }
 
 /**
  * Doc comments are also generated
@@ -66,15 +26,33 @@ export type User = {
 
 const ARGS_MAP = {
   '':
-    '{"multiple_args":["arg","arg2"],"with_sleep":[],"test_result":["user"],"update_state":["new_value"],"test_option":[],"get_window":[],"test_io":["user"],"get_app_handle":[],"method_with_alias":[],"vec_test":["arg"],"ev":["updated_value"],"test_bigint":["num"]}',
-  'api.ui': '{"trigger":[],"test_ev":[]}',
+    '{"test_io":["user"],"update_state":["new_value"],"get_app_handle":[],"multiple_args":["arg","arg2"],"with_sleep":[],"test_option":[],"test_result":["user"],"method_with_alias":[],"ev":["updated_value"],"vec_test":["arg"],"get_window":[],"test_bigint":["num"]}',
   'events':
-    '{"test_ev":[],"vec_test":["args"],"multiple_args":["arg1","arg2"],"state_changed":["new_state"]}',
+    '{"vec_test":["args"],"state_changed":["new_state"],"multiple_args":["arg1","arg2"],"test_ev":[]}',
+  'api.ui': '{"test_ev":[],"trigger":[]}',
 }
-type Router = {
-  '': [TauRpcApiInputTypes, TauRpcApiOutputTypes]
-  'events': [TauRpcEventsInputTypes, TauRpcEventsOutputTypes]
-  'api.ui': [TauRpcUiApiInputTypes, TauRpcUiApiOutputTypes]
+export type Router = {
+  'api.ui': { trigger: () => Promise<void>; test_ev: () => Promise<void> }
+  '': {
+    update_state: (newValue: string) => Promise<void>
+    get_window: () => Promise<void>
+    get_app_handle: () => Promise<void>
+    test_io: (user: User) => Promise<User>
+    test_option: () => Promise<null | null>
+    test_result: (user: User) => Promise<User>
+    with_sleep: () => Promise<void>
+    method_with_alias: () => Promise<void>
+    ev: (updatedValue: string) => Promise<void>
+    vec_test: (arg: string[]) => Promise<void>
+    multiple_args: (arg: string[], arg2: string) => Promise<void>
+    test_bigint: (num: string) => Promise<string>
+  }
+  'events': {
+    test_ev: () => Promise<void>
+    state_changed: (newState: string) => Promise<void>
+    vec_test: (args: string[]) => Promise<void>
+    multiple_args: (arg1: number, arg2: string[]) => Promise<void>
+  }
 }
 
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)

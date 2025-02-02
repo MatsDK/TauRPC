@@ -1,56 +1,56 @@
 <script lang="ts">
-  import type { UnlistenFn } from "@tauri-apps/api/event";
-  import { createTauRPCProxy } from "./lib/ipc";
-  import { onMount, onDestroy } from "svelte";
+  import type { UnlistenFn } from '@tauri-apps/api/event'
+  import { createTauRPCProxy } from './lib/ipc'
+  import { onMount, onDestroy } from 'svelte'
 
-  let value = "";
+  let value = ''
 
-  let state = "";
+  let state = ''
   const call_backend = async () => {
-    await taurpc.update_state(value);
-    await taurpc.get_window();
-    await taurpc.method_with_alias();
-    await taurpc.multiple_args([], "test");
-    await taurpc.get_app_handle();
+    await taurpc.update_state(value)
+    await taurpc.get_window()
+    await taurpc.method_with_alias()
+    await taurpc.multiple_args([], 'test')
+    await taurpc.get_app_handle()
 
     try {
       const res = await taurpc.test_result({
-        first_name: "",
-        last_name: "",
+        first_name: '',
+        last_name: '',
         uid: 1,
-      });
-      console.log(res);
+      })
+      console.log(res)
     } catch (error) {
-      console.error(error);
+      console.error(error)
       // Handle error
     }
-  };
+  }
 
-  let unlisten: UnlistenFn[] = [];
-  let taurpc: ReturnType<typeof createTauRPCProxy>;
+  let unlisten: UnlistenFn[] = []
+  let taurpc: ReturnType<typeof createTauRPCProxy>
 
   onMount(async () => {
-    taurpc = createTauRPCProxy();
+    taurpc = createTauRPCProxy()
     unlisten.push(
       await taurpc.events.vec_test.on((new_state) => {
-        console.log("state updated", new_state);
+        console.log('state updated', new_state)
       }),
-    );
+    )
     unlisten.push(
       await taurpc.events.state_changed.on((val) => {
-        state = val;
+        state = val
       }),
-    );
+    )
     unlisten.push(
       await taurpc.events.multiple_args.on((arg1, arg2) => {
-        console.log(arg1, arg2);
+        console.log(arg1, arg2)
       }),
-    );
-  });
+    )
+  })
 
   onDestroy(() => {
-    unlisten.forEach((fn) => fn());
-  });
+    unlisten.forEach((fn) => fn())
+  })
 </script>
 
 <main class="container">

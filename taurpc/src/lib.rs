@@ -218,7 +218,7 @@ impl<RT: Runtime> EventTrigger<RT> {
 /// }
 /// ```
 #[derive(Default)]
-pub struct Router {
+pub struct Router<R: Runtime> {
     types: TypeCollection,
     handlers: HashMap<String, Sender<Arc<Invoke<R>>>>,
     export_path: Option<&'static str>,

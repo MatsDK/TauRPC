@@ -1,7 +1,10 @@
+use anyhow::Result;
 use heck::ToLowerCamelCase;
 use itertools::Itertools;
 use specta::datatype::{Function, FunctionResultVariant};
 use specta::TypeCollection;
+use specta_typescript as ts;
+use specta_typescript::Typescript;
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -33,73 +36,10 @@ pub(super) fn export_types(
     export_path: Option<&'static str>,
     handlers: Vec<(&'static str, &'static str)>,
     args_map: HashMap<String, String>,
-    export_config: specta_typescript::Typescript,
+    export_config: ts::Typescript,
     functions: HashMap<String, Vec<Function>>,
     type_map: TypeCollection,
 ) {
-    println!("{functions:?}");
-    let functions = functions
-        .iter()
-        .map(|(path, functions)| {
-            let functions = functions
-                .iter()
-                .map(|function| {
-                    let arg_defs = function
-                        .args()
-                        .map(|(name, typ)| {
-                            specta_typescript::datatype(
-                                &export_config,
-                                &FunctionResultVariant::Value(typ.clone()),
-                                &type_map,
-                            )
-                            .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
-                        })
-                        //TODO: remove unwrap
-                        .collect::<Result<Vec<_>, _>>()
-                        .unwrap();
-
-                    println!("{:?}", function.result());
-
-                    // let ret_type =
-                    //     js_ts::handle_result(function, &cfg.type_map, ts, cfg.error_handling)?;
-
-                    //                 let docs = {
-                    //                     let mut builder = js_doc::Builder::default();
-
-                    //                     if let Some(d) = &function.deprecated() {
-                    //                         builder.push_deprecated(d);
-                    //                     }
-
-                    //                     if !function.docs().is_empty() {
-                    //                         builder.extend(function.docs().split("\n"));
-                    //                     }
-
-                    //                     builder.build()
-                    //                 };
-                    Ok(generate_function(
-                        // &docs,
-                        // &function.name().to_lower_camel_case(),
-                        &function.name(),
-                        &arg_defs,
-                        // Some(&ret_type),
-                        // &js_ts::command_body(&cfg.plugin_name, function, true, cfg.error_handling),
-                    ))
-                })
-                .collect::<Result<Vec<_>, ()>>()
-                .unwrap()
-                .join(", \n");
-
-            format!("'{path}': {{ {functions} }}")
-            // println!("{functions}");
-            // functions
-        })
-        .collect::<Vec<String>>()
-        .join(",\n");
-    println!("{functions}");
-    // let ret_type =
-    // let ret_type =
-    // let ret_type =
-
     let export_path = export_path.map(|p| p.to_string()).unwrap_or(
         std::env::current_dir()
             .unwrap()
@@ -118,7 +58,7 @@ pub(super) fn export_types(
         std::fs::create_dir_all(parent).unwrap();
     }
 
-    let types = export_config.export(&specta::export()).unwrap();
+    let types = export_config.export(&type_map).unwrap();
 
     // Put headers always at the top of the file, followed by the module imports.
     let framework_header = export_config.framework_header.as_ref();
@@ -142,10 +82,16 @@ pub(super) fn export_types(
         .join(", ");
     let router_args = format!("{{{}}}", args_entries);
 
-    file.write_all(format!("const ARGS_MAP = {}", router_args).as_bytes())
+    file.write_all(format!("const ARGS_MAP = {}\n", router_args).as_bytes())
         .unwrap();
-    file.write_all(generate_router_type(handlers).as_bytes())
-        .unwrap();
+    // file.write_all(generate_router_type(handlers).as_bytes())
+    //     .unwrap();
+    file.write_all(
+        generate_functions_router(functions, type_map, &export_config)
+            .unwrap()
+            .as_bytes(),
+    )
+    .unwrap();
     file.write_all(BOILERPLATE_TS_EXPORT.as_bytes()).unwrap();
 
     if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
@@ -161,15 +107,79 @@ pub(super) fn export_types(
     export_config.format(path).unwrap();
 }
 
+fn generate_functions_router(
+    functions: HashMap<String, Vec<Function>>,
+    type_map: TypeCollection,
+    export_config: &Typescript,
+) -> Result<String> {
+    let functions = functions
+        .iter()
+        .map(|(path, functions)| {
+            let functions = functions
+                .iter()
+                .map(|function| generate_function(function, &export_config, &type_map))
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap()
+                .join(", \n");
+
+            format!("'{path}': {{ {functions} }}")
+        })
+        .collect::<Vec<String>>()
+        .join(",\n");
+
+    Ok(format!("export type Router = {{ {functions} }};\n"))
+}
+
 fn generate_function(
-    // docs: &str,
-    name: &str,
-    args: &[String],
-    // return_type: Option<&str>,
-    // body: &str,
-) -> String {
-    let args = args.join(", ");
-    format!(r#"{name}: ({args}) => Promise<unknown>"#)
+    function: &Function,
+    export_config: &Typescript,
+    type_map: &TypeCollection,
+) -> Result<String> {
+    let args = function
+        .args()
+        .map(|(name, typ)| {
+            ts::datatype(
+                &export_config,
+                &FunctionResultVariant::Value(typ.clone()),
+                &type_map,
+            )
+            .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap()
+        .join(", ");
+
+    let ret_type = match function.result() {
+        Some(FunctionResultVariant::Value(t)) => ts::datatype(
+            &export_config,
+            &FunctionResultVariant::Value(t.clone()),
+            &type_map,
+        )?,
+        // TODO: handle result types
+        Some(FunctionResultVariant::Result(t, _e)) => ts::datatype(
+            &export_config,
+            &FunctionResultVariant::Value(t.clone()),
+            &type_map,
+        )?,
+        None => "void".to_string(),
+    };
+
+    // let docs = {
+    //     let mut builder = js_doc::Builder::default();
+
+    //     if let Some(d) = &function.deprecated() {
+    //         builder.push_deprecated(d);
+    //     }
+
+    //     if !function.docs().is_empty() {
+    //         builder.extend(function.docs().split("\n"));
+    //     }
+
+    //     builder.build()
+    // };
+
+    let name = function.name().split_once("_taurpc_fn__").unwrap().1;
+    Ok(format!(r#"{name}: ({args}) => Promise<{ret_type}>"#))
 }
 
 fn generate_router_type(handlers: Vec<(&'static str, &'static str)>) -> String {
@@ -182,6 +192,6 @@ fn generate_router_type(handlers: Vec<(&'static str, &'static str)>) -> String {
         );
     }
 
-    output += "}";
+    output += "};\n";
     output
 }
