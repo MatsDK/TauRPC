@@ -45,6 +45,7 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     /// This is used on the frontend to ensure the arguments are send with their correct idents to the backend.
     fn args_map() -> String;
 
+    /// Returns all of the functions for exporting, all referenced types will be added to `type_map`.
     fn collect_fn_types(type_map: &mut TypeCollection) -> Vec<Function>;
 }
 
@@ -278,12 +279,12 @@ impl<R: Runtime> Router<R> {
 
         self.args_map_json
             .insert(H::PATH_PREFIX.to_string(), H::args_map());
-        self.handlers
-            .insert(H::PATH_PREFIX.to_string(), handler.spawn());
         self.fns_map.insert(
             H::PATH_PREFIX.to_string(),
             H::collect_fn_types(&mut self.types),
         );
+        self.handlers
+            .insert(H::PATH_PREFIX.to_string(), handler.spawn());
         self
     }
 
@@ -299,7 +300,7 @@ impl<R: Runtime> Router<R> {
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
         #[cfg(debug_assertions)] // Only export in development builds
         export_types(
-            self.export_path.clone(),
+            self.export_path,
             self.args_map_json.clone(),
             self.export_config.clone(),
             self.fns_map.clone(),

@@ -51,13 +51,11 @@ impl serde::Serialize for Error {
 trait Api {
     async fn update_state(app_handle: AppHandle<impl Runtime>, new_value: String);
 
-    // async fn generic<T: Into<String>>(id: T);
+    async fn get_window<R: Runtime>(window: Window<R>);
 
-    async fn get_window<R: Runtime>(window: tauri::Window<R>);
+    async fn get_app_handle<R: Runtime>(app_handle: AppHandle<R>);
 
-    async fn get_app_handle<R: Runtime>(app_handle: tauri::AppHandle<R>);
-
-    async fn test_io(user: User) -> User;
+    async fn test_io(_user: User) -> User;
 
     async fn test_option() -> Option<()>;
 
@@ -99,14 +97,11 @@ impl Api for ApiImpl {
             .unwrap();
     }
 
-    // async fn generic<T: Into<String>>(id: T) {
-    // }
-
-    async fn get_window<R: Runtime>(self, window: tauri::Window<R>) {
+    async fn get_window<R: Runtime>(self, window: Window<R>) {
         println!("Window: {}", window.label());
     }
 
-    async fn get_app_handle<R: Runtime>(self, app_handle: tauri::AppHandle<R>) {
+    async fn get_app_handle<R: Runtime>(self, app_handle: AppHandle<R>) {
         let app_dir = app_handle.path().app_config_dir();
         println!("App Handle: {:?}, {:?}", app_dir, app_handle.package_info());
     }
@@ -228,6 +223,7 @@ async fn main() {
         .merge(EventsImpl.into_handler())
         .merge(UiApiImpl.into_handler());
 
+    // Without router
     // tauri::Builder::default()
     //     .invoke_handler(router.into_handler())
     //     // .invoke_handler(taurpc::create_ipc_handler(

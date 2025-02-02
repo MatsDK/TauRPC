@@ -58,6 +58,7 @@ pub(super) fn export_types(
             .context("Failed to create directory for exported bindings")?;
     }
 
+    // Export `types_map` containing all referenced types.
     let types = export_config
         .export(&type_map)
         .context("Failed to generate types with specta")?;
@@ -105,9 +106,9 @@ pub(super) fn export_types(
     }
 
     // Format the output file if the user specified a formatter on `export_config`.
-    export_config
-        .format(path)
-        .context("Failed to format exported bindings")?;
+    export_config.format(path).context(
+        "Failed to format exported bindings, make sure you have the correct formatter installed",
+    )?;
     Ok(())
 }
 
@@ -121,7 +122,7 @@ fn generate_functions_router(
         .map(|(path, functions)| {
             let functions = functions
                 .iter()
-                .map(|function| generate_function(function, &export_config, &type_map))
+                .map(|function| generate_function(function, export_config, &type_map))
                 .collect::<Result<Vec<_>, _>>()
                 .unwrap()
                 .join(", \n");
@@ -143,27 +144,27 @@ fn generate_function(
         .args()
         .map(|(name, typ)| {
             ts::datatype(
-                &export_config,
+                export_config,
                 &FunctionResultVariant::Value(typ.clone()),
-                &type_map,
+                type_map,
             )
             .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
         })
         .collect::<Result<Vec<_>, _>>()
-        .unwrap()
+        .context("An error occured while generating command args")?
         .join(", ");
 
     let ret_type = match function.result() {
         Some(FunctionResultVariant::Value(t)) => ts::datatype(
-            &export_config,
+            export_config,
             &FunctionResultVariant::Value(t.clone()),
-            &type_map,
+            type_map,
         )?,
         // TODO: handle result types
         Some(FunctionResultVariant::Result(t, _e)) => ts::datatype(
-            &export_config,
+            export_config,
             &FunctionResultVariant::Value(t.clone()),
-            &type_map,
+            type_map,
         )?,
         None => "void".to_string(),
     };

@@ -4,8 +4,8 @@
   import { onMount, onDestroy } from 'svelte'
 
   let value = ''
-
   let state = ''
+
   const call_backend = async () => {
     await taurpc.update_state(value)
     await taurpc.get_window()
@@ -49,7 +49,7 @@
   })
 
   onDestroy(() => {
-    unlisten.forEach((fn) => fn())
+    unlisten.forEach((cb) => cb())
   })
 </script>
 
