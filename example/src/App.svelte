@@ -1,10 +1,16 @@
 <script lang="ts">
   import type { UnlistenFn } from '@tauri-apps/api/event'
-  import { createTauRPCProxy } from './lib/ipc'
+  import {
+    createTauRPCProxy,
+    type InferCommandOutput,
+    type Router,
+  } from './lib/ipc'
   import { onMount, onDestroy } from 'svelte'
 
   let value = ''
   let state = ''
+
+  type CommandResultType = InferCommandOutput<Router, '', 'test_result'>
 
   const call_backend = async () => {
     await taurpc.update_state(value)

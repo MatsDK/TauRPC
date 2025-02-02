@@ -1,7 +1,8 @@
 import { invoke } from '@tauri-apps/api/core'
 import { type EventCallback, listen, UnlistenFn } from '@tauri-apps/api/event'
 
-type RoutesLayer = { [key: string]: (...args: any) => any }
+/* eslint-disable  @typescript-eslint/no-explicit-any */
+type RoutesLayer = { [key: string]: (...args: any) => unknown }
 type NestedRoutes = {
   [route: string]: RoutesLayer | NestedRoutes
 }
@@ -13,7 +14,7 @@ type InvokeFn<
 > = TRoutes[TProc]
 
 // Helper type to swap the return type of functions returning Promise<T> to void
-type SwapReturnTypeToVoid<T> = T extends (...args: infer A) => Promise<any>
+type SwapReturnTypeToVoid<T> = T extends (...args: infer A) => Promise<unknown>
   ? (...args: A) => void
   : never
 
@@ -24,7 +25,6 @@ type ListenerFn<
 
 type InvokeLayer<
   TRoutes extends RoutesLayer,
-  // TProcedures extends keyof TRoutes = keyof TRoutes
   TProcedures extends Extract<keyof TRoutes, string> = Extract<
     keyof TRoutes,
     string
@@ -105,8 +105,8 @@ const nestedProxy = (
             if (prop !== 'on') return
 
             const event_name = nested_path.join('.')
-            return (listener: (args: unknown) => void) => {
-              listen(
+            return async (listener: (args: unknown) => void) => {
+              await listen(
                 TAURPC_EVENT_NAME,
                 createEventHandlder(event_name, listener, args_map),
               )
@@ -193,5 +193,13 @@ const parseArgsMap = (args: Record<string, string>) => {
 
   return args_map
 }
+
+export type InferCommandOutput<
+  TRouter extends Router,
+  TPath extends keyof TRouter,
+  TCommand extends keyof TRouter[TPath],
+> = TRouter[TPath] extends RoutesLayer
+  ? Awaited<ReturnType<TRouter[TPath][TCommand]>>
+  : unknown
 
 export { createTauRPCProxy }

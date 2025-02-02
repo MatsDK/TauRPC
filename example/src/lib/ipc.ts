@@ -1,1 +1,1 @@
-export { createTauRPCProxy } from './bindings'
+export * from './bindings'

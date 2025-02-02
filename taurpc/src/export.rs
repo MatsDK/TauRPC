@@ -19,11 +19,12 @@ static PACKAGE_JSON: &str = r#"
 
 static BOILERPLATE_TS_IMPORT: &str = r#"
 
-import { createTauRPCProxy as createProxy } from "taurpc"
+import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
 "#;
 
 static BOILERPLATE_TS_EXPORT: &str = r#"
 
+export type { InferCommandOutput }
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 "#;
 
