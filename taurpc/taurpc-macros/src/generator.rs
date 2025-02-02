@@ -46,12 +46,10 @@ impl<'a> ProceduresGenerator<'a> {
 
         let fn_types = alias_method_idents.iter().zip(methods).map(
             |(ident, IpcMethod { output, args, .. })| {
-                // TODO: filter out tauri types like window, app handle,
                 let args = args.iter().filter(filter_reserved_args);
                 // TODO: do we support generics?
                 // TODO: handle channels
                 let fn_ident = fn_ident(trait_ident, ident);
-                // println!("{fn_ident}");
                 quote! {
                     #[specta::specta]
                     fn #fn_ident( #( #args ),*) #output {

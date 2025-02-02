@@ -1,4 +1,4 @@
-//! This crate provides a typesafe IPC layer for Tauri's commands and events.
+//! This crate provides a typesafe IPC layer for Tauri's commands and events.lib
 //! TauRPC should be used instead of [Tauri's IPC system](https://tauri.app/v1/references/architecture/inter-process-communication/),
 //! which does not provide TypeScript types for your commands or events.
 //!
@@ -86,13 +86,20 @@ where
     H: TauRpcHandler<R> + Send + Sync + 'static + Clone,
 {
     let args_map = HashMap::from([(H::PATH_PREFIX.to_string(), H::args_map())]);
+    let mut type_map = TypeCollection::default();
+    let functions = HashMap::from([(
+        H::PATH_PREFIX.to_string(),
+        H::collect_fn_types(&mut type_map),
+    )]);
     #[cfg(debug_assertions)] // Only export in development builds
-    // export_types(
-    //     H::EXPORT_PATH,
-    //     vec![(H::PATH_PREFIX, H::TRAIT_NAME)],
-    //     args_map,
-    //     specta_typescript::Typescript::default(),
-    // );
+    export_types(
+        H::EXPORT_PATH,
+        args_map,
+        specta_typescript::Typescript::default(),
+        functions,
+        type_map,
+    )
+    .unwrap();
     move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
         true
@@ -224,7 +231,6 @@ pub struct Router<R: Runtime> {
     export_path: Option<&'static str>,
     args_map_json: HashMap<String, String>,
     fns_map: HashMap<String, Vec<Function>>,
-    handler_paths: Vec<(&'static str, &'static str)>,
     export_config: specta_typescript::Typescript,
 }
 
@@ -236,7 +242,6 @@ impl<R: Runtime> Router<R> {
             fns_map: HashMap::new(),
             export_path: None,
             args_map_json: HashMap::new(),
-            handler_paths: Vec::new(),
             export_config: specta_typescript::Typescript::default(),
         }
     }
@@ -271,7 +276,6 @@ impl<R: Runtime> Router<R> {
             self.export_path = Some(path)
         }
 
-        self.handler_paths.push((H::PATH_PREFIX, H::TRAIT_NAME));
         self.args_map_json
             .insert(H::PATH_PREFIX.to_string(), H::args_map());
         self.handlers
@@ -296,12 +300,12 @@ impl<R: Runtime> Router<R> {
         #[cfg(debug_assertions)] // Only export in development builds
         export_types(
             self.export_path.clone(),
-            self.handler_paths.clone(),
             self.args_map_json.clone(),
             self.export_config.clone(),
             self.fns_map.clone(),
             self.types.clone(),
-        );
+        )
+        .unwrap();
 
         move |invoke: Invoke<R>| self.on_command(invoke)
     }

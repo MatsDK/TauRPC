@@ -25,13 +25,18 @@ export type User = {
 }
 
 const ARGS_MAP = {
-  '':
-    '{"test_io":["user"],"update_state":["new_value"],"get_app_handle":[],"multiple_args":["arg","arg2"],"with_sleep":[],"test_option":[],"test_result":["user"],"method_with_alias":[],"ev":["updated_value"],"vec_test":["arg"],"get_window":[],"test_bigint":["num"]}',
+  '': '{"vec_test":["arg"],"multiple_args":["arg","arg2"],"test_bigint":["num"],"get_window":[],"test_io":["user"],"with_sleep":[],"update_state":["new_value"],"test_result":["user"],"ev":["updated_value"],"method_with_alias":[],"test_option":[],"get_app_handle":[]}',
   'events':
-    '{"vec_test":["args"],"state_changed":["new_state"],"multiple_args":["arg1","arg2"],"test_ev":[]}',
+    '{"test_ev":[],"vec_test":["args"],"state_changed":["new_state"],"multiple_args":["arg1","arg2"]}',
   'api.ui': '{"test_ev":[],"trigger":[]}',
 }
 export type Router = {
+  'events': {
+    test_ev: () => Promise<void>
+    state_changed: (newState: string) => Promise<void>
+    vec_test: (args: string[]) => Promise<void>
+    multiple_args: (arg1: number, arg2: string[]) => Promise<void>
+  }
   'api.ui': { trigger: () => Promise<void>; test_ev: () => Promise<void> }
   '': {
     update_state: (newValue: string) => Promise<void>
@@ -46,12 +51,6 @@ export type Router = {
     vec_test: (arg: string[]) => Promise<void>
     multiple_args: (arg: string[], arg2: string) => Promise<void>
     test_bigint: (num: string) => Promise<string>
-  }
-  'events': {
-    test_ev: () => Promise<void>
-    state_changed: (newState: string) => Promise<void>
-    vec_test: (args: string[]) => Promise<void>
-    multiple_args: (arg1: number, arg2: string[]) => Promise<void>
   }
 }
 

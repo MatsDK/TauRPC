@@ -182,18 +182,9 @@ impl UiApi for UiApiImpl {
 
 type GlobalState = Arc<Mutex<String>>;
 
-// #[specta::specta]
-// fn test_fn(user: User) {
-//     todo!();
-// }
-
 #[tokio::main]
 async fn main() {
     let (tx, rx) = oneshot::channel::<AppHandle>();
-
-    // let typ = specta::function::fn_datatype!(test_fn)(&mut specta::TypeCollection::default());
-    // println!("{:?}", typ.name());
-    // println!("{:?}", typ.args);
 
     tokio::spawn(async move {
         let app_handle = rx.await.unwrap();
