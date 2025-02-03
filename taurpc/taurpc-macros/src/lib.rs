@@ -65,9 +65,7 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
         export_path: procedures_attrs.export_to,
         path_prefix: procedures_attrs.path,
         inputs_ident: &format_ident!("TauRpc{}Inputs", ident),
-        input_types_ident: &format_ident!("TauRpc{}InputTypes", ident),
         outputs_ident: &format_ident!("TauRpc{}Outputs", ident),
-        output_types_ident: &format_ident!("TauRpc{}OutputTypes", ident),
         output_futures_ident: &format_ident!("TauRpc{}OutputFutures", ident),
         methods,
         method_output_types: &methods
@@ -117,7 +115,7 @@ pub fn resolvers(_attr: TokenStream, item: TokenStream) -> TokenStream {
     quote!(#item).into()
 }
 
-// Transform an async method into a sync one that returns a Pin<Box<Future<Output = ...  >> .
+/// Transform an async method into a sync one that returns a `Pin<Box<Future<Output = ...  >>`.
 fn transform_method(method: &mut ImplItemFn) -> ImplItemType {
     method.sig.asyncness = None;
 

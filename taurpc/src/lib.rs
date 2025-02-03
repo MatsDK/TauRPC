@@ -1,5 +1,5 @@
 //! This crate provides a typesafe IPC layer for Tauri's commands and events.
-//! TauRPC should be used instead of [Tauri's IPC system](https://tauri.app/v1/references/architecture/inter-process-communication/),
+//! TauRPC should be used instead of [Tauri's IPC system](https://v2.tauri.app/develop/calling-rust),
 //! which does not provide TypeScript types for your commands or events.
 //!
 //! Go the the [GitHub](https://github.com/MatsDK/TauRPC/#readme) page to get started.
@@ -7,6 +7,8 @@
 pub extern crate serde;
 pub extern crate specta;
 pub extern crate specta_macros;
+use specta::datatype::Function;
+use specta::TypeCollection;
 pub use specta_typescript::Typescript;
 
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
@@ -42,6 +44,9 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     /// Returns a json object containing the arguments for the methods.
     /// This is used on the frontend to ensure the arguments are send with their correct idents to the backend.
     fn args_map() -> String;
+
+    /// Returns all of the functions for exporting, all referenced types will be added to `type_map`.
+    fn collect_fn_types(type_map: &mut TypeCollection) -> Vec<Function>;
 }
 
 /// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
@@ -82,14 +87,20 @@ where
     H: TauRpcHandler<R> + Send + Sync + 'static + Clone,
 {
     let args_map = HashMap::from([(H::PATH_PREFIX.to_string(), H::args_map())]);
+    let mut type_map = TypeCollection::default();
+    let functions = HashMap::from([(
+        H::PATH_PREFIX.to_string(),
+        H::collect_fn_types(&mut type_map),
+    )]);
     #[cfg(debug_assertions)] // Only export in development builds
     export_types(
         H::EXPORT_PATH,
-        vec![(H::PATH_PREFIX, H::TRAIT_NAME)],
         args_map,
         specta_typescript::Typescript::default(),
-    );
-
+        functions,
+        type_map,
+    )
+    .unwrap();
     move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
         true
@@ -112,7 +123,7 @@ pub enum Windows {
     N(Vec<String>),
 }
 
-/// A structure used for triggering [tauri events](https://tauri.app/v1/guides/features/events/) on the frontend.
+/// A structure used for triggering [tauri events](https://v2.tauri.app/develop/calling-rust/#accessing-the-webviewwindow-in-commands) on the frontend.
 /// By default the events are send to all windows with `emit_all`, if you want to send to a specific window by label,
 /// use `new_scoped` or `new_scoped_from_trigger`.
 #[derive(Debug)]
@@ -216,20 +227,22 @@ impl<RT: Runtime> EventTrigger<RT> {
 /// ```
 #[derive(Default)]
 pub struct Router<R: Runtime> {
+    types: TypeCollection,
     handlers: HashMap<String, Sender<Arc<Invoke<R>>>>,
     export_path: Option<&'static str>,
     args_map_json: HashMap<String, String>,
-    handler_paths: Vec<(&'static str, &'static str)>,
+    fns_map: HashMap<String, Vec<Function>>,
     export_config: specta_typescript::Typescript,
 }
 
 impl<R: Runtime> Router<R> {
     pub fn new() -> Self {
         Self {
+            types: TypeCollection::default(),
             handlers: HashMap::new(),
+            fns_map: HashMap::new(),
             export_path: None,
             args_map_json: HashMap::new(),
-            handler_paths: Vec::new(),
             export_config: specta_typescript::Typescript::default(),
         }
     }
@@ -264,9 +277,12 @@ impl<R: Runtime> Router<R> {
             self.export_path = Some(path)
         }
 
-        self.handler_paths.push((H::PATH_PREFIX, H::TRAIT_NAME));
         self.args_map_json
             .insert(H::PATH_PREFIX.to_string(), H::args_map());
+        self.fns_map.insert(
+            H::PATH_PREFIX.to_string(),
+            H::collect_fn_types(&mut self.types),
+        );
         self.handlers
             .insert(H::PATH_PREFIX.to_string(), handler.spawn());
         self
@@ -284,11 +300,13 @@ impl<R: Runtime> Router<R> {
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
         #[cfg(debug_assertions)] // Only export in development builds
         export_types(
-            self.export_path.clone(),
-            self.handler_paths.clone(),
+            self.export_path,
             self.args_map_json.clone(),
             self.export_config.clone(),
-        );
+            self.fns_map.clone(),
+            self.types.clone(),
+        )
+        .unwrap();
 
         move |invoke: Invoke<R>| self.on_command(invoke)
     }

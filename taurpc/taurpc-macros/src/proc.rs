@@ -5,10 +5,10 @@ use syn::{
     parenthesized,
     parse::{self, Parse, ParseStream},
     spanned::Spanned,
-    Attribute, FnArg, Generics, Ident, Pat, PatType, ReturnType, Token, Visibility,
+    Attribute, FnArg, Generics, Ident, Pat, ReturnType, Token, Visibility,
 };
 
-use crate::attrs::MethodAttrs;
+use crate::{args::Arg, attrs::MethodAttrs};
 
 /// Parse the structure of the procedures trait tagged with `#[taurpc::procedures]`.
 pub struct Procedures {
@@ -24,7 +24,7 @@ pub struct Procedures {
 pub struct IpcMethod {
     pub ident: Ident,
     pub output: ReturnType,
-    pub args: Vec<PatType>,
+    pub args: Vec<Arg>,
     pub generics: Generics,
     pub attrs: MethodAttrs,
 }
@@ -120,7 +120,7 @@ impl Parse for IpcMethod {
         for arg in content.parse_terminated(FnArg::parse, Token![,])? {
             match arg {
                 FnArg::Typed(pat_ty) if matches!(*pat_ty.pat, Pat::Ident(_)) => {
-                    args.push(pat_ty);
+                    args.push(Arg::from(pat_ty));
                 }
                 err => {
                     return Err(syn::Error::new(

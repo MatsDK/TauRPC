@@ -4,12 +4,7 @@ use crate::{method_fut_ident, proc::IpcMethod};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use std::collections::HashMap;
-use syn::{
-    ext::IdentExt, parse_quote, Attribute, GenericArgument, Generics, Ident, Pat, PatType,
-    PathArguments, PathSegment, Type, TypePath, Visibility,
-};
-
-const RESERVED_ARGS: &[&str] = &["window", "state", "app_handle"];
+use syn::{parse_quote, Attribute, Generics, Ident, Type, Visibility};
 
 pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
@@ -18,9 +13,7 @@ pub struct ProceduresGenerator<'a> {
     pub export_path: Option<String>,
     pub path_prefix: String,
     pub inputs_ident: &'a Ident,
-    pub input_types_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
-    pub output_types_ident: &'a Ident,
     pub output_futures_ident: &'a Ident,
     pub vis: &'a Visibility,
     pub generics: &'a Generics,
@@ -30,7 +23,7 @@ pub struct ProceduresGenerator<'a> {
     pub alias_method_idents: &'a [Ident],
 }
 
-impl<'a> ProceduresGenerator<'a> {
+impl ProceduresGenerator<'_> {
     fn procedures_trait(&self) -> TokenStream2 {
         let &ProceduresGenerator {
             trait_ident,
@@ -40,8 +33,24 @@ impl<'a> ProceduresGenerator<'a> {
             generics,
             attrs,
             method_output_types,
+            alias_method_idents,
             ..
         } = self;
+
+        let fn_types = alias_method_idents.iter().zip(methods).map(
+            |(ident, IpcMethod { output, args, .. })| {
+                let args = args.iter().filter(|&arg| !arg.skip_type);
+                // TODO: handle channels
+                let fn_ident = fn_ident(trait_ident, ident);
+                quote! {
+                    #[specta::specta]
+                    #[allow(non_snake_case)]
+                    fn #fn_ident( #( #args ),*) #output {
+                        unimplemented!();
+                    }
+                }
+            },
+        );
 
         let types_and_fns = methods.iter().zip(method_output_types.iter()).filter_map(
             |(
@@ -81,6 +90,8 @@ impl<'a> ProceduresGenerator<'a> {
                     #handler_ident { methods: self }
                 }
             }
+
+            #( #fn_types )*
         }
     }
 
@@ -101,8 +112,8 @@ impl<'a> ProceduresGenerator<'a> {
                     // Filter out Tauri's reserved arguments (state, window, app_handle).
                     let types = args
                         .iter()
-                        .filter(filter_reserved_args)
-                        .map(|PatType { ty, .. }| ty)
+                        .filter(|&arg| !arg.skip_type)
+                        .map(|arg| arg.ty())
                         .collect::<Vec<_>>();
 
                     // Tuples with 1 element were parsed as Type::Paren, which is not supported by specta.
@@ -125,52 +136,6 @@ impl<'a> ProceduresGenerator<'a> {
             #[serde(tag = "proc_name", content = "input_type")]
             #[allow(non_camel_case_types)]
             #vis enum #inputs_ident {
-                #( #inputs ),*
-            }
-        }
-    }
-
-    fn input_types_enum(&self) -> TokenStream2 {
-        let &Self {
-            methods,
-            vis,
-            input_types_ident,
-            alias_method_idents,
-            ..
-        } = self;
-
-        let inputs =
-            alias_method_idents
-                .iter()
-                .zip(methods)
-                .map(|(ident, IpcMethod { args, .. })| {
-                    // Filter out Tauri's reserved arguments (state, window, app_handle), these args do not need TS types.
-                    let filtered_args =
-                        args.iter().filter(filter_reserved_args).collect::<Vec<_>>();
-
-                    if filtered_args.len() == 1 {
-                        let arg = filtered_args[0];
-
-                        let ty = &arg.ty;
-                        quote! {
-                            #ident { __taurpc_type: #ty }
-                        }
-                    } else {
-                        let types = filtered_args
-                            .iter()
-                            .map(|PatType { ty, .. }| ty)
-                            .collect::<Vec<_>>();
-                        quote! {
-                            #ident(( #( #types ),* ))
-                        }
-                    }
-                });
-
-        quote! {
-            #[derive(taurpc::specta_macros::Type, taurpc::serde::Serialize)]
-            #[serde(tag = "proc_name", content = "input_type")]
-            #[allow(non_camel_case_types)]
-            #vis enum #input_types_ident {
                 #( #inputs ),*
             }
         }
@@ -203,37 +168,6 @@ impl<'a> ProceduresGenerator<'a> {
         }
     }
 
-    // Create enum that is used for generating the TS types with specta
-    fn output_types_enum(&self) -> TokenStream2 {
-        let &Self {
-            vis,
-            output_types_ident,
-            method_output_types,
-            alias_method_idents,
-            ..
-        } = self;
-
-        let outputs = alias_method_idents
-            .iter()
-            .zip(method_output_types.iter())
-            .map(|(ident, output_ty)| {
-                let output_ty = unwrap_result_ty(output_ty);
-
-                quote! {
-                    #ident(#output_ty)
-                }
-            });
-
-        quote! {
-            #[derive(taurpc::specta_macros::Type, taurpc::serde::Serialize)]
-            #[serde(tag = "proc_name", content = "output_type")]
-            #[allow(non_camel_case_types)]
-            #vis enum #output_types_ident {
-                #( #outputs ),*
-            }
-        }
-    }
-
     fn output_futures(&self) -> TokenStream2 {
         let &Self {
             methods,
@@ -258,7 +192,7 @@ impl<'a> ProceduresGenerator<'a> {
             })
             .collect::<Vec<_>>();
 
-        // If there are not commands, there are no future outputs and the generic P will be unused resulting in errors.
+        // If there are no commands, there are no future outputs and the generic P will be unused resulting in errors.
         if outputs.is_empty() {
             return quote! {};
         }
@@ -344,7 +278,7 @@ impl<'a> ProceduresGenerator<'a> {
             .for_each(|(ident, IpcMethod { args, .. })| {
                 let args = args
                     .iter()
-                    .filter(filter_reserved_args)
+                    .filter(|arg| !arg.skip_type)
                     .map(parse_arg_key)
                     .map(|r| r.unwrap())
                     .collect::<Vec<_>>();
@@ -357,6 +291,10 @@ impl<'a> ProceduresGenerator<'a> {
             Some(path) => quote! { Some(#path) },
             None => quote! { None },
         };
+
+        let fn_names = alias_method_idents
+            .iter()
+            .map(|ident| fn_ident(trait_ident, ident));
 
         quote! {
             #[derive(Clone)]
@@ -405,6 +343,10 @@ impl<'a> ProceduresGenerator<'a> {
                 fn args_map() -> String {
                     #serialized_args_map.to_string()
                 }
+
+                fn collect_fn_types(mut types_map: &mut specta::TypeCollection) -> Vec<specta::datatype::Function> {
+                    specta::function::collect_functions![#( #fn_names ),*](&mut types_map)
+                }
             }
         }
     }
@@ -452,8 +394,8 @@ impl<'a> ProceduresGenerator<'a> {
                         return None;
                     }
 
-                    let args = args.iter().filter(filter_reserved_args).collect::<Vec<_>>();
-                    let arg_pats = args.iter().map(|arg| &*arg.pat).collect::<Vec<_>>();
+                    let args = args.iter().filter(|arg| !arg.skip_type).collect::<Vec<_>>();
+                    let arg_pats = args.iter().map(|arg| arg.pat()).collect::<Vec<_>>();
 
                     Some(quote! {
                         #[allow(unused)]
@@ -494,15 +436,13 @@ impl<'a> ProceduresGenerator<'a> {
     }
 }
 
-impl<'a> ToTokens for ProceduresGenerator<'a> {
+impl ToTokens for ProceduresGenerator<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
         tokens.extend(vec![
             self.procedures_trait(),
             self.procedures_handler(),
             self.input_enum(),
-            self.input_types_enum(),
             self.output_enum(),
-            self.output_types_enum(),
             self.output_futures(),
             self.event_trigger_struct(),
             self.impl_event_trigger(),
@@ -510,45 +450,6 @@ impl<'a> ToTokens for ProceduresGenerator<'a> {
     }
 }
 
-// If a method returns a Result<T, E> type, we extract the first generic argument to use
-// inside the types enum. This is necessary because `specta_macros::Type` is not implemented for Result.
-// If the type is not a Result, return the original type.
-fn unwrap_result_ty(ty: &Type) -> &Type {
-    let result_seg = match is_ty_result(ty) {
-        Some(seg) => seg,
-        None => return ty,
-    };
-
-    if let PathArguments::AngleBracketed(path_args) = &result_seg.arguments {
-        if let GenericArgument::Type(ty) = path_args.args.first().unwrap() {
-            return ty;
-        }
-    }
-
-    ty
-}
-
-// TODO: This might break with other result types e.g.: io::Result.
-fn is_ty_result(ty: &Type) -> Option<&PathSegment> {
-    if let Type::Path(TypePath { path, .. }) = ty {
-        if let Some(seg) = path.segments.last() {
-            if seg.ident == "Result" {
-                return Some(seg);
-            }
-        }
-    }
-
-    None
-}
-
-/// Filter out Tauri's reserved argument names (state, window, app_handle), since
-/// we should not generate the types for these.
-fn filter_reserved_args(arg: &&PatType) -> bool {
-    match &mut arg.pat.as_ref() {
-        Pat::Ident(pat_ident) => {
-            let arg_name = pat_ident.ident.unraw().to_string();
-            !RESERVED_ARGS.iter().any(|&s| s == arg_name)
-        }
-        _ => false,
-    }
+fn fn_ident(trait_ident: &Ident, fn_ident: &Ident) -> Ident {
+    format_ident!("{trait_ident}_taurpc_fn__{fn_ident}")
 }

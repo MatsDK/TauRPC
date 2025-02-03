@@ -2,7 +2,7 @@
 
 [![](https://img.shields.io/npm/v/taurpc)](https://www.npmjs.com/package/taurpc) [![](https://img.shields.io/crates/v/taurpc)](https://crates.io/crates/taurpc) [![](https://img.shields.io/docsrs/taurpc)](https://docs.rs/taurpc/) ![](https://img.shields.io/crates/l/taurpc)
 
-This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://tauri.app/v1/guides/features/command/) and [events](https://tauri.app/v1/guides/features/events/).
+This package is a Tauri extension to give you a fully-typed IPC layer for [Tauri commands](https://v2.tauri.app/develop/calling-rust/#commands) and [events](https://v2.tauri.app/develop/calling-rust/#event-system).
 
 The TS types corresponding to your pre-defined Rust backend API are generated on runtime, after which they can be used to call the backend from your TypeScript frontend framework of choice. This crate provides typesafe bidirectional IPC communication between the Rust backend and TypeScript frontend.
 [Specta](https://github.com/oscartbeaumont/specta) is used under the hood for the type-generation. The trait-based API structure was inspired by [tarpc](https://github.com/google/tarpc).
@@ -100,7 +100,7 @@ trait Api {
 
 To share some state between procedures, you can add fields on the API implementation struct. If the state requires to be mutable, you need to use a container that enables interior mutability, like a [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html).
 
-You can use the `window` and `app_handle` arguments just like with Tauri's commands. [Tauri docs](https://tauri.app/v1/guides/features/command/#accessing-the-window-in-commands)
+You can use the `window`, `app_handle` and `webview_window` arguments just like with Tauri's commands. [Tauri docs](https://v2.tauri.app/develop/calling-rust/#accessing-the-webviewwindow-in-commands)
 
 ```rust
 // src-tauri/src/main.rs
@@ -156,7 +156,7 @@ You can return a `Result<T, E>` to return an error if the procedure fails. This 
 If you're working with error types from Rust's std library, they will probably not implement `serde::Serialize` which is required for anything that is returned in the procedure.
 In simple scenarios you can use `map_err` to convert these errors to `String`s. For more complex scenarios, you can create your own error type that implements `serde::Serialize`.
 You can find an example using [thiserror](https://github.com/dtolnay/thiserror) [here](https://github.com/MatsDK/TauRPC/blob/main/example/src-tauri/src/main.rs).
-You can also find more information about this in the [Tauri guides](https://tauri.app/v1/guides/features/command/#error-handling).
+You can also find more information about this in the [Tauri guides](https://v2.tauri.app/develop/calling-rust/#error-handling).
 
 # Extra options for procedures
 
@@ -254,7 +254,7 @@ let router = Router::new()
 
 # Calling the frontend
 
-Trigger [events](https://tauri.app/v1/guides/features/events/) on your TypeScript frontend from your Rust backend with a fully-typed experience.
+Trigger [events](https://v2.tauri.app/develop/calling-rust/#event-system) on your TypeScript frontend from your Rust backend with a fully-typed experience.
 The `#[taurpc::procedures]` macro also generates a struct that you can use to trigger the events, this means you can define the event types the same way you define the procedures.
 
 First start by declaring the API structure, by default the event trigger struct will be identified by `TauRpc{trait_ident}EventTrigger`. If you want to change this, you can add an attribute to do this, `#[taurpc::procedures(event_trigger = ApiEventTrigger)]`.

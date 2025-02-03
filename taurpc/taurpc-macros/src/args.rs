@@ -1,10 +1,75 @@
 use proc_macro2::TokenStream as TokenStream2;
-use quote::quote;
-use syn::{ext::IdentExt, spanned::Spanned, Ident, Pat, PatType};
+use quote::{quote, ToTokens};
+use syn::{ext::IdentExt, spanned::Spanned, Ident, Pat, PatType, Type};
+
+// TODO: Add raw request??
+const RESERVED_ARGS: &[&str] = &["window", "state", "app_handle", "webview_window"];
+
+#[derive(Debug)]
+pub(crate) struct Arg {
+    pat: PatType,
+    /// Should this argument be skipped in the generated types.
+    pub skip_type: bool,
+    channel: bool,
+    // alias: String
+}
+
+impl Arg {
+    pub fn ty(&self) -> &Type {
+        &self.pat.ty
+    }
+
+    pub fn pat(&self) -> &Pat {
+        &self.pat.pat
+    }
+}
+
+impl From<PatType> for Arg {
+    fn from(mut pat: PatType) -> Self {
+        let ident = pat.pat.as_ref();
+
+        // Skip this argument in type generation based on our defined reserved argument names.
+        let mut skip_type = matches!(
+            ident,
+            Pat::Ident(pat_ident) if RESERVED_ARGS.iter().any(|&s| pat_ident.ident == s)
+        );
+        let mut channel = false;
+
+        pat.attrs = pat
+            .attrs
+            .into_iter()
+            .filter(|attr| {
+                if RESERVED_ARGS.iter().any(|s| attr.path().is_ident(s)) {
+                    skip_type = true;
+                    return false;
+                }
+
+                if attr.path().is_ident("channel") {
+                    channel = true;
+                    return false;
+                }
+
+                true
+            })
+            .collect::<Vec<_>>();
+
+        Self {
+            pat,
+            skip_type,
+            channel,
+        }
+    }
+}
+
+impl ToTokens for Arg {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        self.pat.to_tokens(tokens);
+    }
+}
 
 /// Generate the code that extracts and deserializes the args from the tauri message.
 pub(crate) fn parse_args(
-    args: &[PatType],
+    args: &[Arg],
     message: &Ident,
     proc_ident: &Ident,
 ) -> syn::Result<Vec<TokenStream2>> {
@@ -13,7 +78,7 @@ pub(crate) fn parse_args(
         .collect()
 }
 
-fn parse_arg(arg: &PatType, message: &Ident, proc_ident: &Ident) -> syn::Result<TokenStream2> {
+fn parse_arg(arg: &Arg, message: &Ident, proc_ident: &Ident) -> syn::Result<TokenStream2> {
     let key = parse_arg_key(arg)?;
 
     // catch self arguments that use FnArg::Typed syntax
@@ -36,13 +101,13 @@ fn parse_arg(arg: &PatType, message: &Ident, proc_ident: &Ident) -> syn::Result<
     )))
 }
 
-pub(crate) fn parse_arg_key(arg: &PatType) -> Result<String, syn::Error> {
+pub(crate) fn parse_arg_key(arg: &Arg) -> Result<String, syn::Error> {
     // we only support patterns that allow us to extract some sort of keyed identifier
-    match &mut arg.pat.as_ref().clone() {
+    match arg.pat() {
         Pat::Ident(arg) => Ok(arg.ident.unraw().to_string()),
         Pat::Wild(_) => Ok("".into()), // we always convert to camelCase, so "_" will end up empty anyways
-        Pat::Struct(s) => Ok(s.path.segments.last_mut().unwrap().ident.to_string()),
-        Pat::TupleStruct(s) => Ok(s.path.segments.last_mut().unwrap().ident.to_string()),
+        Pat::Struct(s) => Ok(s.path.segments.last().unwrap().ident.to_string()),
+        Pat::TupleStruct(s) => Ok(s.path.segments.last().unwrap().ident.to_string()),
         err => Err(syn::Error::new(
             err.span(),
             "only named, wildcard, struct, and tuple struct arguments allowed",
