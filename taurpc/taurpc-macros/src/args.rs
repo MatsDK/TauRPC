@@ -15,11 +15,11 @@ pub(crate) struct Arg {
 }
 
 impl Arg {
-    pub fn ty(&self) -> &Box<Type> {
+    pub fn ty(&self) -> &Type {
         &self.pat.ty
     }
 
-    pub fn pat(&self) -> &Box<Pat> {
+    pub fn pat(&self) -> &Pat {
         &self.pat.pat
     }
 }
@@ -103,7 +103,7 @@ fn parse_arg(arg: &Arg, message: &Ident, proc_ident: &Ident) -> syn::Result<Toke
 
 pub(crate) fn parse_arg_key(arg: &Arg) -> Result<String, syn::Error> {
     // we only support patterns that allow us to extract some sort of keyed identifier
-    match arg.pat().as_ref() {
+    match arg.pat() {
         Pat::Ident(arg) => Ok(arg.ident.unraw().to_string()),
         Pat::Wild(_) => Ok("".into()), // we always convert to camelCase, so "_" will end up empty anyways
         Pat::Struct(s) => Ok(s.path.segments.last().unwrap().ident.to_string()),

@@ -28,11 +28,11 @@ export type User = {
 }
 
 const ARGS_MAP = {
-  'api.ui': '{"test_ev":[],"trigger":[]}',
   '':
-    '{"vec_test":["arg"],"test_bigint":["num"],"get_app_handle":[],"test_io":["_user"],"update_state":["new_value"],"get_window":[],"multiple_args":["arg","arg2"],"method_with_alias":[],"test_option":[],"get_webview_window":[],"test_result":["user"],"with_sleep":[],"ev":["updated_value"]}',
+    '{"test_option":[],"with_sleep":[],"test_io":["_user"],"get_window":[],"ev":["updated_value"],"get_webview_window":[],"multiple_args":["arg","arg2"],"test_result":["user"],"vec_test":["arg"],"method_with_alias":[],"update_state":["new_value"],"test_bigint":["num"],"get_app_handle":[]}',
+  'api.ui': '{"trigger":[],"test_ev":[]}',
   'events':
-    '{"test_ev":[],"multiple_args":["arg1","arg2"],"vec_test":["args"],"state_changed":["new_state"]}',
+    '{"state_changed":["new_state"],"vec_test":["args"],"test_ev":[],"multiple_args":["arg1","arg2"]}',
 }
 export type Router = {
   '': {

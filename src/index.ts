@@ -67,7 +67,7 @@ type ConvertToNestedObject<TRouter extends NestedRoutes> = UnionToIntersection<
 
 type TauRpcProxy<TRouter extends Router> =
   & (TRouter[''] extends RoutesLayer ? InvokeLayer<TRouter['']>
-    : { test: boolean })
+    : object)
   & ConvertToNestedObject<Omit<TRouter, ''>>
 
 type Payload = {

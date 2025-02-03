@@ -40,7 +40,6 @@ impl ProceduresGenerator<'_> {
         let fn_types = alias_method_idents.iter().zip(methods).map(
             |(ident, IpcMethod { output, args, .. })| {
                 let args = args.iter().filter(|&arg| !arg.skip_type);
-                // TODO: do we support generics?
                 // TODO: handle channels
                 let fn_ident = fn_ident(trait_ident, ident);
                 quote! {

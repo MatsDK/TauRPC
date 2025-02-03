@@ -5,7 +5,7 @@ use syn::{
     parenthesized,
     parse::{self, Parse, ParseStream},
     spanned::Spanned,
-    Attribute, FnArg, Generics, Ident, Pat, PatType, ReturnType, Token, Visibility,
+    Attribute, FnArg, Generics, Ident, Pat, ReturnType, Token, Visibility,
 };
 
 use crate::{args::Arg, attrs::MethodAttrs};

@@ -1,5 +1,5 @@
-//! This crate provides a typesafe IPC layer for Tauri's commands and events.lib
-//! TauRPC should be used instead of [Tauri's IPC system](https://tauri.app/v1/references/architecture/inter-process-communication/),
+//! This crate provides a typesafe IPC layer for Tauri's commands and events.
+//! TauRPC should be used instead of [Tauri's IPC system](https://v2.tauri.app/develop/calling-rust),
 //! which does not provide TypeScript types for your commands or events.
 //!
 //! Go the the [GitHub](https://github.com/MatsDK/TauRPC/#readme) page to get started.

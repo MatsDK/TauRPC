@@ -155,7 +155,7 @@ fn generate_function(
         .context("An error occured while generating command args")?
         .join(", ");
 
-    let ret_type = match function.result() {
+    let return_ty = match function.result() {
         Some(FunctionResultVariant::Value(t)) => ts::datatype(
             export_config,
             &FunctionResultVariant::Value(t.clone()),
@@ -170,8 +170,6 @@ fn generate_function(
         None => "void".to_string(),
     };
 
-    // TODO: add docs to functions
-
     let name = function.name().split_once("_taurpc_fn__").unwrap().1;
-    Ok(format!(r#"{name}: ({args}) => Promise<{ret_type}>"#))
+    Ok(format!(r#"{name}: ({args}) => Promise<{return_ty}>"#))
 }
