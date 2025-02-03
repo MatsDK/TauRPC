@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{sync::Arc, time::Duration};
-use tauri::{AppHandle, Manager, Runtime, Window};
+use tauri::{AppHandle, Manager, Runtime, WebviewWindow, Window};
 use taurpc::{Router, Windows};
 use tokio::{
     sync::{oneshot, Mutex},
@@ -52,8 +52,12 @@ trait Api {
     async fn update_state(app_handle: AppHandle<impl Runtime>, new_value: String);
 
     async fn get_window<R: Runtime>(window: Window<R>);
+    // async fn get_window<R: Runtime>(#[window] win: Window<R>);
+
+    async fn get_webview_window<R: Runtime>(webview_window: WebviewWindow<R>);
 
     async fn get_app_handle<R: Runtime>(app_handle: AppHandle<R>);
+    // async fn get_app_handle(#[app_handle] ah: AppHandle<impl Runtime>);
 
     async fn test_io(_user: User) -> User;
 
@@ -101,9 +105,16 @@ impl Api for ApiImpl {
         println!("Window: {}", window.label());
     }
 
+    async fn get_webview_window<R: Runtime>(self, webview_window: WebviewWindow<R>) {
+        println!("WebviewWindow: {}", webview_window.label());
+    }
+
     async fn get_app_handle<R: Runtime>(self, app_handle: AppHandle<R>) {
-        let app_dir = app_handle.path().app_config_dir();
-        println!("App Handle: {:?}, {:?}", app_dir, app_handle.package_info());
+        println!(
+            "App Handle: {:?}, {:?}",
+            app_handle.path().app_config_dir(),
+            app_handle.package_info()
+        );
     }
 
     async fn test_io(self, user: User) -> User {

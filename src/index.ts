@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { type EventCallback, listen, UnlistenFn } from '@tauri-apps/api/event'
 
-/* eslint-disable  @typescript-eslint/no-explicit-any */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RoutesLayer = { [key: string]: (...args: any) => unknown }
 type NestedRoutes = {
   [route: string]: RoutesLayer | NestedRoutes

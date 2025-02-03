@@ -15,6 +15,7 @@
   const call_backend = async () => {
     await taurpc.update_state(value)
     await taurpc.get_window()
+    await taurpc.get_webview_window()
     await taurpc.method_with_alias()
     await taurpc.multiple_args([], 'test')
     await taurpc.get_app_handle()

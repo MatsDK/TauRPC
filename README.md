@@ -100,7 +100,7 @@ trait Api {
 
 To share some state between procedures, you can add fields on the API implementation struct. If the state requires to be mutable, you need to use a container that enables interior mutability, like a [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html).
 
-You can use the `window` and `app_handle` arguments just like with Tauri's commands. [Tauri docs](https://tauri.app/v1/guides/features/command/#accessing-the-window-in-commands)
+You can use the `window`, `app_handle` and `webview_window` arguments just like with Tauri's commands. [Tauri docs](https://v2.tauri.app/develop/calling-rust/#accessing-the-webviewwindow-in-commands)
 
 ```rust
 // src-tauri/src/main.rs

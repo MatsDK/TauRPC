@@ -4,9 +4,7 @@ use crate::{method_fut_ident, proc::IpcMethod};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use std::collections::HashMap;
-use syn::{ext::IdentExt, parse_quote, Attribute, Generics, Ident, Pat, PatType, Type, Visibility};
-
-const RESERVED_ARGS: &[&str] = &["window", "state", "app_handle"];
+use syn::{parse_quote, Attribute, Generics, Ident, Type, Visibility};
 
 pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
@@ -41,7 +39,7 @@ impl ProceduresGenerator<'_> {
 
         let fn_types = alias_method_idents.iter().zip(methods).map(
             |(ident, IpcMethod { output, args, .. })| {
-                let args = args.iter().filter(filter_reserved_args);
+                let args = args.iter().filter(|&arg| !arg.skip_type);
                 // TODO: do we support generics?
                 // TODO: handle channels
                 let fn_ident = fn_ident(trait_ident, ident);
@@ -115,8 +113,8 @@ impl ProceduresGenerator<'_> {
                     // Filter out Tauri's reserved arguments (state, window, app_handle).
                     let types = args
                         .iter()
-                        .filter(filter_reserved_args)
-                        .map(|PatType { ty, .. }| ty)
+                        .filter(|&arg| !arg.skip_type)
+                        .map(|arg| arg.ty())
                         .collect::<Vec<_>>();
 
                     // Tuples with 1 element were parsed as Type::Paren, which is not supported by specta.
@@ -281,7 +279,7 @@ impl ProceduresGenerator<'_> {
             .for_each(|(ident, IpcMethod { args, .. })| {
                 let args = args
                     .iter()
-                    .filter(filter_reserved_args)
+                    .filter(|arg| !arg.skip_type)
                     .map(parse_arg_key)
                     .map(|r| r.unwrap())
                     .collect::<Vec<_>>();
@@ -397,8 +395,8 @@ impl ProceduresGenerator<'_> {
                         return None;
                     }
 
-                    let args = args.iter().filter(filter_reserved_args).collect::<Vec<_>>();
-                    let arg_pats = args.iter().map(|arg| &*arg.pat).collect::<Vec<_>>();
+                    let args = args.iter().filter(|arg| !arg.skip_type).collect::<Vec<_>>();
+                    let arg_pats = args.iter().map(|arg| arg.pat()).collect::<Vec<_>>();
 
                     Some(quote! {
                         #[allow(unused)]
@@ -450,18 +448,6 @@ impl ToTokens for ProceduresGenerator<'_> {
             self.event_trigger_struct(),
             self.impl_event_trigger(),
         ])
-    }
-}
-
-/// Filter out Tauri's reserved argument names (state, window, app_handle), since
-/// we should not generate the types for these.
-fn filter_reserved_args(arg: &&PatType) -> bool {
-    match &mut arg.pat.as_ref() {
-        Pat::Ident(pat_ident) => {
-            let arg_name = pat_ident.ident.unraw().to_string();
-            !RESERVED_ARGS.iter().any(|&s| s == arg_name)
-        }
-        _ => false,
     }
 }
 
