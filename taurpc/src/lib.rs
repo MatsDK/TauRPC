@@ -123,7 +123,7 @@ pub enum Windows {
     N(Vec<String>),
 }
 
-/// A structure used for triggering [tauri events](https://tauri.app/v1/guides/features/events/) on the frontend.
+/// A structure used for triggering [tauri events](https://v2.tauri.app/develop/calling-rust/#accessing-the-webviewwindow-in-commands) on the frontend.
 /// By default the events are send to all windows with `emit_all`, if you want to send to a specific window by label,
 /// use `new_scoped` or `new_scoped_from_trigger`.
 #[derive(Debug)]
