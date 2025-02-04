@@ -20,6 +20,10 @@
     await taurpc.multiple_args([], 'test')
     await taurpc.get_app_handle()
 
+    await taurpc.with_channel((update) => {
+      console.log(update.progress)
+    })
+
     try {
       const res = await taurpc.test_result({
         first_name: '',

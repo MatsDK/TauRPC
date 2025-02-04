@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{sync::Arc, time::Duration};
-use tauri::{AppHandle, Manager, Runtime, WebviewWindow, Window};
+use tauri::{ipc::Channel, AppHandle, Manager, Runtime, WebviewWindow, Window};
 use taurpc::{Router, Windows};
 use tokio::{
     sync::{oneshot, Mutex},
@@ -46,6 +46,11 @@ impl serde::Serialize for Error {
     }
 }
 
+#[taurpc::ipc_type]
+struct Update {
+    progress: u8,
+}
+
 // #[taurpc::procedures(event_trigger = ApiEventTrigger)]
 #[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../src/lib/bindings.ts")]
 trait Api {
@@ -79,6 +84,8 @@ trait Api {
     async fn multiple_args(arg: Vec<String>, arg2: String);
 
     async fn test_bigint(num: i64) -> i64;
+
+    async fn with_channel(on_event: Channel<Update>);
 }
 
 #[derive(Clone)]
@@ -144,6 +151,12 @@ impl Api for ApiImpl {
 
     async fn test_bigint(self, num: i64) -> i64 {
         num
+    }
+
+    async fn with_channel(self, on_event: Channel<Update>) {
+        for progress in [15, 20, 35, 50, 90] {
+            on_event.send(Update { progress }).unwrap();
+        }
     }
 }
 
