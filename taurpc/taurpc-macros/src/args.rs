@@ -10,7 +10,7 @@ pub(crate) struct Arg {
     pat: PatType,
     /// Should this argument be skipped in the generated types.
     pub skip_type: bool,
-    channel: bool,
+    // channel: bool,
     // alias: String
 }
 
@@ -22,19 +22,25 @@ impl Arg {
     pub fn pat(&self) -> &Pat {
         &self.pat.pat
     }
+
+    //     pub fn to_type_tokens(&self) -> TokenStream2 {
+    //         let ty = &self.pat;
+    //         quote! {#ty}
+    //     }
 }
 
 impl From<PatType> for Arg {
     fn from(mut pat: PatType) -> Self {
-        let ident = pat.pat.as_ref();
+        // let mut channel = false;
 
         // Skip this argument in type generation based on our defined reserved argument names.
         let mut skip_type = matches!(
-            ident,
+            pat.pat.as_ref(),
             Pat::Ident(pat_ident) if RESERVED_ARGS.iter().any(|&s| pat_ident.ident == s)
         );
-        let mut channel = false;
 
+        // These reserved args can also be used when they are tagged with an attribute, for
+        // example `fn my_command(#[app_handle] h: AppHandle<impl Runtime>)`.
         pat.attrs = pat
             .attrs
             .into_iter()
@@ -44,20 +50,20 @@ impl From<PatType> for Arg {
                     return false;
                 }
 
-                if attr.path().is_ident("channel") {
-                    channel = true;
-                    return false;
-                }
+                // if attr.path().is_ident("channel") {
+                //     // channel = true;
+                //     return false;
+                // }
 
                 true
             })
             .collect::<Vec<_>>();
 
-        Self {
-            pat,
-            skip_type,
-            channel,
-        }
+        // if matches!(pat.pat.as_ref(), Pat::Ident(pat_ident) if pat_ident.ident == "on_event") {
+        //     channel = true;
+        // }
+
+        Self { pat, skip_type }
     }
 }
 

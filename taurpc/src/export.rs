@@ -20,6 +20,7 @@ static PACKAGE_JSON: &str = r#"
 static BOILERPLATE_TS_IMPORT: &str = r#"
 
 import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
+type TAURI_CHANNEL<T> = (t: T) => void
 "#;
 
 static BOILERPLATE_TS_EXPORT: &str = r#"
@@ -38,7 +39,7 @@ pub(super) fn export_types(
     args_map: HashMap<String, String>,
     export_config: ts::Typescript,
     functions: HashMap<String, Vec<Function>>,
-    type_map: TypeCollection,
+    mut type_map: TypeCollection,
 ) -> Result<()> {
     let export_path = export_path.map(|p| p.to_string()).unwrap_or(
         std::env::current_dir()
@@ -60,6 +61,7 @@ pub(super) fn export_types(
     }
 
     // Export `types_map` containing all referenced types.
+    type_map.remove(<tauri::ipc::Channel<()> as specta::NamedType>::sid());
     let types = export_config
         .export(&type_map)
         .context("Failed to generate types with specta")?;

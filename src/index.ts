@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { Channel, invoke } from '@tauri-apps/api/core'
 import { type EventCallback, listen, UnlistenFn } from '@tauri-apps/api/event'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -146,7 +146,14 @@ const handleProxyCall = async (
     const arg_name = procedure_args[idx]
     if (!arg_name) throw new Error('Received invalid arguments')
 
-    args_object[arg_name] = args[idx]
+    const arg = args[idx]
+    if (typeof arg == 'function') {
+      const channel = new Channel()
+      channel.onmessage = arg as typeof channel.onmessage
+      args_object[arg_name] = channel
+    } else {
+      args_object[arg_name] = arg
+    }
   }
 
   const response = await invoke(

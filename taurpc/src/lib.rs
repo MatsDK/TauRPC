@@ -20,6 +20,8 @@ use tauri::{AppHandle, Emitter, Runtime};
 
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
+mod channel;
+// pub use channel::Channel;
 mod export;
 use export::export_types;
 

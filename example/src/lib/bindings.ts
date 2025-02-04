@@ -6,8 +6,11 @@ import {
   createTauRPCProxy as createProxy,
   type InferCommandOutput,
 } from 'taurpc'
+type TAURI_CHANNEL<T> = (t: T) => void
 
 export type Error = { type: 'Io' } | { type: 'Other'; data: string }
+
+export type Update = { progress: number }
 
 /**
  * Doc comments are also generated
@@ -28,13 +31,13 @@ export type User = {
 }
 
 const ARGS_MAP = {
-  '':
-    '{"test_option":[],"with_sleep":[],"test_io":["_user"],"get_window":[],"ev":["updated_value"],"get_webview_window":[],"multiple_args":["arg","arg2"],"test_result":["user"],"vec_test":["arg"],"method_with_alias":[],"update_state":["new_value"],"test_bigint":["num"],"get_app_handle":[]}',
-  'api.ui': '{"trigger":[],"test_ev":[]}',
+  'api.ui': '{"test_ev":[],"trigger":[]}',
   'events':
-    '{"state_changed":["new_state"],"vec_test":["args"],"test_ev":[],"multiple_args":["arg1","arg2"]}',
+    '{"vec_test":["args"],"state_changed":["new_state"],"multiple_args":["arg1","arg2"],"test_ev":[]}',
+  '': '{"update_state":["new_value"],"get_webview_window":[],"with_sleep":[],"get_app_handle":[],"vec_test":["arg"],"ev":["updated_value"],"multiple_args":["arg","arg2"],"test_bigint":["num"],"with_channel":["on_event"],"method_with_alias":[],"test_result":["user"],"get_window":[],"test_io":["_user"],"test_option":[]}',
 }
 export type Router = {
+  'api.ui': { trigger: () => Promise<void>; test_ev: () => Promise<void> }
   '': {
     update_state: (newValue: string) => Promise<void>
     get_window: () => Promise<void>
@@ -49,6 +52,7 @@ export type Router = {
     vec_test: (arg: string[]) => Promise<void>
     multiple_args: (arg: string[], arg2: string) => Promise<void>
     test_bigint: (num: string) => Promise<string>
+    with_channel: (onEvent: TAURI_CHANNEL<Update>) => Promise<void>
   }
   'events': {
     test_ev: () => Promise<void>
@@ -56,7 +60,6 @@ export type Router = {
     vec_test: (args: string[]) => Promise<void>
     multiple_args: (arg1: number, arg2: string[]) => Promise<void>
   }
-  'api.ui': { trigger: () => Promise<void>; test_ev: () => Promise<void> }
 }
 
 export type { InferCommandOutput }

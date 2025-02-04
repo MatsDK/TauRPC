@@ -39,8 +39,12 @@ impl ProceduresGenerator<'_> {
 
         let fn_types = alias_method_idents.iter().zip(methods).map(
             |(ident, IpcMethod { output, args, .. })| {
-                let args = args.iter().filter(|&arg| !arg.skip_type);
-                // TODO: handle channels
+                let args = args
+                    .iter()
+                    .filter(|&arg| !arg.skip_type)
+                    // .map(|arg| arg.to_type_tokens())
+                    .collect::<Vec<_>>();
+
                 let fn_ident = fn_ident(trait_ident, ident);
                 quote! {
                     #[specta::specta]
