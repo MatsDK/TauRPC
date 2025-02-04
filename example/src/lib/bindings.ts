@@ -34,7 +34,8 @@ const ARGS_MAP = {
   'api.ui': '{"test_ev":[],"trigger":[]}',
   'events':
     '{"vec_test":["args"],"state_changed":["new_state"],"multiple_args":["arg1","arg2"],"test_ev":[]}',
-  '': '{"update_state":["new_value"],"get_webview_window":[],"with_sleep":[],"get_app_handle":[],"vec_test":["arg"],"ev":["updated_value"],"multiple_args":["arg","arg2"],"test_bigint":["num"],"with_channel":["on_event"],"method_with_alias":[],"test_result":["user"],"get_window":[],"test_io":["_user"],"test_option":[]}',
+  '':
+    '{"update_state":["new_value"],"get_webview_window":[],"with_sleep":[],"get_app_handle":[],"vec_test":["arg"],"ev":["updated_value"],"multiple_args":["arg","arg2"],"test_bigint":["num"],"with_channel":["on_event"],"method_with_alias":[],"test_result":["user"],"get_window":[],"test_io":["_user"],"test_option":[]}',
 }
 export type Router = {
   'api.ui': { trigger: () => Promise<void>; test_ev: () => Promise<void> }

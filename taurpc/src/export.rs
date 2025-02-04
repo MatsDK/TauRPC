@@ -20,7 +20,7 @@ static PACKAGE_JSON: &str = r#"
 static BOILERPLATE_TS_IMPORT: &str = r#"
 
 import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
-type TAURI_CHANNEL<T> = (t: T) => void
+type TAURI_CHANNEL<T> = (response: T) => void
 "#;
 
 static BOILERPLATE_TS_EXPORT: &str = r#"
