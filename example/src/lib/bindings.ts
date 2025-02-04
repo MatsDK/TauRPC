@@ -6,7 +6,7 @@ import {
   createTauRPCProxy as createProxy,
   type InferCommandOutput,
 } from 'taurpc'
-type TAURI_CHANNEL<T> = (t: T) => void
+type TAURI_CHANNEL<T> = (response: T) => void
 
 export type Error = { type: 'Io' } | { type: 'Other'; data: string }
 
@@ -33,11 +33,17 @@ export type User = {
 const ARGS_MAP = {
   'api.ui': '{"test_ev":[],"trigger":[]}',
   'events':
-    '{"vec_test":["args"],"state_changed":["new_state"],"multiple_args":["arg1","arg2"],"test_ev":[]}',
+    '{"vec_test":["args"],"multiple_args":["arg1","arg2"],"test_ev":[],"state_changed":["new_state"]}',
   '':
-    '{"update_state":["new_value"],"get_webview_window":[],"with_sleep":[],"get_app_handle":[],"vec_test":["arg"],"ev":["updated_value"],"multiple_args":["arg","arg2"],"test_bigint":["num"],"with_channel":["on_event"],"method_with_alias":[],"test_result":["user"],"get_window":[],"test_io":["_user"],"test_option":[]}',
+    '{"with_channel":["on_event"],"method_with_alias":[],"test_bigint":["num"],"test_option":[],"update_state":["new_value"],"get_app_handle":[],"get_webview_window":[],"test_io":["_user"],"ev":["updated_value"],"with_sleep":[],"test_result":["user"],"get_window":[],"vec_test":["arg"],"multiple_args":["arg","arg2"]}',
 }
 export type Router = {
+  'events': {
+    test_ev: () => Promise<void>
+    state_changed: (newState: string) => Promise<void>
+    vec_test: (args: string[]) => Promise<void>
+    multiple_args: (arg1: number, arg2: string[]) => Promise<void>
+  }
   'api.ui': { trigger: () => Promise<void>; test_ev: () => Promise<void> }
   '': {
     update_state: (newValue: string) => Promise<void>
@@ -54,12 +60,6 @@ export type Router = {
     multiple_args: (arg: string[], arg2: string) => Promise<void>
     test_bigint: (num: string) => Promise<string>
     with_channel: (onEvent: TAURI_CHANNEL<Update>) => Promise<void>
-  }
-  'events': {
-    test_ev: () => Promise<void>
-    state_changed: (newState: string) => Promise<void>
-    vec_test: (args: string[]) => Promise<void>
-    multiple_args: (arg1: number, arg2: string[]) => Promise<void>
   }
 }
 
