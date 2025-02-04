@@ -44,7 +44,7 @@ impl ProceduresGenerator<'_> {
 
                 quote! {
                     #[specta::specta]
-                    #[allow(non_snake_case)]
+                    #[allow(non_snake_case, unused_variables)]
                     fn #fn_ident( #( #args ),*) #output {
                         unimplemented!();
                     }
@@ -303,7 +303,7 @@ impl ProceduresGenerator<'_> {
             }
 
             use ::tauri::ipc::private::*;
-            impl<R: Runtime, P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<R> for #handler_ident<P> {
+            impl<R: ::tauri::Runtime, P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<R> for #handler_ident<P> {
                 const TRAIT_NAME: &'static str = stringify!(#trait_ident);
                 const PATH_PREFIX: &'static str = #path_prefix;
                 const EXPORT_PATH: Option<&'static str> = #export_path;
@@ -360,7 +360,7 @@ impl ProceduresGenerator<'_> {
 
         quote! {
             #[derive(Clone, Debug)]
-            #vis struct #event_trigger_ident<RT: Runtime>(taurpc::EventTrigger<RT>);
+            #vis struct #event_trigger_ident<RT: ::tauri::Runtime>(taurpc::EventTrigger<RT>);
         }
     }
 
@@ -411,7 +411,7 @@ impl ProceduresGenerator<'_> {
             .collect::<Vec<_>>();
 
         quote! {
-            impl<RT: Runtime> #event_trigger_ident<RT> {
+            impl<RT: ::tauri::Runtime> #event_trigger_ident<RT> {
                 /// Generate a new client to trigger events on the client-side.
                 #vis fn new(app_handle: tauri::AppHandle<RT>) -> Self {
                     let trigger = taurpc::EventTrigger::new(app_handle, String::from(#path_prefix));

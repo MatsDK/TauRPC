@@ -15,7 +15,7 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-taurpc = "0.4.0"
+taurpc = "0.4.1"
 
 specta = { version = "=2.0.0-rc.22", features = ["derive"] }
 # specta-typescript = "0.0.9"
@@ -336,7 +336,7 @@ struct ApiImpl;
 
 #[taurpc::resolvers]
 impl Api for ApiImpl {
-    async fn with_channel(self, on_event: Channel<Update>) {
+    async fn update(self, on_event: Channel<Update>) {
         for progress in [15, 20, 35, 50, 90] {
             on_event.send(Update { progress }).unwrap();
         }
@@ -348,7 +348,7 @@ Calling the command:
 
 ```typescript
 let taurpc = createTauRPCProxy()
-await taurpc.with_channel((update) => {
+await taurpc.update((update) => {
   console.log(update.progress)
 })
 ```
