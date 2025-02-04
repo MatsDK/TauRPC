@@ -5,7 +5,6 @@ use syn::{ext::IdentExt, spanned::Spanned, Ident, Pat, PatType, Type};
 // TODO: Add raw request??
 const RESERVED_ARGS: &[&str] = &["window", "state", "app_handle", "webview_window"];
 
-#[derive(Debug)]
 pub(crate) struct Arg {
     pat: PatType,
     /// Should this argument be skipped in the generated types.
