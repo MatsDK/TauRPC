@@ -96,8 +96,6 @@ trait Api {
 
 # Accessing managed state
 
-<!-- You can use Tauri's managed state within your commands, along the `state` argument, you can also use the `window` and `app_handle` arguments. [Tauri docs](https://tauri.app/v1/guides/features/command/#accessing-the-window-in-commands) -->
-
 To share some state between procedures, you can add fields on the API implementation struct. If the state requires to be mutable, you need to use a container that enables interior mutability, like a [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html).
 
 You can use the `window`, `app_handle` and `webview_window` arguments just like with Tauri's commands. [Tauri docs](https://v2.tauri.app/develop/calling-rust/#accessing-the-webviewwindow-in-commands)
@@ -315,6 +313,44 @@ trigger.send_to(Windows::One("main".to_string())).hello_world()?;
 //   - Windows::All (default)
 //   - Windows::One(String)
 //   - Windows::N(Vec<String>)
+```
+
+# Using channels
+
+TauRPC will also generate types if you are using [Tauri Channels](https://v2.tauri.app/develop/calling-frontend/#channels).
+On the frontend you will be able to pass a typed callback function to your command.
+
+```rust
+#[taurpc::ipc_type]
+struct Update {
+    progress: u8,
+}
+
+#[taurpc::procedures]
+trait Api {
+    async fn update(on_event: Channel<Update>);
+}
+
+#[derive(Clone)]
+struct ApiImpl;
+
+#[taurpc::resolvers]
+impl Api for ApiImpl {
+    async fn with_channel(self, on_event: Channel<Update>) {
+        for progress in [15, 20, 35, 50, 90] {
+            on_event.send(Update { progress }).unwrap();
+        }
+    }
+}
+```
+
+Calling the command:
+
+```typescript
+let taurpc = createTauRPCProxy()
+await taurpc.with_channel((update) => {
+  console.log(update.progress)
+})
 ```
 
 # Features
