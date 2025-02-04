@@ -1,5 +1,14 @@
 # taurpc
 
+## 1.8.0
+
+### Minor Changes
+
+- [`04af2f3`](https://github.com/MatsDK/TauRPC/commit/04af2f3565571777f6d76f9fb3d71538ec574313) Thanks [@MatsDK](https://github.com/MatsDK)!
+  - Support Tauri channels [#34](https://github.com/MatsDK/TauRPC/issues/34)
+  - Better error handling in exporter [#43](https://github.com/MatsDK/TauRPC/issues/43)
+  - Show correct names for parameters on the frontend types [#37](https://github.com/MatsDK/TauRPC/issues/37)
+
 ## 1.7.0
 
 ### Minor Changes
