@@ -1,6 +1,6 @@
 {
   "name": "taurpc",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "",
   "main": "dist/index.cjs",
   "repository": {
