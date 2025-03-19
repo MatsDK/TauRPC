@@ -106,7 +106,7 @@ const nestedProxy = (
 
             const event_name = nested_path.join('.')
             return async (listener: (args: unknown) => void) => {
-              await listen(
+              return await listen(
                 TAURPC_EVENT_NAME,
                 createEventHandlder(event_name, listener, args_map),
               )
