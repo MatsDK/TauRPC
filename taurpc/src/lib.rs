@@ -16,7 +16,7 @@ use tokio::sync::broadcast::Sender;
 
 use serde::Serialize;
 use tauri::ipc::{Invoke, InvokeError};
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
@@ -130,7 +130,7 @@ pub enum Windows {
 pub struct EventTrigger<RT: Runtime> {
     app_handle: AppHandle<RT>,
     path_prefix: String,
-    scope: Windows,
+    target: EventTarget,
 }
 
 impl<RT: Runtime> Clone for EventTrigger<RT> {
@@ -138,7 +138,7 @@ impl<RT: Runtime> Clone for EventTrigger<RT> {
         Self {
             app_handle: self.app_handle.clone(),
             path_prefix: self.path_prefix.clone(),
-            scope: self.scope.clone(),
+            target: self.target.clone(),
         }
     }
 }
@@ -148,23 +148,27 @@ impl<RT: Runtime> EventTrigger<RT> {
         Self {
             app_handle,
             path_prefix,
-            scope: Default::default(),
+            target: EventTarget::Any,
         }
     }
 
-    pub fn new_scoped(app_handle: AppHandle<RT>, path_prefix: String, scope: Windows) -> Self {
+    pub fn new_scoped<I: Into<EventTarget>>(
+        app_handle: AppHandle<RT>,
+        path_prefix: String,
+        target: I,
+    ) -> Self {
         Self {
             app_handle,
             path_prefix,
-            scope,
+            target: target.into(),
         }
     }
 
-    pub fn new_scoped_from_trigger(trigger: Self, scope: Windows) -> Self {
+    pub fn new_scoped_from_trigger(trigger: Self, target: EventTarget) -> Self {
         Self {
             app_handle: trigger.app_handle,
             path_prefix: trigger.path_prefix,
-            scope,
+            target,
         }
     }
 
@@ -175,23 +179,27 @@ impl<RT: Runtime> EventTrigger<RT> {
             format!("{}.{}", self.path_prefix, proc_name)
         };
         let event = Event { event_name, event };
-        match &self.scope {
-            Windows::All => self.app_handle.emit("TauRpc_event", event),
-            Windows::One(label) => self.app_handle.emit_to(label, "TauRpc_event", event),
-            Windows::N(labels) => {
-                for label in labels {
-                    self.app_handle
-                        .emit_to(label, "TauRpc_event", event.clone())?;
-                }
-                Ok(())
-            }
-        }
+        let _ = self
+            .app_handle
+            .emit_to(self.target.clone(), "TauRpc_event", event);
+        // match &self.scope {
+        //     Windows::All => self.app_handle.emit("TauRpc_event", event),
+        //     Windows::One(label) => self.app_handle.emit_to(label, "TauRpc_event", event),
+        //     Windows::N(labels) => {
+        //         for label in labels {
+        //             self.app_handle
+        //                 .emit_to(label, "TauRpc_event", event.clone())?;
+        //         }
+        //         Ok(())
+        //     }
+        // }
+        Ok(())
     }
 }
 
 /// Used for merging nested trait implementations. This is used when you have multiple trait implementations,
 /// instead of `taurpc::create_ipc_handler()`. Use `.merge()` to add trait implementations to the router.
-/// The trait must be have the `#[taurpc::procedures]` and the nested routes should have `#[taurpc::procedures(path = "path")]`.
+/// The trait must have the `#[taurpc::procedures]` macro and the nested routes should have `#[taurpc::procedures(path = "path")]`.
 ///
 ///  # Examples
 /// ```rust
@@ -247,7 +255,7 @@ impl<R: Runtime> Router<R> {
         }
     }
 
-    /// Overwrite `specta` default TypeScript export options, look at the docs for
+    /// Overwrite `specta`'s default TypeScript export options, look at the docs for
     /// `specta_typescript::Typescript` for all the configuration options.
     ///
     /// Example:
