@@ -113,16 +113,6 @@ struct Event<S> {
     event_name: String,
 }
 
-/// Enum used for triggering scoped events instead of on all windows.
-/// Use the `send_to(scope: Windows)` method on your event trigger struct.
-#[derive(Default, Debug, Clone)]
-pub enum Windows {
-    #[default]
-    All,
-    One(String),
-    N(Vec<String>),
-}
-
 /// A structure used for triggering [tauri events](https://v2.tauri.app/develop/calling-rust/#accessing-the-webviewwindow-in-commands) on the frontend.
 /// By default the events are send to all windows with `emit_all`, if you want to send to a specific window by label,
 /// use `new_scoped` or `new_scoped_from_trigger`.
@@ -182,17 +172,6 @@ impl<RT: Runtime> EventTrigger<RT> {
         let _ = self
             .app_handle
             .emit_to(self.target.clone(), "TauRpc_event", event);
-        // match &self.scope {
-        //     Windows::All => self.app_handle.emit("TauRpc_event", event),
-        //     Windows::One(label) => self.app_handle.emit_to(label, "TauRpc_event", event),
-        //     Windows::N(labels) => {
-        //         for label in labels {
-        //             self.app_handle
-        //                 .emit_to(label, "TauRpc_event", event.clone())?;
-        //         }
-        //         Ok(())
-        //     }
-        // }
         Ok(())
     }
 }

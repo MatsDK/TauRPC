@@ -419,14 +419,9 @@ impl ProceduresGenerator<'_> {
                     Self(trigger)
                 }
 
-                /// Trigger an event with a specific scope.
-                ///
-                /// Options:
-                ///    - Windows::All (default)
-                ///    - Windows::One(String)
-                ///    - Windows::N(Vec<String>)
-                #vis fn send_to(&self, scope: taurpc::Windows) -> Self {
-                    let trigger = taurpc::EventTrigger::new_scoped_from_trigger(self.0.clone(), scope);
+                /// Trigger an event with a specific target.
+                #vis fn send_to<I: Into<::tauri::EventTarget>>(&self, target: I) -> Self {
+                    let trigger = taurpc::EventTrigger::new_scoped_from_trigger(self.0.clone(), target.into());
                     Self(trigger)
                 }
 

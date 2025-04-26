@@ -2,8 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{sync::Arc, time::Duration};
-use tauri::{ipc::Channel, AppHandle, Manager, Runtime, WebviewWindow, Window};
-use taurpc::{Router, Windows};
+use tauri::{ipc::Channel, AppHandle, EventTarget, Manager, Runtime, WebviewWindow, Window};
+use taurpc::Router;
 use tokio::{
     sync::{oneshot, Mutex},
     time::sleep,
@@ -216,9 +216,9 @@ async fn main() {
 
             events_trigger.vec_test(vec![String::from("test"), String::from("test2")])?;
 
-            // events_trigger.
-            //     .send_to(Windows::One("main".to_string()))
-            //     .vec_test(vec![String::from("test"), String::from("test2")])?;
+            events_trigger
+                .send_to(EventTarget::Any)
+                .vec_test(vec![String::from("test"), String::from("test2")])?;
 
             events_trigger.multiple_args(0, vec![String::from("test"), String::from("test2")])?;
 
