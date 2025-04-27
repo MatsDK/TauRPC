@@ -3593,7 +3593,7 @@ dependencies = [
 
 [[package]]
 name = "taurpc"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "heck 0.5.0",
@@ -3611,7 +3611,7 @@ dependencies = [
 
 [[package]]
 name = "taurpc-macros"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "proc-macro2",
  "quote",
