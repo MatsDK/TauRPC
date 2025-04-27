@@ -1,5 +1,11 @@
 # taurpc
 
+## 1.8.1
+
+### Patch Changes
+
+- [`92b170e`](https://github.com/MatsDK/TauRPC/commit/92b170ed44f062b1da3989f1ce40cb315dcc0446) Thanks [@MatsDK](https://github.com/MatsDK)! - Actually return unlisten function for events
+
 ## 1.8.0
 
 ### Minor Changes
