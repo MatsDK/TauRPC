@@ -27,8 +27,8 @@ first_name: string;
  */
 last_name: string }
 
-const ARGS_MAP = { '':'{"with_sleep":[],"get_app_handle":[],"test_bigint":["num"],"test_option":[],"test_io":["_user"],"get_window":[],"test_result":["user"],"get_webview_window":[],"multiple_args":["arg","arg2"],"with_channel":["on_event"],"update_state":["new_value"],"ev":["updated_value"],"method_with_alias":[],"vec_test":["arg"]}', 'api.ui':'{"trigger":[],"test_ev":[]}', 'events':'{"test_ev":[],"vec_test":["args"],"multiple_args":["arg1","arg2"],"state_changed":["new_state"]}' }
-export type Router = { '': { ev: (updatedValue: string) => Promise<void>, 
+const ARGS_MAP = { '':'{"ev":["updated_value"],"get_app_handle":[],"get_webview_window":[],"get_window":[],"method_with_alias":[],"multiple_args":["arg","arg2"],"test_bigint":["num"],"test_io":["_user"],"test_option":[],"test_result":["user"],"update_state":["new_value"],"vec_test":["arg"],"with_channel":["on_event"],"with_sleep":[]}', 'api.ui':'{"test_ev":[],"trigger":[]}', 'events':'{"multiple_args":["arg1","arg2"],"state_changed":["new_state"],"test_ev":[],"vec_test":["args"]}' }
+export type Router = { "": {ev: (updatedValue: string) => Promise<void>, 
 get_app_handle: () => Promise<void>, 
 get_webview_window: () => Promise<void>, 
 get_window: () => Promise<void>, 
@@ -41,14 +41,14 @@ test_result: (user: User) => Promise<User>,
 update_state: (newValue: string) => Promise<void>, 
 vec_test: (arg: string[]) => Promise<void>, 
 with_channel: (onEvent: TAURI_CHANNEL<Update>) => Promise<void>, 
-with_sleep: () => Promise<void> },
-'api.ui': { test_ev: () => Promise<void>, 
-trigger: () => Promise<void> },
-'events': { multiple_args: (arg1: number, arg2: string[]) => Promise<void>, 
+with_sleep: () => Promise<void>},
+"api.ui": {test_ev: () => Promise<void>, 
+trigger: () => Promise<void>},
+"events": {multiple_args: (arg1: number, arg2: string[]) => Promise<void>, 
 state_changed: (newState: string) => Promise<void>, 
 test_ev: () => Promise<void>, 
-vec_test: (args: string[]) => Promise<void> } };
+vec_test: (args: string[]) => Promise<void>} };
 
 
-export type { InferCommandOutput }
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
+export type { InferCommandOutput }

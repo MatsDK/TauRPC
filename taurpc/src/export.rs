@@ -5,8 +5,8 @@ use specta::datatype::{Function, FunctionResultVariant};
 use specta::TypeCollection;
 use specta_typescript as ts;
 use specta_typescript::Typescript;
-use std::collections::HashMap;
-use std::fs::OpenOptions;
+use std::collections::BTreeMap;
+use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
 
@@ -25,8 +25,8 @@ type TAURI_CHANNEL<T> = (response: T) => void
 
 static BOILERPLATE_TS_EXPORT: &str = r#"
 
-export type { InferCommandOutput }
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
+export type { InferCommandOutput }
 "#;
 
 /// Export the generated TS types with the code necessary for generating the client proxy.
@@ -36,19 +36,12 @@ export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 /// Otherwise the code will just be export to the .ts file specified by the user.
 pub(super) fn export_types(
     export_path: Option<&'static str>,
-    args_map: HashMap<String, String>,
+    args_map: BTreeMap<String, String>,
     export_config: ts::Typescript,
-    functions: HashMap<String, Vec<Function>>,
+    functions: BTreeMap<String, Vec<Function>>,
     mut type_map: TypeCollection,
 ) -> Result<()> {
-    let export_path = export_path.map(|p| p.to_string()).unwrap_or(
-        std::env::current_dir()
-            .unwrap()
-            .join("../bindings.ts")
-            .into_os_string()
-            .into_string()
-            .unwrap(),
-    );
+    let export_path = get_export_path(export_path);
     let path = Path::new(&export_path);
 
     if path.is_dir() || !export_path.ends_with(".ts") {
@@ -68,7 +61,13 @@ pub(super) fn export_types(
 
     // Put headers always at the top of the file, followed by the module imports.
     let framework_header = export_config.framework_header.as_ref();
-    let body = types.split_once(framework_header).unwrap().1;
+    let body = match types.split_once(framework_header) {
+        Some((_, body)) => body,
+        None => {
+            eprintln!("Failed to split types with framework header");
+            ""
+        }
+    };
 
     let mut file = OpenOptions::new()
         .create(true)
@@ -77,31 +76,21 @@ pub(super) fn export_types(
         .open(path)
         .context("Cannot open bindings file")?;
 
-    file.write_all(export_config.header.as_bytes()).unwrap();
-    file.write_all(framework_header.as_bytes()).unwrap();
-    file.write_all(BOILERPLATE_TS_IMPORT.as_bytes()).unwrap();
-    file.write_all(body.as_bytes()).unwrap();
+    try_write(&mut file, &export_config.header);
+    try_write(&mut file, &framework_header);
+    try_write(&mut file, &BOILERPLATE_TS_IMPORT);
+    try_write(&mut file, &body);
 
-    let mut sorted_entries: Vec<_> = args_map
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-    sorted_entries.sort_by(|a, b| a.0.cmp(&b.0));
-    let args_entries: String = sorted_entries
+    let args_entries: String = args_map
         .iter()
         .map(|(k, v)| format!("'{k}':'{v}'"))
         .join(", ");
     let router_args = format!("{{ {args_entries} }}");
 
-    file.write_all(format!("const ARGS_MAP = {router_args}\n").as_bytes())
-        .unwrap();
-    file.write_all(
-        generate_functions_router(functions, type_map, &export_config)
-            .unwrap()
-            .as_bytes(),
-    )
-    .unwrap();
-    file.write_all(BOILERPLATE_TS_EXPORT.as_bytes()).unwrap();
+    try_write(&mut file, &format!("const ARGS_MAP = {router_args}\n"));
+    let functions_router = generate_functions_router(functions, type_map, &export_config);
+    try_write(&mut file, &functions_router);
+    try_write(&mut file, &BOILERPLATE_TS_EXPORT);
 
     if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
         let package_json_path = Path::new(&export_path)
@@ -121,17 +110,13 @@ pub(super) fn export_types(
 }
 
 fn generate_functions_router(
-    functions: HashMap<String, Vec<Function>>,
+    functions: BTreeMap<String, Vec<Function>>,
     type_map: TypeCollection,
     export_config: &Typescript,
-) -> Result<String> {
-    let mut sorted_paths: Vec<_> = functions.keys().collect();
-    sorted_paths.sort();
-
-    let functions = sorted_paths
+) -> String {
+    let functions = functions
         .iter()
-        .map(|path| {
-            let path_functions = functions.get(*path).unwrap();
+        .filter_map(|(path, path_functions)| {
             let mut function_names_and_funcs: Vec<_> =
                 path_functions.iter().map(|f| (f.name(), f)).collect();
             function_names_and_funcs.sort_by(|a, b| a.0.cmp(b.0));
@@ -140,15 +125,16 @@ fn generate_functions_router(
                 .iter()
                 .map(|(_, function)| generate_function(function, export_config, &type_map))
                 .collect::<Result<Vec<_>, _>>()
-                .unwrap()
+                .map_err(|e| eprintln!("Error generating functions: {:?}", e))
+                .unwrap_or_default()
                 .join(", \n");
 
-            format!("'{path}': {{ {functions} }}")
+            Some(format!(r#""{path}": {{{functions}}}"#))
         })
         .collect::<Vec<String>>()
         .join(",\n");
 
-    Ok(format!("export type Router = {{ {functions} }};\n"))
+    format!("export type Router = {{ {functions} }};\n")
 }
 
 fn generate_function(
@@ -187,4 +173,41 @@ fn generate_function(
 
     let name = function.name().split_once("_taurpc_fn__").unwrap().1;
     Ok(format!(r#"{name}: ({args}) => Promise<{return_ty}>"#))
+}
+
+fn default_export_path() -> String {
+    let current_dir = match std::env::current_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            eprintln!("Error getting current directory: {:?}", e);
+            return "bindings.ts".to_string();
+        }
+    };
+
+    match current_dir
+        .join("../bindings.ts")
+        .into_os_string()
+        .into_string()
+    {
+        Ok(path) => path,
+        Err(e) => {
+            eprintln!("Error getting default export path: {:?}", e);
+            "bindings.ts".to_string()
+        }
+    }
+}
+
+fn get_export_path(export_path: Option<&'static str>) -> String {
+    export_path
+        .map(|p| p.to_string())
+        .unwrap_or(default_export_path())
+}
+
+fn try_write(file: &mut File, data: &str) {
+    match file.write_all(data.as_bytes()) {
+        Ok(_) => (),
+        Err(e) => {
+            eprintln!("Error writing to file: {:?}", e);
+        }
+    };
 }
