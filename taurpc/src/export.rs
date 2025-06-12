@@ -82,7 +82,9 @@ pub(super) fn export_types(
     file.write_all(BOILERPLATE_TS_IMPORT.as_bytes()).unwrap();
     file.write_all(body.as_bytes()).unwrap();
 
-    let args_entries: String = args_map
+    let mut sorted_entries: Vec<_> = args_map.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    sorted_entries.sort_by(|a, b| a.0.cmp(&b.0));
+    let args_entries: String = sorted_entries
         .iter()
         .map(|(k, v)| format!("'{k}':'{v}'"))
         .join(", ");
@@ -120,12 +122,19 @@ fn generate_functions_router(
     type_map: TypeCollection,
     export_config: &Typescript,
 ) -> Result<String> {
-    let functions = functions
+    let mut sorted_paths: Vec<_> = functions.keys().collect();
+    sorted_paths.sort();
+    
+    let functions = sorted_paths
         .iter()
-        .map(|(path, functions)| {
-            let functions = functions
+        .map(|path| {
+            let path_functions = functions.get(*path).unwrap();
+            let mut function_names_and_funcs: Vec<_> = path_functions.iter().map(|f| (f.name(), f)).collect();
+            function_names_and_funcs.sort_by(|a, b| a.0.cmp(b.0));
+            
+            let functions = function_names_and_funcs
                 .iter()
-                .map(|function| generate_function(function, export_config, &type_map))
+                .map(|(_, function)| generate_function(function, export_config, &type_map))
                 .collect::<Result<Vec<_>, _>>()
                 .unwrap()
                 .join(", \n");

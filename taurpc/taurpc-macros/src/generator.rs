@@ -286,7 +286,11 @@ impl ProceduresGenerator<'_> {
                 args_map.insert(ident.to_string(), args);
             });
 
-        let serialized_args_map = serde_json::to_string(&args_map).unwrap();
+        // Sort the args_map for consistent output
+        let mut sorted_args: Vec<_> = args_map.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        sorted_args.sort_by(|a, b| a.0.cmp(&b.0));
+        let sorted_args_map: HashMap<String, Vec<String>> = sorted_args.into_iter().collect();
+        let serialized_args_map = serde_json::to_string(&sorted_args_map).unwrap();
         let export_path = match export_path {
             Some(path) => quote! { Some(#path) },
             None => quote! { None },
