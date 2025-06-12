@@ -11,7 +11,8 @@ use specta::datatype::Function;
 use specta::TypeCollection;
 pub use specta_typescript::Typescript;
 
-use std::{collections::HashMap, fmt::Debug, sync::Arc};
+use std::collections::{BTreeMap, HashMap};
+use std::{fmt::Debug, sync::Arc};
 use tokio::sync::broadcast::Sender;
 
 use serde::Serialize;
@@ -86,9 +87,9 @@ pub fn create_ipc_handler<H, R: Runtime>(
 where
     H: TauRpcHandler<R> + Send + Sync + 'static + Clone,
 {
-    let args_map = HashMap::from([(H::PATH_PREFIX.to_string(), H::args_map())]);
+    let args_map = BTreeMap::from([(H::PATH_PREFIX.to_string(), H::args_map())]);
     let mut type_map = TypeCollection::default();
-    let functions = HashMap::from([(
+    let functions = BTreeMap::from([(
         H::PATH_PREFIX.to_string(),
         H::collect_fn_types(&mut type_map),
     )]);
@@ -217,8 +218,8 @@ pub struct Router<R: Runtime> {
     types: TypeCollection,
     handlers: HashMap<String, Sender<Arc<Invoke<R>>>>,
     export_path: Option<&'static str>,
-    args_map_json: HashMap<String, String>,
-    fns_map: HashMap<String, Vec<Function>>,
+    args_map_json: BTreeMap<String, String>,
+    fns_map: BTreeMap<String, Vec<Function>>,
     export_config: specta_typescript::Typescript,
 }
 
@@ -227,9 +228,9 @@ impl<R: Runtime> Router<R> {
         Self {
             types: TypeCollection::default(),
             handlers: HashMap::new(),
-            fns_map: HashMap::new(),
+            fns_map: BTreeMap::new(),
             export_path: None,
-            args_map_json: HashMap::new(),
+            args_map_json: BTreeMap::new(),
             export_config: specta_typescript::Typescript::default(),
         }
     }

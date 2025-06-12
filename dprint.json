@@ -17,6 +17,7 @@
     "**/node_modules",
     "pnpm-lock.yaml",
     "dist",
+    "bindings.ts",
     "**/target",
     "**/gen"
   ],

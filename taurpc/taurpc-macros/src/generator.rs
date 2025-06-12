@@ -3,7 +3,7 @@ use crate::{method_fut_ident, proc::IpcMethod};
 
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use syn::{parse_quote, Attribute, Generics, Ident, Type, Visibility};
 
 pub struct ProceduresGenerator<'a> {
@@ -271,7 +271,7 @@ impl ProceduresGenerator<'_> {
         );
 
         // Generate json object containing the order and names of the arguments for the methods.
-        let mut args_map = HashMap::new();
+        let mut args_map = BTreeMap::new();
         alias_method_idents
             .iter()
             .zip(methods)
