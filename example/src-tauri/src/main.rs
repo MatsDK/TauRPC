@@ -235,7 +235,7 @@ async fn main() {
             specta_typescript::Typescript::default()
                 .header("// My header\n\n")
                 // Make sure prettier is installed before using this.
-                .formatter(specta_typescript::formatter::prettier)
+                // .formatter(specta_typescript::formatter::prettier)
                 .bigint(specta_typescript::BigIntExportBehavior::String),
         )
         .merge(

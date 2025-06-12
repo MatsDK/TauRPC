@@ -27,7 +27,7 @@ first_name: string;
  */
 last_name: string }
 
-const ARGS_MAP = { '':'{"ev":["updated_value"],"get_window":[],"multiple_args":["arg","arg2"],"test_io":["_user"],"with_sleep":[],"test_bigint":["num"],"with_channel":["on_event"],"test_option":[],"method_with_alias":[],"test_result":["user"],"update_state":["new_value"],"get_app_handle":[],"vec_test":["arg"],"get_webview_window":[]}', 'api.ui':'{"trigger":[],"test_ev":[]}', 'events':'{"test_ev":[],"state_changed":["new_state"],"multiple_args":["arg1","arg2"],"vec_test":["args"]}' }
+const ARGS_MAP = { '':'{"with_sleep":[],"get_app_handle":[],"test_bigint":["num"],"test_option":[],"test_io":["_user"],"get_window":[],"test_result":["user"],"get_webview_window":[],"multiple_args":["arg","arg2"],"with_channel":["on_event"],"update_state":["new_value"],"ev":["updated_value"],"method_with_alias":[],"vec_test":["arg"]}', 'api.ui':'{"trigger":[],"test_ev":[]}', 'events':'{"test_ev":[],"vec_test":["args"],"multiple_args":["arg1","arg2"],"state_changed":["new_state"]}' }
 export type Router = { '': { ev: (updatedValue: string) => Promise<void>, 
 get_app_handle: () => Promise<void>, 
 get_webview_window: () => Promise<void>, 
