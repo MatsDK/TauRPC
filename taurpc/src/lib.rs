@@ -286,7 +286,7 @@ impl<R: Runtime> Router<R> {
     ///      .expect("error while running tauri application");
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
-        #[cfg(debug_assertions)] // Only export in development builds
+        #[cfg(dev)] // Only export when using tauri dev
         export_types(
             self.export_path,
             self.args_map_json.clone(),
