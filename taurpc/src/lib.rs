@@ -93,15 +93,18 @@ where
         H::PATH_PREFIX.to_string(),
         H::collect_fn_types(&mut type_map),
     )]);
-    #[cfg(debug_assertions)] // Only export in development builds
-    export_types(
-        H::EXPORT_PATH,
-        args_map,
-        specta_typescript::Typescript::default(),
-        functions,
-        type_map,
-    )
-    .unwrap();
+
+    // Only export in development mode
+    if tauri::is_dev() {
+        export_types(
+            H::EXPORT_PATH,
+            args_map,
+            specta_typescript::Typescript::default(),
+            functions,
+            type_map,
+        )
+        .unwrap();
+    }
     move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
         true
@@ -286,15 +289,17 @@ impl<R: Runtime> Router<R> {
     ///      .expect("error while running tauri application");
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
-        #[cfg(debug_assertions)] // Only export in development builds
-        export_types(
-            self.export_path,
-            self.args_map_json.clone(),
-            self.export_config.clone(),
-            self.fns_map.clone(),
-            self.types.clone(),
-        )
-        .unwrap();
+        // Only export in development mode
+        if tauri::is_dev() {
+            export_types(
+                self.export_path,
+                self.args_map_json.clone(),
+                self.export_config.clone(),
+                self.fns_map.clone(),
+                self.types.clone(),
+            )
+            .unwrap();
+        }
 
         move |invoke: Invoke<R>| self.on_command(invoke)
     }
