@@ -1,10 +1,10 @@
 use anyhow::{bail, Context, Result};
 use heck::ToLowerCamelCase;
 use itertools::Itertools;
-use specta::datatype::{Function, FunctionResultVariant};
+use specta::datatype::{Function, FunctionReturnType};
 use specta::TypeCollection;
-use specta_typescript as ts;
 use specta_typescript::Typescript;
+use specta_typescript::{self as ts, primitives};
 use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
@@ -54,7 +54,7 @@ pub(super) fn export_types(
     }
 
     // Export `types_map` containing all referenced types.
-    type_map.remove(<tauri::ipc::Channel<()> as specta::NamedType>::sid());
+    // type_map.remove(<tauri::ipc::Channel<()> as specta::NamedType>::ID);
     let types = export_config
         .export(&type_map)
         .context("Failed to generate types with specta")?;
@@ -87,8 +87,8 @@ pub(super) fn export_types(
         .join(", ");
     let router_args = format!("{{ {args_entries} }}");
 
-    try_write(&mut file, &format!("const ARGS_MAP = {router_args}\n"));
-    let functions_router = generate_functions_router(functions, type_map, &export_config);
+    try_write(&mut file, &format!("const ARGS_MAP = {router_args}\n")); // TODO: Do this with `serde_json`
+    let functions_router = generate_functions_router(functions, type_map, &export_config); // TODO: Using object primitive
     try_write(&mut file, &functions_router);
     try_write(&mut file, &BOILERPLATE_TS_EXPORT);
 
@@ -103,9 +103,9 @@ pub(super) fn export_types(
     }
 
     // Format the output file if the user specified a formatter on `export_config`.
-    export_config.format(path).context(
-        "Failed to format exported bindings, make sure you have the correct formatter installed",
-    )?;
+    // export_config.format(path).context(
+    //     "Failed to format exported bindings, make sure you have the correct formatter installed",
+    // )?; // TODO: Specta no longer supports this
     Ok(())
 }
 
@@ -144,30 +144,21 @@ fn generate_function(
 ) -> Result<String> {
     let args = function
         .args()
+        .into_iter()
         .map(|(name, typ)| {
-            ts::datatype(
-                export_config,
-                &FunctionResultVariant::Value(typ.clone()),
-                type_map,
-            )
-            .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
+            primitives::reference(export_config, type_map, typ)
+                .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
         })
         .collect::<Result<Vec<_>, _>>()
         .context("An error occured while generating command args")?
         .join(", ");
 
     let return_ty = match function.result() {
-        Some(FunctionResultVariant::Value(t)) => ts::datatype(
-            export_config,
-            &FunctionResultVariant::Value(t.clone()),
-            type_map,
-        )?,
+        Some(FunctionReturnType::Value(t)) => primitives::reference(export_config, type_map, t)?,
         // TODO: handle result types
-        Some(FunctionResultVariant::Result(t, _e)) => ts::datatype(
-            export_config,
-            &FunctionResultVariant::Value(t.clone()),
-            type_map,
-        )?,
+        Some(FunctionReturnType::Result(t, _e)) => {
+            primitives::reference(export_config, type_map, t)?
+        }
         None => "void".to_string(),
     };
 
