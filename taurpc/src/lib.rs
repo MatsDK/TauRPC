@@ -6,7 +6,6 @@
 
 pub extern crate serde;
 pub extern crate specta;
-pub extern crate specta_macros;
 use specta::datatype::Function;
 use specta::TypeCollection;
 pub use specta_typescript::Typescript;
@@ -296,35 +295,33 @@ impl<R: Runtime> Router<R> {
                 self.args_map_json.clone(),
                 self.export_config.clone(),
                 self.fns_map.clone(),
-                self.types.clone(),
+                self.types,
             )
             .unwrap();
         }
 
-        move |invoke: Invoke<R>| self.on_command(invoke)
-    }
-
-    fn on_command(&self, invoke: Invoke<R>) -> bool {
-        let cmd = invoke.message.command();
-        if !cmd.starts_with("TauRPC__") {
-            return false;
-        }
-
-        // Remove `TauRPC__`
-        let prefix = cmd[8..].to_string();
-        let mut prefix = prefix.split('.').collect::<Vec<_>>();
-        // Remove the actual name of the command
-        prefix.pop().unwrap();
-
-        match self.handlers.get(&prefix.join(".")) {
-            Some(handler) => {
-                let _ = handler.send(Arc::new(invoke));
+        move |invoke: Invoke<R>| {
+            let cmd = invoke.message.command();
+            if !cmd.starts_with("TauRPC__") {
+                return false;
             }
-            None => invoke
-                .resolver
-                .invoke_error(InvokeError::from(format!("`{cmd}` not found"))),
-        };
 
-        true
+            // Remove `TauRPC__`
+            let prefix = cmd[8..].to_string();
+            let mut prefix = prefix.split('.').collect::<Vec<_>>();
+            // Remove the actual name of the command
+            prefix.pop().unwrap();
+
+            match self.handlers.get(&prefix.join(".")) {
+                Some(handler) => {
+                    let _ = handler.send(Arc::new(invoke));
+                }
+                None => invoke
+                    .resolver
+                    .invoke_error(InvokeError::from(format!("`{cmd}` not found"))),
+            };
+
+            true
+        }
     }
 }

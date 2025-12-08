@@ -21,15 +21,13 @@ rustdoc-args = ["--cfg", "docsrs"]
 taurpc-macros = { path = "./taurpc-macros", version = "=0.5.2" }
 
 itertools = "0.13.0"
-tauri = { version = "2.2.5", features = ["specta"] } 
+tauri = { version = "2.2.5", features = ["specta"] }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
 tokio = { version = "1", features = ["full"] }
 
-specta = { version = "=2.0.0-rc.22", features=["export", "function"] }
-specta-serde = { version = "0.0.9", features = [] }
-specta-typescript = { version = "0.0.9", features = ["function"] }
-specta-macros = { version = "2.0.0-rc.17" }
+specta = { version = "=2.0.0-rc.22", features = ["derive", "export", "function"] }
+specta-typescript = "0.0.9"
 heck = "0.5.0"
 anyhow = "1.0.95"
 
@@ -37,3 +35,8 @@ anyhow = "1.0.95"
 members = [
   "taurpc-macros",
 ]
+
+# TODO: Drop this once changes land on `main`
+[patch.crates-io]
+specta = { path = "../../specta/specta" }
+specta-typescript = { path = "../../specta/specta-typescript" }

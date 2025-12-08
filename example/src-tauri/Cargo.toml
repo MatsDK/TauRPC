@@ -20,5 +20,10 @@ tokio = { version = "1", features = ["full"] }
 thiserror = "1.0"
 
 taurpc = { path = "../../taurpc" }
-specta = { version = "=2.0.0-rc.22", features = ["derive", "function"] }
-specta-typescript = { version = "0.0.9", features = [] }
+specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+specta-typescript = "0.0.9"
+
+# TODO: Drop this once changes land on `main`
+[patch.crates-io]
+specta = { path = "../../../specta/specta" }
+specta-typescript = { path = "../../../specta/specta-typescript" }
