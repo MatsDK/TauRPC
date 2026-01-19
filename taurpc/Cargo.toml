@@ -33,5 +33,5 @@ specta-serde = { version = "0", features = [] }
 specta-macros = { version = "2.0.0-rc.18" }
 specta-typescript = { version = "0", features = ["function"] }
 tauri = { version = "2", features = ["specta"] }
-taurpc-macros = { path = "./taurpc-macros", version = "=0.5.2" }
+taurpc-macros = { path = "./taurpc-macros", version = "=0.5.3" }
 tokio = { version = "1", features = ["full"] }
