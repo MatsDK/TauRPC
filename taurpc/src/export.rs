@@ -125,7 +125,7 @@ fn generate_functions_router(
                 .iter()
                 .map(|(_, function)| generate_function(function, export_config, &type_map))
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| eprintln!("Error generating functions: {:?}", e))
+                .map_err(|e| eprintln!("Error generating functions: {e:?}"))
                 .unwrap_or_default()
                 .join(", \n");
 
@@ -179,7 +179,7 @@ fn default_export_path() -> String {
     let current_dir = match std::env::current_dir() {
         Ok(dir) => dir,
         Err(e) => {
-            eprintln!("Error getting current directory: {:?}", e);
+            eprintln!("Error getting current directory: {e:?}");
             return "bindings.ts".to_string();
         }
     };
@@ -191,7 +191,7 @@ fn default_export_path() -> String {
     {
         Ok(path) => path,
         Err(e) => {
-            eprintln!("Error getting default export path: {:?}", e);
+            eprintln!("Error getting default export path: {e:?}");
             "bindings.ts".to_string()
         }
     }
@@ -207,7 +207,7 @@ fn try_write(file: &mut File, data: &str) {
     match file.write_all(data.as_bytes()) {
         Ok(_) => (),
         Err(e) => {
-            eprintln!("Error writing to file: {:?}", e);
+            eprintln!("Error writing to file: {e:?}");
         }
     };
 }
