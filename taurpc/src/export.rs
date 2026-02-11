@@ -6,6 +6,7 @@ use specta::TypeCollection;
 use specta_typescript as ts;
 use specta_typescript::Typescript;
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
@@ -35,16 +36,14 @@ export type { InferCommandOutput }
 /// to `node_modules/.taurpc` and a `package.json` will also be generated to import the package.
 /// Otherwise the code will just be export to the .ts file specified by the user.
 pub(super) fn export_types(
-    export_path: Option<&'static str>,
+    export_path: impl AsRef<Path>,
     args_map: BTreeMap<String, String>,
     export_config: ts::Typescript,
     functions: BTreeMap<String, Vec<Function>>,
     mut type_map: TypeCollection,
 ) -> Result<()> {
-    let export_path = get_export_path(export_path);
-    let path = Path::new(&export_path);
-
-    if path.is_dir() || !export_path.ends_with(".ts") {
+    let path = export_path.as_ref();
+    if path.extension() != Some(OsStr::new("ts")) {
         bail!("`export_to` path should be a ts file");
     }
 
@@ -92,8 +91,12 @@ pub(super) fn export_types(
     try_write(&mut file, &functions_router);
     try_write(&mut file, BOILERPLATE_TS_EXPORT);
 
-    if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
-        let package_json_path = Path::new(&export_path)
+    if path
+        .to_string_lossy()
+        .replace("\\", "/")
+        .ends_with("node_modules/.taurpc/index.ts")
+    {
+        let package_json_path = path
             .parent()
             .map(|path| path.join("package.json"))
             .context("Failed to create 'package.json' path")?;
@@ -173,34 +176,6 @@ fn generate_function(
 
     let name = function.name().split_once("_taurpc_fn__").unwrap().1;
     Ok(format!(r#"{name}: ({args}) => Promise<{return_ty}>"#))
-}
-
-fn default_export_path() -> String {
-    let current_dir = match std::env::current_dir() {
-        Ok(dir) => dir,
-        Err(e) => {
-            eprintln!("Error getting current directory: {e:?}");
-            return "bindings.ts".to_string();
-        }
-    };
-
-    match current_dir
-        .join("../bindings.ts")
-        .into_os_string()
-        .into_string()
-    {
-        Ok(path) => path,
-        Err(e) => {
-            eprintln!("Error getting default export path: {e:?}");
-            "bindings.ts".to_string()
-        }
-    }
-}
-
-fn get_export_path(export_path: Option<&'static str>) -> String {
-    export_path
-        .map(|p| p.to_string())
-        .unwrap_or(default_export_path())
 }
 
 fn try_write(file: &mut File, data: &str) {
