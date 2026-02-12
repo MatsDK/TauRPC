@@ -1,7 +1,7 @@
 [package]
 name = "taurpc"
 authors = ["MatsDK"]
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 description = "A type-safe IPC layer for tauri commands"
 documentation = "https://docs.rs/taurpc"
@@ -33,5 +33,5 @@ specta-macros = { version = "2.0.0-rc.18" }
 specta-serde = { version = "0", features = [] }
 specta-typescript = { version = "0", features = ["function"] }
 tauri = { version = "2", features = ["specta"] }
-taurpc-macros = { path = "./taurpc-macros", version = "=0.6.0" }
+taurpc-macros = { path = "./taurpc-macros", version = "=0.7.0" }
 tokio = { version = "1", features = ["full"] }
