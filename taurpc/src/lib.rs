@@ -94,7 +94,6 @@ where
         H::collect_fn_types(&mut type_map),
     )]);
 
-    println!("{:?}", H::EXPORT_PATH);
     // Only export in development mode and export_path not none
     if tauri::is_dev() {
         if let Some(export_path) = H::EXPORT_PATH {
