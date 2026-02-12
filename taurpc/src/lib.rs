@@ -94,6 +94,7 @@ where
         H::collect_fn_types(&mut type_map),
     )]);
 
+    println!("{:?}", H::EXPORT_PATH);
     // Only export in development mode and export_path not none
     if tauri::is_dev() {
         if let Some(export_path) = H::EXPORT_PATH {
@@ -266,7 +267,9 @@ impl<R: Runtime> Router<R> {
     ///     .merge(EventsImpl.into_handler());
     /// ```
     pub fn merge<H: TauRpcHandler<R>>(mut self, handler: H) -> Self {
-        self.export_path = H::EXPORT_PATH;
+        if H::EXPORT_PATH.is_some() {
+            self.export_path = H::EXPORT_PATH;
+        }
 
         self.args_map_json
             .insert(H::PATH_PREFIX.to_string(), H::args_map());
