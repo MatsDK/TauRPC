@@ -32,9 +32,8 @@ export type { InferCommandOutput }
 
 /// Export the generated TS types with the code necessary for generating the client proxy.
 ///
-/// By default, if the `export_to` attribute was not specified on the procedures macro, it will be exported
-/// to `node_modules/.taurpc` and a `package.json` will also be generated to import the package.
-/// Otherwise the code will just be export to the .ts file specified by the user.
+/// By default, if the `export_to` attribute was not specified on the procedures macro, there will
+/// be nothing exported. Otherwise the code will just be export to the .ts file specified by the user.
 pub(super) fn export_types(
     export_path: impl AsRef<Path>,
     args_map: BTreeMap<String, String>,
