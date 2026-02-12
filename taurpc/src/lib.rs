@@ -94,16 +94,19 @@ where
         H::collect_fn_types(&mut type_map),
     )]);
 
-    // Only export in development mode
+    println!("{:?}", H::EXPORT_PATH);
+    // Only export in development mode and export_path not none
     if tauri::is_dev() {
-        export_types(
-            H::EXPORT_PATH,
-            args_map,
-            specta_typescript::Typescript::default(),
-            functions,
-            type_map,
-        )
-        .unwrap();
+        if let Some(export_path) = H::EXPORT_PATH {
+            export_types(
+                export_path,
+                args_map,
+                specta_typescript::Typescript::default(),
+                functions,
+                type_map,
+            )
+            .unwrap();
+        }
     }
     move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
@@ -264,8 +267,8 @@ impl<R: Runtime> Router<R> {
     ///     .merge(EventsImpl.into_handler());
     /// ```
     pub fn merge<H: TauRpcHandler<R>>(mut self, handler: H) -> Self {
-        if let Some(path) = H::EXPORT_PATH {
-            self.export_path = Some(path)
+        if H::EXPORT_PATH.is_some() {
+            self.export_path = H::EXPORT_PATH;
         }
 
         self.args_map_json
@@ -289,16 +292,18 @@ impl<R: Runtime> Router<R> {
     ///     .expect("error while running tauri application");
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
-        // Only export in development mode
+        // Only export in development mode and export_path not none
         if tauri::is_dev() {
-            export_types(
-                self.export_path,
-                self.args_map_json.clone(),
-                self.export_config.clone(),
-                self.fns_map.clone(),
-                self.types.clone(),
-            )
-            .unwrap();
+            if let Some(export_path) = self.export_path {
+                export_types(
+                    export_path,
+                    self.args_map_json.clone(),
+                    self.export_config.clone(),
+                    self.fns_map.clone(),
+                    self.types.clone(),
+                )
+                .unwrap();
+            }
         }
 
         move |invoke: Invoke<R>| self.on_command(invoke)
