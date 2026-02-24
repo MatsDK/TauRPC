@@ -20,7 +20,6 @@ static PACKAGE_JSON: &str = r#"
 static BOILERPLATE_TS_IMPORT: &str = r#"
 
 import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
-type TAURI_CHANNEL<T> = (response: T) => void
 "#;
 
 static BOILERPLATE_TS_EXPORT: &str = r#"
@@ -136,8 +135,8 @@ fn generate_function(
         .join(", ");
 
     let return_ty = match function.result() {
-        Some(FunctionReturnType::Value(t)) => primitives::inline(export_config, type_map, t)?,
-        Some(FunctionReturnType::Result(t, _e)) => primitives::inline(export_config, type_map, t)?,
+        Some(FunctionReturnType::Value(t)) => render_reference_dt(t, export_config, type_map)?,
+        Some(FunctionReturnType::Result(t, _e)) => render_reference_dt(t, export_config, type_map)?,
         None => "void".to_string(),
     };
 
@@ -166,7 +165,7 @@ fn render_reference_dt(
         } else {
             Cow::Borrowed("never")
         };
-        Ok(format!("Channel<{generic}>"))
+        Ok(format!("(response: {generic}) => void"))
     } else {
         match &dt {
             DataType::Reference(r) => primitives::reference(exporter, types, r),
