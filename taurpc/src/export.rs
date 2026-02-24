@@ -1,8 +1,8 @@
 use heck::ToLowerCamelCase;
 use specta::TypeCollection;
 use specta::datatype::{DataType, Field, Function, FunctionReturnType, Reference, Struct};
-use specta_typescript::Error;
 use specta_typescript::{self as ts, Exporter, FrameworkExporter, define};
+use specta_typescript::{Error, Layout};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -28,21 +28,22 @@ export type { InferCommandOutput }
 
 /// Export the generated TS types with the code necessary for generating the client proxy.
 ///
-/// By default, if the `export_to` attribute was not specified on the procedures macro, it will be exported
-/// to `node_modules/.taurpc` and a `package.json` will also be generated to import the package.
-/// Otherwise the code will just be export to the .ts file specified by the user.
+/// By default, if the `export_to` attribute was not specified on the procedures macro, there will
+/// be nothing exported. Otherwise the code will just be export to the .ts file specified by the user.
 pub(super) fn export_types(
     export_path: Option<&'static str>,
     args_map: BTreeMap<String, String>,
-    export_config: ts::Typescript,
+    ts: ts::Typescript,
     functions: BTreeMap<String, Vec<Function>>,
     types: TypeCollection,
 ) -> Result<(), Error> {
-    let export_path = export_path
-        .map(|p| p.to_string())
-        .unwrap_or(default_export_path());
+    let exporter = Exporter::from(ts);
 
-    Exporter::from(export_config)
+    let export_path = export_path
+        .map(|p| p.into())
+        .unwrap_or(default_export_path(&exporter.layout));
+
+    exporter
         .framework_prelude(FRAMEWORK_HEADER)
         .framework_runtime(move |mut exporter| {
             let mut out = String::new();
@@ -65,10 +66,10 @@ pub(super) fn export_types(
 
             Ok(out.into())
         })
-        .export_to(&export_path, &types)?;
+        .export_to(&*export_path, &types)?;
 
     if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
-        let package_json_path = Path::new(&export_path)
+        let package_json_path = Path::new(&*export_path)
             .parent()
             .ok_or(Error::framework("", "Failed to create 'package.json' path"))?
             .join("package.json");
@@ -157,12 +158,18 @@ fn render_reference_dt(dt: &DataType, exporter: &FrameworkExporter) -> Result<St
     }
 }
 
-fn default_export_path() -> String {
+fn default_export_path(layout: &Layout) -> Cow<'static, str> {
+    let default = Cow::Borrowed(if *layout == Layout::Files {
+        "bindings"
+    } else {
+        "bindings.ts"
+    });
+
     let current_dir = match std::env::current_dir() {
         Ok(dir) => dir,
         Err(e) => {
             eprintln!("Error getting current directory: {:?}", e);
-            return "bindings.ts".to_string();
+            return default;
         }
     };
 
@@ -171,10 +178,10 @@ fn default_export_path() -> String {
         .into_os_string()
         .into_string()
     {
-        Ok(path) => path,
+        Ok(path) => path.into(),
         Err(e) => {
             eprintln!("Error getting default export path: {:?}", e);
-            "bindings.ts".to_string()
+            default
         }
     }
 }
