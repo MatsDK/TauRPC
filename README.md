@@ -241,7 +241,7 @@ All available options can be found in [specta_typescript's docs](https://docs.rs
 let router = Router::new()
     .export_config(
         specta_typescript::Typescript::default()
-            .header("// My header\n")
+            .header("// My header")
             .bigint(specta_typescript::BigIntExportBehavior::String),
             // Make sure you have the specified formatter installed on your system.
             .formatter(specta_typescript::formatter::prettier)
