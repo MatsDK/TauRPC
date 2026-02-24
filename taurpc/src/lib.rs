@@ -94,18 +94,19 @@ where
     )]);
 
     // Only export in development mode and export_path not none
-    if tauri::is_dev() {
-        if let Some(export_path) = H::EXPORT_PATH {
-            export_types(
-                export_path,
-                args_map,
-                specta_typescript::Typescript::default(),
-                functions,
-                type_map,
-            )
-            .unwrap();
-        }
+    if tauri::is_dev()
+        && let Some(export_path) = H::EXPORT_PATH
+    {
+        export_types(
+            export_path,
+            args_map,
+            specta_typescript::Typescript::default(),
+            functions,
+            type_map,
+        )
+        .unwrap();
     }
+
     move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
         true
@@ -291,41 +292,43 @@ impl<R: Runtime> Router<R> {
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
         // Only export in development mode and export_path not none
-        if tauri::is_dev() {
-            if let Some(export_path) = self.export_path {
-                export_types(
-                    export_path,
-                    self.args_map_json.clone(),
-                    self.export_config.clone(),
-                    self.fns_map.clone(),
-                    self.types.clone(),
-                )
-                .unwrap();
-            }
+        if tauri::is_dev()
+            && let Some(export_path) = self.export_path
+        {
+            export_types(
+                export_path,
+                self.args_map_json.clone(),
+                self.export_config.clone(),
+                self.fns_map.clone(),
+                self.types.clone(),
+            )
+            .unwrap();
         }
 
-        move |invoke: Invoke<R>| {
-            let cmd = invoke.message.command();
-            if !cmd.starts_with("TauRPC__") {
-                return false;
-            }
+        move |invoke: Invoke<R>| self.on_command(invoke)
+    }
 
-            // Remove `TauRPC__`
-            let prefix = cmd[8..].to_string();
-            let mut prefix = prefix.split('.').collect::<Vec<_>>();
-            // Remove the actual name of the command
-            prefix.pop().unwrap();
-
-            match self.handlers.get(&prefix.join(".")) {
-                Some(handler) => {
-                    let _ = handler.send(Arc::new(invoke));
-                }
-                None => invoke
-                    .resolver
-                    .invoke_error(InvokeError::from(format!("`{cmd}` not found"))),
-            };
-
-            true
+    fn on_command(&self, invoke: Invoke<R>) -> bool {
+        let cmd = invoke.message.command();
+        if !cmd.starts_with("TauRPC__") {
+            return false;
         }
+
+        // Remove `TauRPC__`
+        let prefix = cmd[8..].to_string();
+        let mut prefix = prefix.split('.').collect::<Vec<_>>();
+        // Remove the actual name of the command
+        prefix.pop().unwrap();
+
+        match self.handlers.get(&prefix.join(".")) {
+            Some(handler) => {
+                let _ = handler.send(Arc::new(invoke));
+            }
+            None => invoke
+                .resolver
+                .invoke_error(InvokeError::from(format!("`{cmd}` not found"))),
+        };
+
+        true
     }
 }
