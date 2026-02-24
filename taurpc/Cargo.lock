@@ -3441,7 +3441,6 @@ dependencies = [
 name = "taurpc"
 version = "0.5.2"
 dependencies = [
- "anyhow",
  "heck 0.5.0",
  "itertools",
  "serde",

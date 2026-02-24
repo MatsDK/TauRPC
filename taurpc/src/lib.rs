@@ -46,7 +46,7 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     fn args_map() -> String;
 
     /// Returns all of the functions for exporting, all referenced types will be added to `type_map`.
-    fn collect_fn_types(type_map: &mut TypeCollection) -> Vec<Function>;
+    fn collect_fn_types(types: &mut TypeCollection) -> Vec<Function>;
 }
 
 /// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
