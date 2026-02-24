@@ -23,7 +23,7 @@ members = [
 ]
 
 [dependencies]
-taurpc-macros = { path = "./taurpc-macros", version = "=0.5.2" }
+taurpc-macros = { path = "./taurpc-macros", version = "=0.7.1" }
 
 itertools = "0.14.0"
 tauri = { version = "2.10.2", features = ["specta"] }
