@@ -1,10 +1,10 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use heck::ToLowerCamelCase;
-use itertools::Itertools;
-use specta::datatype::{Function, FunctionReturnType};
 use specta::TypeCollection;
-use specta_typescript::Typescript;
+use specta::datatype::{DataType, Function, FunctionReturnType, Reference};
 use specta_typescript::{self as ts, primitives};
+use specta_typescript::{Error, Typescript};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
@@ -67,13 +67,13 @@ pub(super) fn export_types(
     try_write(&mut file, &types);
     try_write(&mut file, BOILERPLATE_TS_IMPORT);
 
-    let args_entries: String = args_map
-        .iter()
-        .map(|(k, v)| format!("'{k}':'{v}'"))
-        .join(", ");
-    let router_args = format!("{{ {args_entries} }}");
-
-    try_write(&mut file, &format!("const ARGS_MAP = {router_args}\n")); // TODO: Do this with `serde_json`
+    try_write(
+        &mut file,
+        &format!(
+            "const ARGS_MAP = {}\n",
+            serde_json::to_string_pretty(&args_map).expect("argument map is not valid")
+        ),
+    );
     let functions_router = generate_functions_router(functions, type_map, &export_config); // TODO: Using object primitive
     try_write(&mut file, &functions_router);
     try_write(&mut file, BOILERPLATE_TS_EXPORT);
@@ -88,10 +88,6 @@ pub(super) fn export_types(
             .context("failed to create 'package.json'")?;
     }
 
-    // Format the output file if the user specified a formatter on `export_config`.
-    // export_config.format(path).context(
-    //     "Failed to format exported bindings, make sure you have the correct formatter installed",
-    // )?; // TODO: Specta no longer supports this
     Ok(())
 }
 
@@ -132,8 +128,8 @@ fn generate_function(
         .args()
         .iter()
         .map(|(name, typ)| {
-            primitives::inline(export_config, type_map, typ)
-                .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
+            render_reference_dt(typ, export_config, type_map)
+                .map(|ty| format!("{}: {ty}", name.to_lower_camel_case()))
         })
         .collect::<Result<Vec<_>, _>>()
         .context("An error occured while generating command args")?
@@ -147,6 +143,36 @@ fn generate_function(
 
     let name = function.name().split_once("_taurpc_fn__").unwrap().1;
     Ok(format!(r#"{name}: ({args}) => Promise<{return_ty}>"#))
+}
+
+// Render a `DataType` as a reference (or fallback to inline).
+// Also handles Tauri channel references.
+fn render_reference_dt(
+    dt: &DataType,
+    exporter: &Typescript,
+    types: &TypeCollection,
+) -> Result<String, Error> {
+    if let DataType::Reference(Reference::Named(r)) = dt
+        && let Some(ndt) = r.get(types)
+        && ndt.name() == "TAURI_CHANNEL"
+        && ndt.module_path().starts_with("tauri::")
+    {
+        let generic = if let Some((_, dt)) = r.generics().first() {
+            match &dt {
+                DataType::Reference(r) => primitives::reference(exporter, types, r)?,
+                dt => primitives::inline(exporter, types, dt)?,
+            }
+            .into()
+        } else {
+            Cow::Borrowed("never")
+        };
+        Ok(format!("Channel<{generic}>"))
+    } else {
+        match &dt {
+            DataType::Reference(r) => primitives::reference(exporter, types, r),
+            dt => primitives::inline(exporter, types, dt),
+        }
+    }
 }
 
 fn default_export_path() -> String {

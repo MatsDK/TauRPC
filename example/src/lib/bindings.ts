@@ -30,8 +30,51 @@ export type User = {
 
 import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
 type TAURI_CHANNEL<T> = (response: T) => void
-const ARGS_MAP = { '':'{"ev":["updated_value"],"get_app_handle":[],"get_webview_window":[],"get_window":[],"method_with_alias":[],"multiple_args":["arg","arg2"],"test_bigint":["num"],"test_io":["_user"],"test_option":[],"test_result":["user"],"update_state":["new_value"],"vec_test":["arg"],"with_channel":["on_event"],"with_sleep":[]}', 'api.ui':'{"test_ev":[],"trigger":[]}', 'events':'{"multiple_args":["arg1","arg2"],"state_changed":["new_state"],"test_ev":[],"vec_test":["args"]}' }
-export type Router = { "": {},
+const ARGS_MAP = {
+  "": "{\"ev\":[\"updated_value\"],\"get_app_handle\":[],\"get_webview_window\":[],\"get_window\":[],\"method_with_alias\":[],\"multiple_args\":[\"arg\",\"arg2\"],\"test_bigint\":[\"num\"],\"test_io\":[\"_user\"],\"test_option\":[],\"test_result\":[\"user\"],\"update_state\":[\"new_value\"],\"vec_test\":[\"arg\"],\"with_channel\":[\"on_event\"],\"with_sleep\":[]}",
+  "api.ui": "{\"test_ev\":[],\"trigger\":[]}",
+  "events": "{\"multiple_args\":[\"arg1\",\"arg2\"],\"state_changed\":[\"new_state\"],\"test_ev\":[],\"vec_test\":[\"args\"]}"
+}
+export type Router = { "": {ev: (updatedValue: string) => Promise<void>, 
+get_app_handle: () => Promise<void>, 
+get_webview_window: () => Promise<void>, 
+get_window: () => Promise<void>, 
+method_with_alias: () => Promise<void>, 
+multiple_args: (arg: string[], arg2: string) => Promise<void>, 
+test_bigint: (num: string) => Promise<string>, 
+test_io: (user: User) => Promise<{
+	/**
+	 *  The user's id
+	 */
+	uid: number,
+	/**
+	 *  The user's first name
+	 */
+	first_name: string,
+	/**
+	 *  The user's last name
+	 */
+	last_name: string,
+}>, 
+test_option: () => Promise<null | null>, 
+test_result: (user: User) => Promise<{
+	/**
+	 *  The user's id
+	 */
+	uid: number,
+	/**
+	 *  The user's first name
+	 */
+	first_name: string,
+	/**
+	 *  The user's last name
+	 */
+	last_name: string,
+}>, 
+update_state: (newValue: string) => Promise<void>, 
+vec_test: (arg: string[]) => Promise<void>, 
+with_channel: (onEvent: Channel<Update>) => Promise<void>, 
+with_sleep: () => Promise<void>},
 "api.ui": {test_ev: () => Promise<void>, 
 trigger: () => Promise<void>},
 "events": {multiple_args: (arg1: number, arg2: string[]) => Promise<void>, 

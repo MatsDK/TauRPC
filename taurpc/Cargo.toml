@@ -2,7 +2,7 @@
 name = "taurpc"
 authors = ["MatsDK"]
 version = "0.5.2"
-edition = "2021"
+edition = "2024"
 description = "A type-safe IPC layer for tauri commands"
 documentation = "https://docs.rs/taurpc"
 homepage = "https://github.com/MatsDK/TauRPC"
