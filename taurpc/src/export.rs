@@ -31,19 +31,13 @@ export type { InferCommandOutput }
 /// By default, if the `export_to` attribute was not specified on the procedures macro, there will
 /// be nothing exported. Otherwise the code will just be export to the .ts file specified by the user.
 pub(super) fn export_types(
-    export_path: Option<&'static str>,
+    export_path: &'static str,
     args_map: BTreeMap<String, String>,
     ts: ts::Typescript,
     functions: BTreeMap<String, Vec<Function>>,
     types: TypeCollection,
 ) -> Result<(), Error> {
-    let exporter = Exporter::from(ts);
-
-    let export_path = export_path
-        .map(|p| p.into())
-        .unwrap_or(default_export_path(&exporter.layout));
-
-    exporter
+    Exporter::from(ts)
         .framework_prelude(FRAMEWORK_HEADER)
         .framework_runtime(move |mut exporter| {
             let mut out = String::new();
@@ -66,10 +60,10 @@ pub(super) fn export_types(
 
             Ok(out.into())
         })
-        .export_to(&*export_path, &types)?;
+        .export_to(export_path, &types)?;
 
     if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
-        let package_json_path = Path::new(&*export_path)
+        let package_json_path = Path::new(export_path)
             .parent()
             .ok_or(Error::framework("", "Failed to create 'package.json' path"))?
             .join("package.json");
@@ -84,7 +78,7 @@ pub(super) fn export_types(
 fn generate_functions_router(
     functions: &BTreeMap<String, Vec<Function>>,
     exporter: &FrameworkExporter,
-) -> std::result::Result<String, Error> {
+) -> Result<String, Error> {
     let mut router = Struct::named();
 
     for (path, path_functions) in functions {
@@ -108,7 +102,7 @@ fn generate_functions_router(
 fn generate_function_field(
     function: &Function,
     exporter: &FrameworkExporter,
-) -> std::result::Result<(String, Field), Error> {
+) -> Result<(String, Field), Error> {
     let args = function
         .args()
         .iter()
@@ -116,7 +110,7 @@ fn generate_function_field(
             render_reference_dt(typ, exporter)
                 .map(|ty| format!("{}: {ty}", name.to_lower_camel_case()))
         })
-        .collect::<std::result::Result<Vec<_>, _>>()?
+        .collect::<Result<Vec<_>, _>>()?
         .join(", ");
 
     let return_ty = match function.result() {
@@ -154,34 +148,6 @@ fn render_reference_dt(dt: &DataType, exporter: &FrameworkExporter) -> Result<St
         match &dt {
             DataType::Reference(r) => exporter.reference(r),
             dt => exporter.inline(dt),
-        }
-    }
-}
-
-fn default_export_path(layout: &Layout) -> Cow<'static, str> {
-    let default = Cow::Borrowed(if *layout == Layout::Files {
-        "bindings"
-    } else {
-        "bindings.ts"
-    });
-
-    let current_dir = match std::env::current_dir() {
-        Ok(dir) => dir,
-        Err(e) => {
-            eprintln!("Error getting current directory: {:?}", e);
-            return default;
-        }
-    };
-
-    match current_dir
-        .join("../bindings.ts")
-        .into_os_string()
-        .into_string()
-    {
-        Ok(path) => path.into(),
-        Err(e) => {
-            eprintln!("Error getting default export path: {:?}", e);
-            default
         }
     }
 }
