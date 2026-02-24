@@ -1,8 +1,8 @@
 use anyhow::{Context, Result, bail};
 use heck::ToLowerCamelCase;
 use specta::TypeCollection;
-use specta::datatype::{DataType, Function, FunctionReturnType, Reference};
-use specta_typescript::{self as ts, primitives};
+use specta::datatype::{DataType, Field, Function, FunctionReturnType, Reference, Struct};
+use specta_typescript::{self as ts, define, primitives};
 use specta_typescript::{Error, Typescript};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -23,7 +23,6 @@ import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurp
 "#;
 
 static BOILERPLATE_TS_EXPORT: &str = r#"
-
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 export type { InferCommandOutput }
 "#;
@@ -73,7 +72,8 @@ pub(super) fn export_types(
             serde_json::to_string_pretty(&args_map).expect("argument map is not valid")
         ),
     );
-    let functions_router = generate_functions_router(functions, type_map, &export_config); // TODO: Using object primitive
+    let functions_router = generate_functions_router(functions, type_map, &export_config)
+        .context("Failed to generate router type")?;
     try_write(&mut file, &functions_router);
     try_write(&mut file, BOILERPLATE_TS_EXPORT);
 
@@ -94,35 +94,32 @@ fn generate_functions_router(
     functions: BTreeMap<String, Vec<Function>>,
     type_map: TypeCollection,
     export_config: &Typescript,
-) -> String {
-    let functions = functions
-        .iter()
-        .map(|(path, path_functions)| {
-            let mut function_names_and_funcs: Vec<_> =
-                path_functions.iter().map(|f| (f.name(), f)).collect();
-            function_names_and_funcs.sort_by(|a, b| a.0.cmp(b.0));
+) -> std::result::Result<String, Error> {
+    let mut router = Struct::named();
 
-            let functions = function_names_and_funcs
-                .iter()
-                .map(|(_, function)| generate_function(function, export_config, &type_map))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| eprintln!("Error generating functions: {:?}", e))
-                .unwrap_or_default()
-                .join(", \n");
+    for (path, path_functions) in &functions {
+        let mut function_names_and_funcs: Vec<_> =
+            path_functions.iter().map(|f| (f.name(), f)).collect();
+        function_names_and_funcs.sort_by(|a, b| a.0.cmp(b.0));
 
-            format!(r#""{path}": {{{functions}}}"#)
-        })
-        .collect::<Vec<String>>()
-        .join(",\n");
+        let mut path_router = Struct::named();
+        for (_, function) in function_names_and_funcs {
+            let (name, field) = generate_function_field(function, export_config, &type_map)?;
+            path_router = path_router.field(name, field);
+        }
 
-    format!("export type Router = {{ {functions} }};\n")
+        router = router.field(path.clone(), Field::new(path_router.build()));
+    }
+
+    let router_type = primitives::inline(export_config, &type_map, &router.build())?;
+    Ok(format!("export type Router = {router_type};\n"))
 }
 
-fn generate_function(
+fn generate_function_field(
     function: &Function,
     export_config: &Typescript,
     type_map: &TypeCollection,
-) -> Result<String> {
+) -> std::result::Result<(String, Field), Error> {
     let args = function
         .args()
         .iter()
@@ -130,8 +127,7 @@ fn generate_function(
             render_reference_dt(typ, export_config, type_map)
                 .map(|ty| format!("{}: {ty}", name.to_lower_camel_case()))
         })
-        .collect::<Result<Vec<_>, _>>()
-        .context("An error occured while generating command args")?
+        .collect::<std::result::Result<Vec<_>, _>>()?
         .join(", ");
 
     let return_ty = match function.result() {
@@ -141,7 +137,10 @@ fn generate_function(
     };
 
     let name = function.name().split_once("_taurpc_fn__").unwrap().1;
-    Ok(format!(r#"{name}: ({args}) => Promise<{return_ty}>"#))
+    Ok((
+        name.to_string(),
+        Field::new(define(format!("({args}) => Promise<{return_ty}>")).into()),
+    ))
 }
 
 // Render a `DataType` as a reference (or fallback to inline).
