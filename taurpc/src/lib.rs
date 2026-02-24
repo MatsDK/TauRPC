@@ -55,7 +55,7 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
 ///
 ///
 ///  # Examples
-/// ```rust
+/// ```rust,ignore
 /// #[taurpc::procedures]
 /// trait Api {
 ///     async fn hello_world();
@@ -74,7 +74,7 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
 /// async fn main() {
 ///   tauri::Builder::default()
 ///     .invoke_handler(
-///       taurpc::create_ipc_handler(ApiImpl.into_handler());
+///       taurpc::create_ipc_handler(ApiImpl.into_handler())
 ///     )
 ///     .run(tauri::generate_context!())
 ///     .expect("error while running tauri application");
@@ -93,16 +93,18 @@ where
         H::collect_fn_types(&mut type_map),
     )]);
 
-    // Only export in development mode
+    // Only export in development mode and export_path not none
     if tauri::is_dev() {
-        export_types(
-            H::EXPORT_PATH,
-            args_map,
-            specta_typescript::Typescript::default(),
-            functions,
-            type_map,
-        )
-        .unwrap();
+        if let Some(export_path) = H::EXPORT_PATH {
+            export_types(
+                export_path,
+                args_map,
+                specta_typescript::Typescript::default(),
+                functions,
+                type_map,
+            )
+            .unwrap();
+        }
     }
     move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
@@ -184,14 +186,14 @@ impl<RT: Runtime> EventTrigger<RT> {
 /// The trait must have the `#[taurpc::procedures]` macro and the nested routes should have `#[taurpc::procedures(path = "path")]`.
 ///
 ///  # Examples
-/// ```rust
+/// ```rust,ignore
 /// #[taurpc::procedures]
 /// trait Api { }
 ///
 /// #[derive(Clone)]
 /// struct ApiImpl;
 ///
-/// #[taurpc::resolveres]
+/// #[taurpc::resolvers]
 /// impl Api for ApiImpl { }
 ///
 /// #[taurpc::procedures(path = "events")]
@@ -200,12 +202,12 @@ impl<RT: Runtime> EventTrigger<RT> {
 /// #[derive(Clone)]
 /// struct EventsImpl;
 ///
-/// #[taurpc::resolveres]
+/// #[taurpc::resolvers]
 /// impl Events for EventsImpl { }
 ///
 /// #[tokio::main]
 /// async fn main() {
-///   let router = Router::new()
+///   let router = taurpc::Router::new()
 ///     .merge(ApiImpl.into_handler())
 ///     .merge(EventsImpl.into_handler());
 ///
@@ -241,14 +243,14 @@ impl<R: Runtime> Router<R> {
     /// `specta_typescript::Typescript` for all the configuration options.
     ///
     /// Example:
-    /// ```rust
-    ///    let router = Router::new()
-    ///        .export_config(
-    ///            specta_typescript::Typescript::default()
-    ///                .header("// My header\n")
-    ///                .bigint(specta_typescript::BigIntExportBehavior::String),
-    ///        )
-    ///        .merge(...);
+    /// ```rust,ignore
+    /// let router = taurpc::Router::new()
+    ///     .export_config(
+    ///         specta_typescript::Typescript::default()
+    ///             .header("// My header\n")
+    ///             .bigint(specta_typescript::BigIntExportBehavior::String),
+    ///     )
+    ///     .merge(ApiImpl.into_handler());
     /// ```
     pub fn export_config(mut self, config: specta_typescript::Typescript) -> Self {
         self.export_config = config;
@@ -257,14 +259,14 @@ impl<R: Runtime> Router<R> {
 
     /// Add routes to the router, accepts a struct for which a `#[taurpc::procedures]` trait is implemented
     ///
-    /// ```rust
-    ///    let router = Router::new()
-    ///      .merge(ApiImpl.into_handler())
-    ///      .merge(EventsImpl.into_handler());
+    /// ```rust,ignore
+    /// let router = taurpc::Router::new()
+    ///     .merge(ApiImpl.into_handler())
+    ///     .merge(EventsImpl.into_handler());
     /// ```
     pub fn merge<H: TauRpcHandler<R>>(mut self, handler: H) -> Self {
-        if let Some(path) = H::EXPORT_PATH {
-            self.export_path = Some(path)
+        if H::EXPORT_PATH.is_some() {
+            self.export_path = H::EXPORT_PATH;
         }
 
         self.args_map_json
@@ -281,23 +283,25 @@ impl<R: Runtime> Router<R> {
     /// Create a handler out of the router that allows your IPCs to be called from the frontend,
     /// and generate the corresponding types. Use this inside `.invoke_handler()` on the tauri::Builder.
     ///
-    /// ```rust
-    ///    tauri::Builder::default()
-    ///      .invoke_handler(router.into_handler())
-    ///      .run(tauri::generate_context!())
-    ///      .expect("error while running tauri application");
+    /// ```rust,ignore
+    /// tauri::Builder::default()
+    ///     .invoke_handler(router.into_handler())
+    ///     .run(tauri::generate_context!())
+    ///     .expect("error while running tauri application");
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
-        // Only export in development mode
+        // Only export in development mode and export_path not none
         if tauri::is_dev() {
-            export_types(
-                self.export_path,
-                self.args_map_json.clone(),
-                self.export_config.clone(),
-                self.fns_map.clone(),
-                self.types,
-            )
-            .unwrap();
+            if let Some(export_path) = self.export_path {
+                export_types(
+                    export_path,
+                    self.args_map_json.clone(),
+                    self.export_config.clone(),
+                    self.fns_map.clone(),
+                    self.types.clone(),
+                )
+                .unwrap();
+            }
         }
 
         move |invoke: Invoke<R>| {

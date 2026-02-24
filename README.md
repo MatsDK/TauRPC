@@ -15,7 +15,7 @@ First, add the following crates to your `Cargo.toml`:
 # src-tauri/Cargo.toml
 
 [dependencies]
-taurpc = "0.5.2"
+taurpc = "0.7.1"
 
 specta = { version = "=2.0.0-rc.22", features = ["derive"] }
 # specta-typescript = "0.0.9"
@@ -53,7 +53,7 @@ async fn main() {
 ```
 
 The `#[taurpc::procedures]` trait will generate everything necessary for handling calls and the type-generation. Now, you should run `pnpm tauri dev` to generate and export the TS types.
-The types will by default be exported to `bindings.ts` in the root of your project, but you can specify an export path by doing this `#[taurpc::procedures(export_to = "../src/types.ts")]`.
+You can specify an export path by doing this `#[taurpc::procedures(export_to = "../src/types.ts")]`. If no export path is provided, types will not be generated.
 
 Then on the frontend install the taurpc package.
 
