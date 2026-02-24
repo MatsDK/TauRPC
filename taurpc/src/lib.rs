@@ -97,7 +97,7 @@ where
     if tauri::is_dev() {
         if let Some(export_path) = H::EXPORT_PATH {
             export_types(
-                export_path,
+                Some(export_path),
                 args_map,
                 specta_typescript::Typescript::default(),
                 functions,
@@ -294,7 +294,7 @@ impl<R: Runtime> Router<R> {
         if tauri::is_dev() {
             if let Some(export_path) = self.export_path {
                 export_types(
-                    export_path,
+                    Some(export_path),
                     self.args_map_json.clone(),
                     self.export_config.clone(),
                     self.fns_map.clone(),

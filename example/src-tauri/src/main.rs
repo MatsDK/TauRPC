@@ -23,14 +23,10 @@ struct User {
 
 // create the error type that represents all errors possible in our program
 #[derive(Debug, thiserror::Error, specta::Type)]
-#[serde(tag = "type", content = "data")]
+#[specta(type = String)]
 enum Error {
     #[error(transparent)]
-    Io(
-        #[from]
-        #[serde(skip)]
-        std::io::Error,
-    ),
+    Io(#[from] std::io::Error),
 
     #[error("Other: `{0}`")]
     Other(String),

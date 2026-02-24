@@ -6,7 +6,6 @@ use specta::TypeCollection;
 use specta_typescript::Typescript;
 use specta_typescript::{self as ts, primitives};
 use std::collections::BTreeMap;
-use std::ffi::OsStr;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
@@ -32,17 +31,20 @@ export type { InferCommandOutput }
 
 /// Export the generated TS types with the code necessary for generating the client proxy.
 ///
-/// By default, if the `export_to` attribute was not specified on the procedures macro, there will
-/// be nothing exported. Otherwise the code will just be export to the .ts file specified by the user.
+/// By default, if the `export_to` attribute was not specified on the procedures macro, it will be exported
+/// to `node_modules/.taurpc` and a `package.json` will also be generated to import the package.
+/// Otherwise the code will just be export to the .ts file specified by the user.
 pub(super) fn export_types(
-    export_path: impl AsRef<Path>,
+    export_path: Option<&'static str>,
     args_map: BTreeMap<String, String>,
     export_config: ts::Typescript,
     functions: BTreeMap<String, Vec<Function>>,
-    mut type_map: TypeCollection,
+    type_map: TypeCollection,
 ) -> Result<()> {
-    let path = export_path.as_ref();
-    if path.extension() != Some(OsStr::new("ts")) {
+    let export_path = get_export_path(export_path);
+    let path = Path::new(&export_path);
+
+    if path.is_dir() || !export_path.ends_with(".ts") {
         bail!("`export_to` path should be a ts file");
     }
 
@@ -51,21 +53,9 @@ pub(super) fn export_types(
             .context("Failed to create directory for exported bindings")?;
     }
 
-    // Export `types_map` containing all referenced types.
-    // type_map.remove(<tauri::ipc::Channel<()> as specta::NamedType>::ID);
     let types = export_config
         .export(&type_map)
         .context("Failed to generate types with specta")?;
-
-    // Put headers always at the top of the file, followed by the module imports.
-    let framework_header = export_config.framework_header.as_ref();
-    let body = match types.split_once(framework_header) {
-        Some((_, body)) => body,
-        None => {
-            eprintln!("Failed to split types with framework header");
-            ""
-        }
-    };
 
     let mut file = OpenOptions::new()
         .create(true)
@@ -74,10 +64,8 @@ pub(super) fn export_types(
         .open(path)
         .context("Cannot open bindings file")?;
 
-    try_write(&mut file, &export_config.header);
-    try_write(&mut file, framework_header);
+    try_write(&mut file, &types);
     try_write(&mut file, BOILERPLATE_TS_IMPORT);
-    try_write(&mut file, body);
 
     let args_entries: String = args_map
         .iter()
@@ -90,12 +78,8 @@ pub(super) fn export_types(
     try_write(&mut file, &functions_router);
     try_write(&mut file, BOILERPLATE_TS_EXPORT);
 
-    if path
-        .to_string_lossy()
-        .replace("\\", "/")
-        .ends_with("node_modules/.taurpc/index.ts")
-    {
-        let package_json_path = path
+    if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
+        let package_json_path = Path::new(&export_path)
             .parent()
             .map(|path| path.join("package.json"))
             .context("Failed to create 'package.json' path")?;
@@ -127,7 +111,7 @@ fn generate_functions_router(
                 .iter()
                 .map(|(_, function)| generate_function(function, export_config, &type_map))
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| eprintln!("Error generating functions: {e:?}"))
+                .map_err(|e| eprintln!("Error generating functions: {:?}", e))
                 .unwrap_or_default()
                 .join(", \n");
 
@@ -146,9 +130,9 @@ fn generate_function(
 ) -> Result<String> {
     let args = function
         .args()
-        .into_iter()
+        .iter()
         .map(|(name, typ)| {
-            primitives::reference(export_config, type_map, typ)
+            primitives::inline(export_config, type_map, typ)
                 .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
         })
         .collect::<Result<Vec<_>, _>>()
@@ -156,11 +140,8 @@ fn generate_function(
         .join(", ");
 
     let return_ty = match function.result() {
-        Some(FunctionReturnType::Value(t)) => primitives::reference(export_config, type_map, t)?,
-        // TODO: handle result types
-        Some(FunctionReturnType::Result(t, _e)) => {
-            primitives::reference(export_config, type_map, t)?
-        }
+        Some(FunctionReturnType::Value(t)) => primitives::inline(export_config, type_map, t)?,
+        Some(FunctionReturnType::Result(t, _e)) => primitives::inline(export_config, type_map, t)?,
         None => "void".to_string(),
     };
 
@@ -168,11 +149,39 @@ fn generate_function(
     Ok(format!(r#"{name}: ({args}) => Promise<{return_ty}>"#))
 }
 
+fn default_export_path() -> String {
+    let current_dir = match std::env::current_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            eprintln!("Error getting current directory: {:?}", e);
+            return "bindings.ts".to_string();
+        }
+    };
+
+    match current_dir
+        .join("../bindings.ts")
+        .into_os_string()
+        .into_string()
+    {
+        Ok(path) => path,
+        Err(e) => {
+            eprintln!("Error getting default export path: {:?}", e);
+            "bindings.ts".to_string()
+        }
+    }
+}
+
+fn get_export_path(export_path: Option<&'static str>) -> String {
+    export_path
+        .map(|p| p.to_string())
+        .unwrap_or(default_export_path())
+}
+
 fn try_write(file: &mut File, data: &str) {
     match file.write_all(data.as_bytes()) {
         Ok(_) => (),
         Err(e) => {
-            eprintln!("Error writing to file: {e:?}");
+            eprintln!("Error writing to file: {:?}", e);
         }
     };
 }
