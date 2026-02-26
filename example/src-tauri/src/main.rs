@@ -3,7 +3,7 @@
 
 use std::{sync::Arc, time::Duration};
 use tauri::{ipc::Channel, AppHandle, EventTarget, Manager, Runtime, WebviewWindow, Window};
-use taurpc::Router;
+use taurpc::{ErrorHandlingMode, Router};
 use tokio::{
     sync::{oneshot, Mutex},
     time::sleep,
@@ -232,6 +232,7 @@ async fn main() {
                 .header("// My header")
                 .bigint(specta_typescript::BigIntExportBehavior::String),
         )
+        .error_handling(ErrorHandlingMode::Result)
         .merge(
             ApiImpl {
                 state: Arc::new(Mutex::new("state".to_string())),

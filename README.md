@@ -150,11 +150,43 @@ async fn main() {
 
 # Custom error handling
 
-You can return a `Result<T, E>` to return an error if the procedure fails. This is will reject the promise on the frontend and throw an error.
+You can return a `Result<T, E>` to return an error if the procedure fails. By default, this keeps TauRPC's current behavior: promises reject on error and throw on the frontend.
 If you're working with error types from Rust's std library, they will probably not implement `serde::Serialize` which is required for anything that is returned in the procedure.
 In simple scenarios you can use `map_err` to convert these errors to `String`s. For more complex scenarios, you can create your own error type that implements `serde::Serialize`.
 You can find an example using [thiserror](https://github.com/dtolnay/thiserror) [here](https://github.com/MatsDK/TauRPC/blob/main/example/src-tauri/src/main.rs).
 You can also find more information about this in the [Tauri guides](https://v2.tauri.app/develop/calling-rust/#error-handling).
+
+If you want type-safe errors on the frontend, you can opt in globally on the exporter:
+
+```rust
+let router = taurpc::Router::new()
+    .error_handling(taurpc::ErrorHandlingMode::Result)
+    .merge(ApiImpl.into_handler());
+```
+
+In this mode, procedures returning `Result<T, E>` are typed as:
+
+```ts
+Promise<{ status: "ok"; data: T } | { status: "error"; error: E }>
+```
+
+You can also provide a custom `typedError` runtime implementation:
+
+```rust
+const TYPED_ERROR_IMPL: &str = r#"async function typedError(result) {
+  try {
+    return { status: "ok", data: await result };
+  } catch (e) {
+    if (e instanceof Error) throw e;
+    return { status: "error", error: e };
+  }
+}"#;
+
+let router = taurpc::Router::new()
+    .error_handling(taurpc::ErrorHandlingMode::Result)
+    .typed_error_impl(TYPED_ERROR_IMPL)
+    .merge(ApiImpl.into_handler());
+```
 
 # Extra options for procedures
 
