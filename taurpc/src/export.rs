@@ -1,8 +1,8 @@
 use heck::ToLowerCamelCase;
 use specta::TypeCollection;
 use specta::datatype::{DataType, Field, Function, FunctionReturnType, Reference, Struct};
+use specta_typescript::Error;
 use specta_typescript::{self as ts, Exporter, FrameworkExporter, define};
-use specta_typescript::{Error, Layout};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::Path;
