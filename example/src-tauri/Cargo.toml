@@ -25,5 +25,5 @@ specta-typescript = "0.0.9"
 
 # TODO: Drop this once changes land on `main`
 [patch.crates-io]
-specta = { path = "../../../specta/specta" }
-specta-typescript = { path = "../../../specta/specta-typescript" }
+specta = { git = "https://github.com/oscartbeaumont/specta", rev = "f3988f6a513cfbf72480bffbdcf4259775416974" }
+specta-typescript = { git = "https://github.com/oscartbeaumont/specta", rev = "f3988f6a513cfbf72480bffbdcf4259775416974" }
