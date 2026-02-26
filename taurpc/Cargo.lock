@@ -3030,6 +3030,7 @@ dependencies = [
 [[package]]
 name = "specta"
 version = "2.0.0-rc.22"
+source = "git+https://github.com/oscartbeaumont/specta?rev=f3988f6a513cfbf72480bffbdcf4259775416974#f3988f6a513cfbf72480bffbdcf4259775416974"
 dependencies = [
  "paste",
  "rustc_version",
@@ -3039,6 +3040,7 @@ dependencies = [
 [[package]]
 name = "specta-macros"
 version = "2.0.0-rc.18"
+source = "git+https://github.com/oscartbeaumont/specta?rev=f3988f6a513cfbf72480bffbdcf4259775416974#f3988f6a513cfbf72480bffbdcf4259775416974"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -3049,6 +3051,7 @@ dependencies = [
 [[package]]
 name = "specta-serde"
 version = "0.0.9"
+source = "git+https://github.com/oscartbeaumont/specta?rev=f3988f6a513cfbf72480bffbdcf4259775416974#f3988f6a513cfbf72480bffbdcf4259775416974"
 dependencies = [
  "specta",
 ]
@@ -3056,6 +3059,7 @@ dependencies = [
 [[package]]
 name = "specta-typescript"
 version = "0.0.9"
+source = "git+https://github.com/oscartbeaumont/specta?rev=f3988f6a513cfbf72480bffbdcf4259775416974#f3988f6a513cfbf72480bffbdcf4259775416974"
 dependencies = [
  "specta",
  "specta-serde",
@@ -3439,7 +3443,7 @@ dependencies = [
 
 [[package]]
 name = "taurpc"
-version = "0.5.2"
+version = "0.7.1"
 dependencies = [
  "heck 0.5.0",
  "itertools",
@@ -3454,7 +3458,7 @@ dependencies = [
 
 [[package]]
 name = "taurpc-macros"
-version = "0.5.2"
+version = "0.7.1"
 dependencies = [
  "proc-macro2",
  "quote",
