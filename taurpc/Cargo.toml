@@ -23,16 +23,16 @@ members = [
 ]
 
 [dependencies]
-taurpc-macros = { path = "./taurpc-macros", version = "=0.7.1" }
 heck = "0.5.0"
 itertools = "0.14.0"
-tauri = { version = "2.10.2", features = ["specta"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
-tokio = { version = "1", features = ["full"] }
-
 specta = { version = "=2.0.0-rc.22", features = ["derive", "function"] }
 specta-typescript = "0.0.9"
+tauri = { version = "2.10.2", features = ["specta"] }
+taurpc-macros = { path = "./taurpc-macros", version = "=0.7.1" }
+tokio = { version = "1", features = ["full"] }
+
 
 # TODO: Drop this once changes land on `main`
 [patch.crates-io]
