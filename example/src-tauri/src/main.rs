@@ -23,14 +23,10 @@ struct User {
 
 // create the error type that represents all errors possible in our program
 #[derive(Debug, thiserror::Error, specta::Type)]
-#[serde(tag = "type", content = "data")]
+#[specta(type = String)]
 enum Error {
     #[error(transparent)]
-    Io(
-        #[from]
-        #[serde(skip)]
-        std::io::Error,
-    ),
+    Io(#[from] std::io::Error),
 
     #[error("Other: `{0}`")]
     Other(String),
@@ -233,9 +229,7 @@ async fn main() {
     let router = Router::new()
         .export_config(
             specta_typescript::Typescript::default()
-                .header("// My header\n\n")
-                // Make sure prettier is installed before using this.
-                // .formatter(specta_typescript::formatter::prettier)
+                .header("// My header")
                 .bigint(specta_typescript::BigIntExportBehavior::String),
         )
         .merge(
