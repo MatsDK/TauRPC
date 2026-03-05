@@ -76,60 +76,101 @@ type Payload = {
 }
 type ListenFn = (args: unknown) => void
 type ArgsMap = Record<string, Record<string, string[]>>
+export type ResultMap = Record<string, Record<string, boolean>>
+export type ErrorHandlingMode = 'throw' | 'result'
+
+export type TauRpcResult<T, E> =
+  | { status: 'ok'; data: T }
+  | { status: 'error'; error: E }
+
+export type TypedErrorFn =
+  <T, E>(result: Promise<T>) => Promise<T | TauRpcResult<T, E>>
+
+type CreateTauRPCProxyOptions = {
+  resultMap?: ResultMap
+  errorHandling?: ErrorHandlingMode
+  typedError?: TypedErrorFn
+}
 
 const TAURPC_EVENT_NAME = 'TauRpc_event'
 
+const passthroughTypedError: TypedErrorFn = async (result) => await result
+
+const resultTypedError: TypedErrorFn = async (result) => {
+  try {
+    return { status: 'ok', data: await result }
+  } catch (error) {
+    if (error instanceof Error) throw error
+    return { status: 'error', error: error as never }
+  }
+}
+
 const createTauRPCProxy = <TRouter extends Router>(
   args: Record<string, string>,
+  options: CreateTauRPCProxyOptions = {},
 ) => {
-  const args_map = parseArgsMap(args)
-  return nestedProxy(args_map) as TauRpcProxy<TRouter>
+  const argsMap = parseArgsMap(args)
+  const resultMap = options.resultMap ?? {}
+  const errorHandling = options.errorHandling ?? 'throw'
+  const typedError = options.typedError
+    ?? (errorHandling === 'result' ? resultTypedError : passthroughTypedError)
+
+  return nestedProxy(argsMap, resultMap, errorHandling, typedError) as TauRpcProxy<TRouter>
 }
 
 const nestedProxy = (
-  args_maps: ArgsMap,
+  argsMaps: ArgsMap,
+  resultMap: ResultMap,
+  errorHandling: ErrorHandlingMode,
+  typedError: TypedErrorFn,
   path: string[] = [],
 ) => {
   return new window.Proxy({}, {
     get(_target, p, _receiver): object {
-      const method_name = p.toString()
-      const nested_path = [...path, method_name]
-      const args_map = args_maps[path.join('.')]
-      if (method_name === 'then') return {}
+      const methodName = p.toString()
+      const nestedPath = [...path, methodName]
+      const routePath = path.join('.')
+      const argsMap = argsMaps[routePath]
+      if (methodName === 'then') return {}
 
-      if (args_map && method_name in args_map) {
+      if (argsMap && methodName in argsMap) {
         return new window.Proxy(() => {
           // Empty fn
         }, {
           get: (_target, prop, _receiver) => {
             if (prop !== 'on') return
 
-            const event_name = nested_path.join('.')
+            const eventName = nestedPath.join('.')
             return async (listener: (args: unknown) => void) => {
               return await listen(
                 TAURPC_EVENT_NAME,
-                createEventHandlder(event_name, listener, args_map),
+                createEventHandlder(eventName, listener, argsMap),
               )
             }
           },
           apply(_target, _thisArg, args) {
+            const shouldWrapResult =
+              errorHandling === 'result' && resultMap[routePath]?.[methodName] === true
+
             return handleProxyCall(
-              nested_path.join('.'),
+              nestedPath.join('.'),
               args,
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              args_map[method_name]!,
+              argsMap[methodName]!,
+              shouldWrapResult,
+              typedError,
             )
           },
         })
       } else if (
-        nested_path.join('.') in args_maps
-        || Object.keys(args_maps).some(path =>
-          path.startsWith(`${nested_path.join('.')}.`)
+        nestedPath.join('.') in argsMaps
+        || Object.keys(argsMaps).some(path =>
+          path.startsWith(`${nestedPath.join('.')}.`)
         )
       ) {
-        return nestedProxy(args_maps, nested_path)
+        return nestedProxy(argsMaps, resultMap, errorHandling, typedError, nestedPath)
       } else {
-        throw new Error(`'${nested_path.join('.')}' not found`)
+        throw new Error(`'${nestedPath.join('.')}' not found`)
       }
     },
   })
@@ -138,29 +179,32 @@ const nestedProxy = (
 const handleProxyCall = async (
   path: string,
   args: unknown[],
-  procedure_args: string[],
+  procedureArgs: string[],
+  wrapResult: boolean,
+  typedError: TypedErrorFn,
 ) => {
-  const args_object: Record<string, unknown> = {}
+  const argsObject: Record<string, unknown> = {}
 
-  for (let idx = 0; idx < procedure_args.length; idx++) {
-    const arg_name = procedure_args[idx]
-    if (!arg_name) throw new Error('Received invalid arguments')
+  for (let idx = 0; idx < procedureArgs.length; idx++) {
+    const argName = procedureArgs[idx]
+    if (!argName) throw new Error('Received invalid arguments')
 
     const arg = args[idx]
     if (typeof arg == 'function') {
       const channel = new Channel()
       channel.onmessage = arg as typeof channel.onmessage
-      args_object[arg_name] = channel
+      argsObject[argName] = channel
     } else {
-      args_object[arg_name] = arg
+      argsObject[argName] = arg
     }
   }
 
-  const response = await invoke(
+  const response = invoke(
     `TauRPC__${path}`,
-    args_object,
+    argsObject,
   )
-  return response
+
+  return wrapResult ? typedError(response) : await response
 }
 
 const createEventHandlder = (

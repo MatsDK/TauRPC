@@ -6,11 +6,11 @@
 
 pub extern crate serde;
 pub extern crate specta;
-pub extern crate specta_macros;
-use specta::datatype::Function;
 use specta::TypeCollection;
+use specta::datatype::Function;
 pub use specta_typescript::Typescript;
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 use std::{fmt::Debug, sync::Arc};
 use tokio::sync::broadcast::Sender;
@@ -23,6 +23,22 @@ pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod export;
 use export::export_types;
+
+/// Controls how `Result<T, E>` procedure outputs are represented in generated TypeScript.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ErrorHandlingMode {
+    /// Keep current behavior. Backend errors reject and throw on the frontend.
+    #[default]
+    Throw,
+    /// Wrap `Result<T, E>` returns in `{ status: "ok" | "error" }` on the frontend.
+    Result,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ExportRuntimeConfig {
+    error_handling: ErrorHandlingMode,
+    typed_error_impl: Cow<'static, str>,
+}
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.
@@ -47,7 +63,7 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     fn args_map() -> String;
 
     /// Returns all of the functions for exporting, all referenced types will be added to `type_map`.
-    fn collect_fn_types(type_map: &mut TypeCollection) -> Vec<Function>;
+    fn collect_fn_types(types: &mut TypeCollection) -> Vec<Function>;
 }
 
 /// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
@@ -87,26 +103,44 @@ pub fn create_ipc_handler<H, R: Runtime>(
 where
     H: TauRpcHandler<R> + Send + Sync + 'static + Clone,
 {
+    create_ipc_handler_with_config(procedures, ErrorHandlingMode::Throw, "")
+}
+
+/// Same as [`create_ipc_handler`] but allows configuring frontend handling for `Result<T, E>`.
+pub fn create_ipc_handler_with_config<H, R: Runtime>(
+    procedures: H,
+    error_handling: ErrorHandlingMode,
+    typed_error_impl: impl Into<Cow<'static, str>>,
+) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static
+where
+    H: TauRpcHandler<R> + Send + Sync + 'static + Clone,
+{
     let args_map = BTreeMap::from([(H::PATH_PREFIX.to_string(), H::args_map())]);
     let mut type_map = TypeCollection::default();
     let functions = BTreeMap::from([(
         H::PATH_PREFIX.to_string(),
         H::collect_fn_types(&mut type_map),
     )]);
+    let export_runtime = ExportRuntimeConfig {
+        error_handling,
+        typed_error_impl: typed_error_impl.into(),
+    };
 
     // Only export in development mode and export_path not none
-    if tauri::is_dev() {
-        if let Some(export_path) = H::EXPORT_PATH {
-            export_types(
-                export_path,
-                args_map,
-                specta_typescript::Typescript::default(),
-                functions,
-                type_map,
-            )
-            .unwrap();
-        }
+    if tauri::is_dev()
+        && let Some(export_path) = H::EXPORT_PATH
+    {
+        export_types(
+            export_path,
+            args_map,
+            specta_typescript::Typescript::default(),
+            functions,
+            type_map,
+            export_runtime,
+        )
+        .unwrap();
     }
+
     move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
         true
@@ -226,6 +260,7 @@ pub struct Router<R: Runtime> {
     args_map_json: BTreeMap<String, String>,
     fns_map: BTreeMap<String, Vec<Function>>,
     export_config: specta_typescript::Typescript,
+    export_runtime_config: ExportRuntimeConfig,
 }
 
 impl<R: Runtime> Router<R> {
@@ -237,6 +272,7 @@ impl<R: Runtime> Router<R> {
             export_path: None,
             args_map_json: BTreeMap::new(),
             export_config: specta_typescript::Typescript::default(),
+            export_runtime_config: ExportRuntimeConfig::default(),
         }
     }
 
@@ -248,13 +284,27 @@ impl<R: Runtime> Router<R> {
     /// let router = taurpc::Router::new()
     ///     .export_config(
     ///         specta_typescript::Typescript::default()
-    ///             .header("// My header\n")
+    ///             .header("// My header")
     ///             .bigint(specta_typescript::BigIntExportBehavior::String),
     ///     )
     ///     .merge(ApiImpl.into_handler());
     /// ```
     pub fn export_config(mut self, config: specta_typescript::Typescript) -> Self {
         self.export_config = config;
+        self
+    }
+
+    /// Configure how generated bindings handle `Result<T, E>` procedure returns.
+    pub fn error_handling(mut self, error_handling: ErrorHandlingMode) -> Self {
+        self.export_runtime_config.error_handling = error_handling;
+        self
+    }
+
+    /// Replace the generated `typedError` runtime implementation.
+    ///
+    /// The function must be named `typedError` and match the runtime contract.
+    pub fn typed_error_impl(mut self, runtime: impl Into<Cow<'static, str>>) -> Self {
+        self.export_runtime_config.typed_error_impl = runtime.into();
         self
     }
 
@@ -292,17 +342,18 @@ impl<R: Runtime> Router<R> {
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
         // Only export in development mode and export_path not none
-        if tauri::is_dev() {
-            if let Some(export_path) = self.export_path {
-                export_types(
-                    export_path,
-                    self.args_map_json.clone(),
-                    self.export_config.clone(),
-                    self.fns_map.clone(),
-                    self.types.clone(),
-                )
-                .unwrap();
-            }
+        if tauri::is_dev()
+            && let Some(export_path) = self.export_path
+        {
+            export_types(
+                export_path,
+                self.args_map_json.clone(),
+                self.export_config.clone(),
+                self.fns_map.clone(),
+                self.types.clone(),
+                self.export_runtime_config.clone(),
+            )
+            .unwrap();
         }
 
         move |invoke: Invoke<R>| self.on_command(invoke)
