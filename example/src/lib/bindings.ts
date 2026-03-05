@@ -5,21 +5,13 @@ export type Update = {
 	progress: number,
 };
 
-/**
- * Doc comments are also generated
- */
+//Doc comments are also generated
 export type User = {
-	/**
-	 *  The user's id
-	 */
+	// The user's id
 	uid: number,
-	/**
-	 *  The user's first name
-	 */
+	// The user's first name
 	first_name: string,
-	/**
-	 *  The user's last name
-	 */
+	// The user's last name
 	last_name: string,
 };
 
@@ -87,9 +79,9 @@ export type Router = {
 		vec_test: (args: string[]) => Promise<void>,
 	},
 };
-
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP, {
   resultMap: RESULT_MAP,
   errorHandling: "result",
 })
 export type { InferCommandOutput, TauRpcResult }
+
