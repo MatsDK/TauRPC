@@ -17,8 +17,8 @@ First, add the following crates to your `Cargo.toml`:
 [dependencies]
 taurpc = "0.7.1"
 
-specta = { version = "=2.0.0-rc.22", features = ["derive"] }
-# specta-typescript = "0.0.9"
+specta = { version = "=2.0.0-rc.23", features = ["derive"] }
+# specta-typescript = "0.0.10"
 tokio = { version = "1", features = ["full"] }
 ```
 

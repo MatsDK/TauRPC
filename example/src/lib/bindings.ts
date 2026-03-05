@@ -5,29 +5,50 @@ export type Update = {
 	progress: number,
 };
 
-/**
- * Doc comments are also generated
- */
+//Doc comments are also generated
 export type User = {
-	/**
-	 *  The user's id
-	 */
+	// The user's id
 	uid: number,
-	/**
-	 *  The user's first name
-	 */
+	// The user's first name
 	first_name: string,
-	/**
-	 *  The user's last name
-	 */
+	// The user's last name
 	last_name: string,
 };
 
-import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
+import { createTauRPCProxy as createProxy, type InferCommandOutput, type TauRpcResult } from 'taurpc'
 const ARGS_MAP = {
   "": "{\"ev\":[\"updated_value\"],\"get_app_handle\":[],\"get_webview_window\":[],\"get_window\":[],\"method_with_alias\":[],\"multiple_args\":[\"arg\",\"arg2\"],\"test_bigint\":[\"num\"],\"test_io\":[\"_user\"],\"test_option\":[],\"test_result\":[\"user\"],\"update_state\":[\"new_value\"],\"vec_test\":[\"arg\"],\"with_channel\":[\"on_event\"],\"with_sleep\":[]}",
   "api.ui": "{\"test_ev\":[],\"trigger\":[]}",
   "events": "{\"multiple_args\":[\"arg1\",\"arg2\"],\"state_changed\":[\"new_state\"],\"test_ev\":[],\"vec_test\":[\"args\"]}"
+};
+
+const RESULT_MAP = {
+  "": {
+    "ev": false,
+    "get_app_handle": false,
+    "get_webview_window": false,
+    "get_window": false,
+    "method_with_alias": false,
+    "multiple_args": false,
+    "test_bigint": false,
+    "test_io": false,
+    "test_option": false,
+    "test_result": true,
+    "update_state": false,
+    "vec_test": false,
+    "with_channel": false,
+    "with_sleep": false
+  },
+  "api.ui": {
+    "test_ev": false,
+    "trigger": false
+  },
+  "events": {
+    "multiple_args": false,
+    "state_changed": false,
+    "test_ev": false,
+    "vec_test": false
+  }
 };
 
 export type Router = {
@@ -41,7 +62,7 @@ export type Router = {
 		test_bigint: (num: string) => Promise<string>,
 		test_io: (user: User) => Promise<User>,
 		test_option: () => Promise<null>,
-		test_result: (user: User) => Promise<User>,
+		test_result: (user: User) => Promise<TauRpcResult<User, string>>,
 		update_state: (newValue: string) => Promise<void>,
 		vec_test: (arg: string[]) => Promise<void>,
 		with_channel: (onEvent: (response: Update) => void) => Promise<void>,
@@ -58,7 +79,8 @@ export type Router = {
 		vec_test: (args: string[]) => Promise<void>,
 	},
 };
-
-export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
-export type { InferCommandOutput }
-
+export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP, {
+  resultMap: RESULT_MAP,
+  errorHandling: "result",
+})
+export type { InferCommandOutput, TauRpcResult }
