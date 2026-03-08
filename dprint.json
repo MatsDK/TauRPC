@@ -7,7 +7,7 @@
   },
   "exec": {
     "associations": "**/*.{rs}",
-    "rustfmt": "rustfmt --edition 2021",
+    "rustfmt": "rustfmt --edition 2024",
     "rustfmt.associations": "**/*.rs"
   },
   "includes": [

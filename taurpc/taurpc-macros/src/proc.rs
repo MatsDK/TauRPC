@@ -1,11 +1,10 @@
 use super::extend_errors;
 use syn::{
-    braced,
+    Attribute, FnArg, Generics, Ident, Pat, ReturnType, Token, Visibility, braced,
     ext::IdentExt,
     parenthesized,
     parse::{self, Parse, ParseStream},
     spanned::Spanned,
-    Attribute, FnArg, Generics, Ident, Pat, ReturnType, Token, Visibility,
 };
 
 use crate::{args::Arg, attrs::MethodAttrs};
@@ -126,7 +125,7 @@ impl Parse for IpcMethod {
                     return Err(syn::Error::new(
                         err.span(),
                         "only named arguments are allowed",
-                    ))
+                    ));
                 }
             }
         }

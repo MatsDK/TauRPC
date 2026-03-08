@@ -6,9 +6,8 @@
 
 pub extern crate serde;
 pub extern crate specta;
-pub extern crate specta_macros;
-use specta::datatype::Function;
 use specta::TypeCollection;
+use specta::datatype::Function;
 pub use specta_typescript::Typescript;
 
 use std::collections::{BTreeMap, HashMap};
@@ -47,7 +46,7 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     fn args_map() -> String;
 
     /// Returns all of the functions for exporting, all referenced types will be added to `type_map`.
-    fn collect_fn_types(type_map: &mut TypeCollection) -> Vec<Function>;
+    fn collect_fn_types(types: &mut TypeCollection) -> Vec<Function>;
 }
 
 /// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
@@ -95,18 +94,19 @@ where
     )]);
 
     // Only export in development mode and export_path not none
-    if tauri::is_dev() {
-        if let Some(export_path) = H::EXPORT_PATH {
-            export_types(
-                export_path,
-                args_map,
-                specta_typescript::Typescript::default(),
-                functions,
-                type_map,
-            )
-            .unwrap();
-        }
+    if tauri::is_dev()
+        && let Some(export_path) = H::EXPORT_PATH
+    {
+        export_types(
+            export_path,
+            args_map,
+            specta_typescript::Typescript::default(),
+            functions,
+            type_map,
+        )
+        .unwrap();
     }
+
     move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
         true
@@ -248,7 +248,7 @@ impl<R: Runtime> Router<R> {
     /// let router = taurpc::Router::new()
     ///     .export_config(
     ///         specta_typescript::Typescript::default()
-    ///             .header("// My header\n")
+    ///             .header("// My header")
     ///             .bigint(specta_typescript::BigIntExportBehavior::String),
     ///     )
     ///     .merge(ApiImpl.into_handler());
@@ -292,17 +292,17 @@ impl<R: Runtime> Router<R> {
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
         // Only export in development mode and export_path not none
-        if tauri::is_dev() {
-            if let Some(export_path) = self.export_path {
-                export_types(
-                    export_path,
-                    self.args_map_json.clone(),
-                    self.export_config.clone(),
-                    self.fns_map.clone(),
-                    self.types.clone(),
-                )
-                .unwrap();
-            }
+        if tauri::is_dev()
+            && let Some(export_path) = self.export_path
+        {
+            export_types(
+                export_path,
+                self.args_map_json.clone(),
+                self.export_config.clone(),
+                self.fns_map.clone(),
+                self.types.clone(),
+            )
+            .unwrap();
         }
 
         move |invoke: Invoke<R>| self.on_command(invoke)

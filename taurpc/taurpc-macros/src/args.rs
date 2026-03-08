@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, ToTokens};
-use syn::{ext::IdentExt, spanned::Spanned, Ident, Pat, PatType, Type};
+use quote::{ToTokens, quote};
+use syn::{Ident, Pat, PatType, Type, ext::IdentExt, spanned::Spanned};
 
 // TODO: Add raw request??
 const RESERVED_ARGS: &[&str] = &["window", "state", "app_handle", "webview_window"];
