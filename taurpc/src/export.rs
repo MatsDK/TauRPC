@@ -162,26 +162,36 @@ fn datatype_to_ts(
     type_map: &TypeCollection,
     dt: &DataType,
 ) -> Result<String> {
-    if let DataType::Reference(Reference::Named(named_ref)) = dt {
-        if let Some(ndt) = named_ref.get(type_map) {
-            if ndt.name().as_ref() == "TAURI_CHANNEL" {
-                // Render generic parameters for the channel type
-                let generics = named_ref
-                    .generics()
-                    .iter()
-                    .map(|(_, generic_dt)| datatype_to_ts(export_config, type_map, generic_dt))
-                    .collect::<Result<Vec<_>>>()?;
+    match dt {
+        DataType::Reference(Reference::Named(named_ref)) => {
+            if let Some(ndt) = named_ref.get(type_map) {
+                if ndt.name().as_ref() == "TAURI_CHANNEL" {
+                    // Render generic parameters for the channel type
+                    let generics = named_ref
+                        .generics()
+                        .iter()
+                        .map(|(_, generic_dt)| datatype_to_ts(export_config, type_map, generic_dt))
+                        .collect::<Result<Vec<_>>>()?;
 
-                return if generics.is_empty() {
-                    Ok("TAURI_CHANNEL<unknown>".to_string())
-                } else {
-                    Ok(format!("TAURI_CHANNEL<{}>", generics.join(", ")))
-                };
+                    return if generics.is_empty() {
+                        Ok("TAURI_CHANNEL<unknown>".to_string())
+                    } else {
+                        Ok(format!("TAURI_CHANNEL<{}>", generics.join(", ")))
+                    };
+                }
             }
-        }
-    }
 
-    ts::primitives::inline(export_config, type_map, dt).map_err(|e| anyhow::anyhow!("{e}"))
+            // Use reference rendering to emit the type name (e.g. `User`) instead of inlining
+            ts::primitives::reference(export_config, type_map, &Reference::Named(named_ref.clone()))
+                .map_err(|e| anyhow::anyhow!("{e}"))
+        }
+        DataType::Reference(r) => {
+            ts::primitives::reference(export_config, type_map, r)
+                .map_err(|e| anyhow::anyhow!("{e}"))
+        }
+        _ => ts::primitives::inline(export_config, type_map, dt)
+            .map_err(|e| anyhow::anyhow!("{e}")),
+    }
 }
 
 fn try_write(file: &mut File, data: &str) {

@@ -27,42 +27,12 @@ get_window: () => Promise<void>,
 method_with_alias: () => Promise<void>, 
 multiple_args: (arg: string[], arg2: string) => Promise<void>, 
 test_bigint: (num: string) => Promise<string>, 
-test_io: (user: {
-	// The user's id
-	uid: number,
-	// The user's first name
-	first_name: string,
-	// The user's last name
-	last_name: string,
-}) => Promise<{
-	// The user's id
-	uid: number,
-	// The user's first name
-	first_name: string,
-	// The user's last name
-	last_name: string,
-}>, 
+test_io: (user: User) => Promise<User>, 
 test_option: () => Promise<null>, 
-test_result: (user: {
-	// The user's id
-	uid: number,
-	// The user's first name
-	first_name: string,
-	// The user's last name
-	last_name: string,
-}) => Promise<{
-	// The user's id
-	uid: number,
-	// The user's first name
-	first_name: string,
-	// The user's last name
-	last_name: string,
-}>, 
+test_result: (user: User) => Promise<User>, 
 update_state: (newValue: string) => Promise<void>, 
 vec_test: (arg: string[]) => Promise<void>, 
-with_channel: (onEvent: TAURI_CHANNEL<{
-	progress: number,
-}>) => Promise<void>, 
+with_channel: (onEvent: TAURI_CHANNEL<Update>) => Promise<void>, 
 with_sleep: () => Promise<void>},
 "api.ui": {test_ev: () => Promise<void>, 
 trigger: () => Promise<void>},
