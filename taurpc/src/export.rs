@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Result};
 use heck::ToLowerCamelCase;
 use itertools::Itertools;
-use specta::datatype::{Function, FunctionResultVariant};
+use specta::datatype::{DataType, Function, FunctionReturnType, Reference};
 use specta::TypeCollection;
 use specta_typescript as ts;
 use specta_typescript::Typescript;
@@ -19,13 +19,11 @@ static PACKAGE_JSON: &str = r#"
 "#;
 
 static BOILERPLATE_TS_IMPORT: &str = r#"
-
 import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
 type TAURI_CHANNEL<T> = (response: T) => void
 "#;
 
 static BOILERPLATE_TS_EXPORT: &str = r#"
-
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 export type { InferCommandOutput }
 "#;
@@ -39,7 +37,7 @@ pub(super) fn export_types(
     args_map: BTreeMap<String, String>,
     export_config: ts::Typescript,
     functions: BTreeMap<String, Vec<Function>>,
-    mut type_map: TypeCollection,
+    type_map: TypeCollection,
 ) -> Result<()> {
     let path = export_path.as_ref();
     if path.extension() != Some(OsStr::new("ts")) {
@@ -52,20 +50,17 @@ pub(super) fn export_types(
     }
 
     // Export `types_map` containing all referenced types.
-    type_map.remove(<tauri::ipc::Channel<()> as specta::NamedType>::sid());
     let types = export_config
         .export(&type_map)
         .context("Failed to generate types with specta")?;
 
-    // Put headers always at the top of the file, followed by the module imports.
-    let framework_header = export_config.framework_header.as_ref();
-    let body = match types.split_once(framework_header) {
-        Some((_, body)) => body,
-        None => {
-            eprintln!("Failed to split types with framework header");
-            ""
-        }
-    };
+    // Filter out the TAURI_CHANNEL type exported by specta via tauri's remote type impl,
+    // since we define our own TAURI_CHANNEL<T> type alias in the boilerplate.
+    let types = types
+        .lines()
+        .filter(|line| !line.contains("TAURI_CHANNEL"))
+        .collect::<Vec<_>>()
+        .join("\n");
 
     let mut file = OpenOptions::new()
         .create(true)
@@ -74,10 +69,8 @@ pub(super) fn export_types(
         .open(path)
         .context("Cannot open bindings file")?;
 
-    try_write(&mut file, &export_config.header);
-    try_write(&mut file, framework_header);
+    try_write(&mut file, &types);
     try_write(&mut file, BOILERPLATE_TS_IMPORT);
-    try_write(&mut file, body);
 
     let args_entries: String = args_map
         .iter()
@@ -104,10 +97,6 @@ pub(super) fn export_types(
             .context("failed to create 'package.json'")?;
     }
 
-    // Format the output file if the user specified a formatter on `export_config`.
-    export_config.format(path).context(
-        "Failed to format exported bindings, make sure you have the correct formatter installed",
-    )?;
     Ok(())
 }
 
@@ -146,35 +135,53 @@ fn generate_function(
 ) -> Result<String> {
     let args = function
         .args()
+        .iter()
         .map(|(name, typ)| {
-            ts::datatype(
-                export_config,
-                &FunctionResultVariant::Value(typ.clone()),
-                type_map,
-            )
-            .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
+            datatype_to_ts(export_config, type_map, typ)
+                .map(|ty| format!("{}: {}", name.to_lower_camel_case(), ty))
         })
         .collect::<Result<Vec<_>, _>>()
         .context("An error occured while generating command args")?
         .join(", ");
 
     let return_ty = match function.result() {
-        Some(FunctionResultVariant::Value(t)) => ts::datatype(
-            export_config,
-            &FunctionResultVariant::Value(t.clone()),
-            type_map,
-        )?,
+        Some(FunctionReturnType::Value(t)) => datatype_to_ts(export_config, type_map, t)?,
         // TODO: handle result types
-        Some(FunctionResultVariant::Result(t, _e)) => ts::datatype(
-            export_config,
-            &FunctionResultVariant::Value(t.clone()),
-            type_map,
-        )?,
+        Some(FunctionReturnType::Result(t, _e)) => datatype_to_ts(export_config, type_map, t)?,
         None => "void".to_string(),
     };
 
     let name = function.name().split_once("_taurpc_fn__").unwrap().1;
     Ok(format!(r#"{name}: ({args}) => Promise<{return_ty}>"#))
+}
+
+/// Render a DataType to TypeScript, handling tauri's Channel opaque reference specially
+/// since specta-typescript doesn't know how to export it.
+fn datatype_to_ts(
+    export_config: &Typescript,
+    type_map: &TypeCollection,
+    dt: &DataType,
+) -> Result<String> {
+    if let DataType::Reference(Reference::Named(named_ref)) = dt {
+        if let Some(ndt) = named_ref.get(type_map) {
+            if ndt.name().as_ref() == "TAURI_CHANNEL" {
+                // Render generic parameters for the channel type
+                let generics = named_ref
+                    .generics()
+                    .iter()
+                    .map(|(_, generic_dt)| datatype_to_ts(export_config, type_map, generic_dt))
+                    .collect::<Result<Vec<_>>>()?;
+
+                return if generics.is_empty() {
+                    Ok("TAURI_CHANNEL<unknown>".to_string())
+                } else {
+                    Ok(format!("TAURI_CHANNEL<{}>", generics.join(", ")))
+                };
+            }
+        }
+    }
+
+    ts::primitives::inline(export_config, type_map, dt).map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 fn try_write(file: &mut File, data: &str) {

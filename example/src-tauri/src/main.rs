@@ -22,7 +22,7 @@ struct User {
 }
 
 // create the error type that represents all errors possible in our program
-#[derive(Debug, thiserror::Error, specta::Type)]
+#[derive(Debug, thiserror::Error, serde::Serialize, specta::Type)]
 #[serde(tag = "type", content = "data")]
 enum Error {
     #[error(transparent)]
@@ -34,16 +34,6 @@ enum Error {
 
     #[error("Other: `{0}`")]
     Other(String),
-}
-
-// we must manually implement serde::Serialize
-impl serde::Serialize for Error {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        serializer.serialize_str(self.to_string().as_ref())
-    }
 }
 
 #[taurpc::ipc_type]
@@ -132,7 +122,7 @@ impl Api for ApiImpl {
         Some(())
     }
 
-    async fn test_result(self, user: User) -> Result<User, Error> {
+    async fn test_result(self, _user: User) -> Result<User, Error> {
         Err(Error::Other("Some error message".to_string()))
         // Ok(user)
     }
