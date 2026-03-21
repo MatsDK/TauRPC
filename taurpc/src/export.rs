@@ -182,15 +182,18 @@ fn datatype_to_ts(
             }
 
             // Use reference rendering to emit the type name (e.g. `User`) instead of inlining
-            ts::primitives::reference(export_config, type_map, &Reference::Named(named_ref.clone()))
-                .map_err(|e| anyhow::anyhow!("{e}"))
+            ts::primitives::reference(
+                export_config,
+                type_map,
+                &Reference::Named(named_ref.clone()),
+            )
+            .map_err(|e| anyhow::anyhow!("{e}"))
         }
-        DataType::Reference(r) => {
-            ts::primitives::reference(export_config, type_map, r)
-                .map_err(|e| anyhow::anyhow!("{e}"))
-        }
-        _ => ts::primitives::inline(export_config, type_map, dt)
+        DataType::Reference(r) => ts::primitives::reference(export_config, type_map, r)
             .map_err(|e| anyhow::anyhow!("{e}")),
+        _ => {
+            ts::primitives::inline(export_config, type_map, dt).map_err(|e| anyhow::anyhow!("{e}"))
+        }
     }
 }
 
