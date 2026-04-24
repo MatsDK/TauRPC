@@ -61,17 +61,28 @@ Then on the frontend install the taurpc package.
 pnpm install taurpc
 ```
 
-Now on the frontend you import the generated types, if you specified the `export_to` attribute on your procedures you should import your from there.
-With these types a typesafe proxy is generated that you can use to invoke commands and listen for events.
+Now on the frontend you import the generated files. If you specified the `export_to` attribute on your procedures, taurpc writes **two sibling files** next to that path:
+
+- **`proxy.ts`** — the default import for anything that talks to Tauri. Exports `createTauRPCProxy` (the proxy factory, pre-bound to your `Router`) and re-exports `InferCommandOutput` from `@fltsci/taurpc`. Internally wires up `@fltsci/taurpc` so your app code doesn't have to reference the package by name.
+- **`bindings.ts`** — use this **only** when you need types without the runtime — e.g. a decoupled package like a design-system that references `Router` or an IPC payload type but must not pull `@fltsci/taurpc` into its bundle graph. Contains no npm imports.
 
 ```typescript
-import { createTauRPCProxy } from '../bindings.ts'
+import { createTauRPCProxy } from '../proxy.ts'
 
 const taurpc = createTauRPCProxy()
 await taurpc.hello_world()
 ```
 
-The types for taurpc are generated once you start your application, run `pnpm tauri dev`. If the types are not picked up by the LSP, you may have to restart typescript to reload the types.
+Need the return type of a command? `InferCommandOutput` is re-exported alongside the factory, so one import covers both:
+
+```typescript
+import type { Router } from '../bindings.ts'
+import { createTauRPCProxy, type InferCommandOutput } from '../proxy.ts'
+
+type HelloResult = InferCommandOutput<Router, '', 'hello_world'>
+```
+
+The files are generated once you start your application, run `pnpm tauri dev`. If the types are not picked up by the LSP, you may have to restart typescript to reload the types.
 
 You can find a complete example (using Svelte) [here](https://github.com/fltsci/TauRPC/tree/main/example).
 

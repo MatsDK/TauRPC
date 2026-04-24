@@ -14,25 +14,16 @@ use std::path::Path;
 static PACKAGE_JSON: &str = r#"
 {
     "name": ".taurpc",
-    "types": "index.ts"
+    "types": "index.ts",
+    "exports": {
+        ".": "./index.ts",
+        "./proxy": "./proxy.ts"
+    }
 }
 "#;
 
-static BOILERPLATE_TS_IMPORT: &str = r#"
-
-import { createTauRPCProxy as createProxy, type InferCommandOutput } from '@fltsci/taurpc'
-
+static BINDINGS_PRELUDE: &str = r#"
 type TAURI_CHANNEL<T> = (response: T) => void
-"#;
-
-static BOILERPLATE_TS_EXPORT: &str = r#"
-
-const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
-
-export {
-  type InferCommandOutput,
-  createTauRPCProxy
-}
 "#;
 
 /// Export the generated TS types with the code necessary for generating the client proxy.
@@ -94,7 +85,7 @@ pub(super) fn export_types(
 
     try_write(&mut file, &export_config.header);
     try_write(&mut file, framework_header);
-    try_write(&mut file, BOILERPLATE_TS_IMPORT);
+    try_write(&mut file, BINDINGS_PRELUDE);
     try_write(&mut file, body);
 
     let args_entries: String = args_map
@@ -103,10 +94,19 @@ pub(super) fn export_types(
         .join(", ");
     let router_args = format!("{{ {args_entries} }}");
 
-    try_write(&mut file, &format!("const ARGS_MAP = {router_args}\n"));
+    try_write(
+        &mut file,
+        &format!("export const ARGS_MAP = {router_args}\n"),
+    );
     let functions_router = generate_functions_router(functions, type_map, &export_config);
     try_write(&mut file, &functions_router);
-    try_write(&mut file, BOILERPLATE_TS_EXPORT);
+
+    let bindings_stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .context("bindings path has no valid file stem")?;
+    let proxy_path = path.with_file_name("proxy.ts");
+    write_proxy_file(&proxy_path, bindings_stem, &export_config, framework_header)?;
 
     if path
         .to_string_lossy()
@@ -122,13 +122,49 @@ pub(super) fn export_types(
             .context("failed to create 'package.json'")?;
     }
 
-    // Format the output file if the user specified a formatter on `export_config`.
+    // Format the output files if the user specified a formatter on `export_config`.
     if export_config.formatter.is_some() {
         match export_config.format(path) {
             Ok(_) => (),
             Err(e) => println!("Error formatting bindings file: {}", e),
         }
+        match export_config.format(&proxy_path) {
+            Ok(_) => (),
+            Err(e) => println!("Error formatting proxy file: {}", e),
+        }
     }
+    Ok(())
+}
+
+/// Write the runtime half of the generated output. `proxy.ts` imports `ARGS_MAP` and
+/// `Router` from the sibling bindings file and exports `createTauRPCProxy`. Kept in its
+/// own module so `bindings.ts` stays free of npm imports — Vite's optimizeDeps scanner
+/// won't pre-bundle `@fltsci/taurpc` when a consumer only `import type`s from bindings.
+fn write_proxy_file(
+    proxy_path: &Path,
+    bindings_stem: &str,
+    export_config: &ts::Typescript,
+    framework_header: &str,
+) -> Result<()> {
+    let mut proxy = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(proxy_path)
+        .context("Cannot open proxy file")?;
+
+    try_write(&mut proxy, &export_config.header);
+    try_write(&mut proxy, framework_header);
+    try_write(
+        &mut proxy,
+        &format!(
+            "\nimport {{ createTauRPCProxy as createProxy }} from '@fltsci/taurpc'\n\
+             import {{ ARGS_MAP, type Router }} from './{bindings_stem}'\n\n\
+             export type {{ InferCommandOutput }} from '@fltsci/taurpc'\n\n\
+             export const createTauRPCProxy = (): ReturnType<typeof createProxy<Router>> =>\n  \
+             createProxy<Router>(ARGS_MAP)\n"
+        ),
+    );
     Ok(())
 }
 

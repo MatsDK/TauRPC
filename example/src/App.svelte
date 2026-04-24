@@ -1,10 +1,7 @@
 <script lang="ts">
   import type { UnlistenFn } from '@tauri-apps/api/event'
-  import {
-    createTauRPCProxy,
-    type InferCommandOutput,
-    type Router,
-  } from './lib/ipc'
+  import type { Router } from './lib/bindings'
+  import { createTauRPCProxy, type InferCommandOutput } from './lib/proxy'
   import { onMount, onDestroy } from 'svelte'
 
   let value = ''
