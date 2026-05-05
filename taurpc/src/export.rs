@@ -273,10 +273,15 @@ fn rewrite_bigints_in_datatype(dt: &mut DataType) {
             | Primitive::u64
             | Primitive::i64
             | Primitive::u128
-            | Primitive::i128 => {
-                *dt = define("number").into();
-            }
-            Primitive::f128 => {
+            | Primitive::i128
+            | Primitive::f128 => {
+                // Rewrite bigint primitives to f64 (also rendered as `number`
+                // in TS) instead of an opaque `define("number")` reference.
+                // The opaque variant is valid in struct/enum/list/value
+                // positions but specta-typescript's `validate_map_key` rejects
+                // any `Reference::Opaque` -- so a HashMap<i64, V> field would
+                // surface as `Invalid map key at HashMap.<map_key>`. f64 is
+                // accepted by both `primitive_is_valid_key` and `primitive_dt`.
                 *dt = DataType::Primitive(Primitive::f64);
             }
             _ => {}
