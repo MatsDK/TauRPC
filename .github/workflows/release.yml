@@ -64,6 +64,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
  
+      # `@changesets/changelog-github` writes CHANGELOG.md with double-quoted /
+      # semicolon-terminated code-block samples that don't pass `dprint check`,
+      # so every chore(release) merge commit was failing CI's `lint:format`
+      # step on main even though the npm publish itself succeeded. Re-run the
+      # formatter on the auto-generated branch and amend if it changed
+      # anything.
+      - name: Sync formatting if necessary
+        if: steps.changeset.outputs.hasChangesets == 'true'
+        run: |
+          git checkout changeset-release/main
+          pnpm format
+          git add .
+          git diff --cached --quiet || (git commit -m "chore(release): 📦 format auto-generated files" && git push origin changeset-release/main)
+
       # Changeset has some issues with pnpm so we sync it up manually
       - name: Sync lockfile if necessary
         if: steps.changeset.outputs.hasChangesets == 'true'
