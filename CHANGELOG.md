@@ -1,5 +1,17 @@
 # taurpc
 
+## 2.0.0-canary.5
+
+### Patch Changes
+
+- [#19](https://github.com/fltsci/TauRPC/pull/19) [`0c8b50f`](https://github.com/fltsci/TauRPC/commit/0c8b50fea24c1184d407c46dfe8da93ddbedfc6e) Thanks [@johncarmack1984](https://github.com/johncarmack1984)! - Rewrite bigint primitives (`i64`, `u64`, `usize`, `isize`, `i128`, `u128`, `f128`) to `Primitive::f64` instead of an opaque `define("number")` reference.
+
+  Both forms render as `number` in the generated TS, but only `Primitive::f64` is accepted as a `serde_json` map key by `specta-typescript`'s `validate_map_key`. The opaque form would surface as `Invalid map key at 'HashMap.<map_key>': opaque references cannot be validated as serde_json map keys` whenever a taurpc command's arg or return type contained a HashMap/IndexMap with a bigint key (e.g. `HashMap<i64, V>` or any newtype wrapping such a map).
+
+- [#21](https://github.com/fltsci/TauRPC/pull/21) [`a48caa8`](https://github.com/fltsci/TauRPC/commit/a48caa8a716b5198a82ac235d24be45edf54cc3f) Thanks [@johncarmack1984](https://github.com/johncarmack1984)! - Auto-format the auto-generated `CHANGELOG.md` in the Release workflow.
+
+  `@changesets/changelog-github` writes code-block samples with double quotes and trailing semicolons, which don't pass `dprint check`. Every prior `chore(release)` merge commit landed an unformatted `CHANGELOG.md`, which made the next `CI` run on main fail `lint:format` even though the npm publish itself succeeded. The new "Sync formatting if necessary" step in `release.yml` re-runs `pnpm format` on the auto-generated branch and amends the version-bump commit if anything changed -- analogous to the existing "Sync lockfile if necessary" step.
+
 ## 2.0.0-canary.4
 
 ### Patch Changes

@@ -5,8 +5,10 @@
     "@fltsci/taurpc": "1.8.1"
   },
   "changesets": [
+    "bigint-rewrite-f64-not-opaque",
     "calm-wombats-stand",
     "nice-years-dream",
+    "release-auto-format",
     "restore-preserve-order",
     "split-bindings-proxy",
     "witty-guests-like"
