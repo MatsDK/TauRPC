@@ -20,6 +20,7 @@
     "pnpm-lock.yaml",
     "dist",
     "bindings.ts",
+    "proxy.ts",
     "**/target",
     "**/gen"
   ],

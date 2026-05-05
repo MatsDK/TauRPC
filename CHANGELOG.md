@@ -30,11 +30,11 @@
     createTauRPCProxy,
     type InferCommandOutput,
     type Router,
-  } from "./taurpc/bindings";
+  } from './taurpc/bindings'
 
   // after
-  import type { Router } from "./taurpc/bindings";
-  import { createTauRPCProxy, type InferCommandOutput } from "./taurpc/proxy";
+  import type { Router } from './taurpc/bindings'
+  import { createTauRPCProxy, type InferCommandOutput } from './taurpc/proxy'
   ```
 
 ## 1.8.2-canary.2

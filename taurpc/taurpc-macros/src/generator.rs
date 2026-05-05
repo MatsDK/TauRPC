@@ -343,8 +343,8 @@ impl ProceduresGenerator<'_> {
                     #serialized_args_map.to_string()
                 }
 
-                fn collect_fn_types(mut types_map: &mut specta::TypeCollection) -> Vec<specta::datatype::Function> {
-                    specta::function::collect_functions![#( #fn_names ),*](&mut types_map)
+                fn collect_fn_types(mut types: &mut specta::Types) -> Vec<specta::datatype::Function> {
+                    specta::function::collect_functions![#( #fn_names ),*](&mut types)
                 }
             }
         }

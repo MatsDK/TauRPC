@@ -23,14 +23,10 @@ struct User {
 
 // create the error type that represents all errors possible in our program
 #[derive(Debug, thiserror::Error, specta::Type)]
-#[serde(tag = "type", content = "data")]
+#[specta(type = String)]
 enum Error {
     #[error(transparent)]
-    Io(
-        #[from]
-        #[serde(skip)]
-        std::io::Error,
-    ),
+    Io(#[from] std::io::Error),
 
     #[error("Other: `{0}`")]
     Other(String),
@@ -49,6 +45,12 @@ impl serde::Serialize for Error {
 #[taurpc::ipc_type]
 struct Update {
     progress: u8,
+}
+
+#[taurpc::ipc_type]
+struct PhaseSpecificRename {
+    #[serde(rename(serialize = "serialized_value", deserialize = "deserialized_value"))]
+    value: String,
 }
 
 // #[taurpc::procedures(event_trigger = ApiEventTrigger)]
@@ -86,6 +88,8 @@ trait Api {
     async fn test_bigint(num: i64) -> i64;
 
     async fn with_channel(on_event: Channel<Update>);
+
+    async fn phase_specific_rename(input: PhaseSpecificRename) -> PhaseSpecificRename;
 }
 
 #[derive(Clone)]
@@ -161,6 +165,10 @@ impl Api for ApiImpl {
             on_event.send(Update { progress }).unwrap();
         }
     }
+
+    async fn phase_specific_rename(self, input: PhaseSpecificRename) -> PhaseSpecificRename {
+        input
+    }
 }
 
 #[taurpc::procedures(path = "events", export_to = "../src/lib/bindings.ts")]
@@ -234,13 +242,7 @@ async fn main() {
     });
 
     let router = Router::new()
-        .export_config(
-            specta_typescript::Typescript::default()
-                .header("// My header\n\n")
-                // Make sure prettier is installed before using this.
-                // .formatter(specta_typescript::formatter::prettier)
-                .bigint(specta_typescript::BigIntExportBehavior::String),
-        )
+        .export_config(specta_typescript::Typescript::default().header("// My header"))
         .merge(
             ApiImpl {
                 state: Arc::new(Mutex::new("state".to_string())),
