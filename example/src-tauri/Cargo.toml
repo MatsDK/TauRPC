@@ -22,3 +22,8 @@ thiserror = "2.0.17"
 taurpc = { path = "../../taurpc" }
 specta = { version = "=2.0.0-rc.24", features = ["derive"] }
 specta-typescript = "0.0.11"
+
+[patch.crates-io]
+specta = { path = "/Users/oscar/files/specta/specta" }
+specta-serde = { path = "/Users/oscar/files/specta/specta-serde" }
+specta-typescript = { path = "/Users/oscar/files/specta/specta-typescript" }

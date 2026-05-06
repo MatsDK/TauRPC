@@ -1,7 +1,10 @@
 use heck::ToLowerCamelCase;
 use specta::{
-    ResolvedTypes, Types,
-    datatype::{DataType, Field, Fields, Function, Primitive, Reference, Struct},
+    Types,
+    datatype::{
+        DataType, Field, Fields, Function, NamedReference, NamedReferenceType, Primitive,
+        Reference, Struct,
+    },
 };
 use specta_serde::Phase;
 use specta_typescript::{Error, Exporter, FrameworkExporter, Typescript, define};
@@ -41,9 +44,11 @@ pub(super) fn export_types(
     functions: BTreeMap<String, Vec<Function>>,
     mut types: Types,
 ) -> Result<(), Error> {
-    types.iter_mut(|ndt| rewrite_bigints_in_datatype(ndt.ty_mut()));
-    let types = specta_serde::apply_phases(types)
-        .map_err(|err| Error::framework("Specta Serde validation failed", err))?;
+    types.iter_mut(|ndt| {
+        if let Some(ty) = ndt.ty.as_mut() {
+            rewrite_bigints_in_datatype(ty);
+        }
+    });
 
     let exporter: Exporter = ts.into();
     let user_header = exporter.header.clone();
@@ -69,7 +74,7 @@ pub(super) fn export_types(
 
             Ok(out.into())
         })
-        .export_to(export_path, &types)?;
+        .export_to(export_path, &types, specta_serde::Format)?;
 
     let bindings_path = Path::new(export_path);
     let proxy_path = bindings_path.with_file_name("proxy.ts");
@@ -185,11 +190,11 @@ fn generate_function_field(
 // Also handles Tauri channel references.
 fn render_reference_dt(dt: &DataType, exporter: &FrameworkExporter) -> Result<String, Error> {
     if let DataType::Reference(Reference::Named(r)) = dt
-        && let Some(ndt) = r.get(exporter.types.as_types())
-        && ndt.name() == "TAURI_CHANNEL"
-        && ndt.module_path().starts_with("tauri::")
+        && let Some(ndt) = exporter.types.get(r)
+        && ndt.name == "TAURI_CHANNEL"
+        && ndt.module_path.starts_with("tauri::")
     {
-        let generic = if let Some((_, dt)) = r.generics().first() {
+        let generic = if let Some((_, dt)) = named_reference_generics(r).first() {
             match &dt {
                 DataType::Reference(r) => exporter.reference(r)?,
                 dt => exporter.inline(dt)?,
@@ -209,18 +214,25 @@ fn render_reference_dt(dt: &DataType, exporter: &FrameworkExporter) -> Result<St
 
 fn extract_std_result<'a>(
     dt: &'a DataType,
-    types: &'a ResolvedTypes,
+    types: &'a Types,
 ) -> Option<(&'a DataType, &'a DataType)> {
     if let DataType::Reference(Reference::Named(r)) = dt
-        && let Some(ndt) = r.get(types.as_types())
-        && ndt.name() == "Result"
-        && (ndt.module_path() == "std::result" || ndt.module_path() == "core::result")
-        && let [(_, ok), (_, err), ..] = r.generics()
+        && let Some(ndt) = types.get(r)
+        && ndt.name == "Result"
+        && (ndt.module_path == "std::result" || ndt.module_path == "core::result")
+        && let [(_, ok), (_, err), ..] = named_reference_generics(r)
     {
         return Some((ok, err));
     }
 
     None
+}
+
+fn named_reference_generics(r: &NamedReference) -> &[(specta::datatype::Generic, DataType)] {
+    match &r.inner {
+        NamedReferenceType::Reference { generics, .. } => generics,
+        NamedReferenceType::Inline { .. } | NamedReferenceType::Recursive => &[],
+    }
 }
 
 fn render_reference_dt_for_phase(
@@ -250,15 +262,15 @@ fn rewrite_bigints_in_datatype(dt: &mut DataType) {
         match fields {
             Fields::Unit => {}
             Fields::Unnamed(fields) => {
-                for field in fields.fields_mut() {
-                    if let Some(ty) = field.ty_mut() {
+                for field in fields.fields.iter_mut() {
+                    if let Some(ty) = field.ty.as_mut() {
                         rewrite_bigints_in_datatype(ty);
                     }
                 }
             }
             Fields::Named(fields) => {
-                for (_, field) in fields.fields_mut() {
-                    if let Some(ty) = field.ty_mut() {
+                for (_, field) in fields.fields.iter_mut() {
+                    if let Some(ty) = field.ty.as_mut() {
                         rewrite_bigints_in_datatype(ty);
                     }
                 }
@@ -286,28 +298,35 @@ fn rewrite_bigints_in_datatype(dt: &mut DataType) {
             }
             _ => {}
         },
-        DataType::List(list) => rewrite_bigints_in_datatype(list.ty_mut()),
+        DataType::List(list) => rewrite_bigints_in_datatype(&mut list.ty),
         DataType::Map(map) => {
             rewrite_bigints_in_datatype(map.key_ty_mut());
             rewrite_bigints_in_datatype(map.value_ty_mut());
         }
-        DataType::Struct(strct) => rewrite_bigints_in_fields(strct.fields_mut()),
+        DataType::Struct(strct) => rewrite_bigints_in_fields(&mut strct.fields),
         DataType::Enum(enm) => {
-            for (_, variant) in enm.variants_mut() {
-                rewrite_bigints_in_fields(variant.fields_mut());
+            for (_, variant) in enm.variants.iter_mut() {
+                rewrite_bigints_in_fields(&mut variant.fields);
             }
         }
         DataType::Tuple(tuple) => {
-            for item in tuple.elements_mut() {
+            for item in tuple.elements.iter_mut() {
                 rewrite_bigints_in_datatype(item);
             }
         }
         DataType::Nullable(inner) => rewrite_bigints_in_datatype(inner),
         DataType::Reference(Reference::Named(reference)) => {
-            for (_, generic) in reference.generics_mut() {
-                rewrite_bigints_in_datatype(generic);
+            if let NamedReferenceType::Reference { generics, .. } = &mut reference.inner {
+                for (_, generic) in generics.iter_mut() {
+                    rewrite_bigints_in_datatype(generic);
+                }
             }
         }
-        DataType::Reference(Reference::Generic(_)) | DataType::Reference(Reference::Opaque(_)) => {}
+        DataType::Generic(_) | DataType::Reference(Reference::Opaque(_)) => {}
+        DataType::Intersection(types) => {
+            for ty in types {
+                rewrite_bigints_in_datatype(ty);
+            }
+        }
     }
 }
