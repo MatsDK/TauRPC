@@ -101,12 +101,14 @@ impl Parse for ProceduresAttrs {
 /// Attributes defined on methods inside a procedures trait.
 /// Parse the attributes to make sure they are defined in the correct way, like `#[taurpc( ... )]`, accumulate
 /// all errors and then display them together with `extend_errors!()`.  
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct MethodAttrs {
     pub(crate) skip: bool,
     pub(crate) alias: Option<String>,
     pub(crate) is_event: bool,
     pub(crate) comments: Vec<String>,
+    /// Attributes to forward to the generated code (e.g., #[allow(...)])
+    pub(crate) passthrough_attrs: Vec<Attribute>,
 }
 
 impl Parse for MethodAttrs {
@@ -128,14 +130,9 @@ impl Parse for MethodAttrs {
                 continue;
             }
             if !attr.path().is_ident("taurpc") {
-                extend_errors!(
-                    errors,
-                    syn::Error::new(
-                        attr.meta.span(),
-                        "these attributes are not supported, use `#[taurpc(...)]` instead"
-                    )
-                );
-                // continue;
+                // Forward non-taurpc attributes (like #[allow(...)], #[cfg(...)], etc.) to generated code
+                res.passthrough_attrs.push(attr);
+                continue;
             }
 
             if let Err(e) = attr.parse_nested_meta(|meta| {

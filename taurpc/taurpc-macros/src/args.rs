@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, ToTokens};
+use quote::{quote_spanned, ToTokens};
 use syn::{ext::IdentExt, spanned::Spanned, Ident, Pat, PatType, Type};
 
 // TODO: Add raw request??
@@ -19,6 +19,10 @@ impl Arg {
 
     pub fn pat(&self) -> &Pat {
         &self.pat.pat
+    }
+
+    pub fn span(&self) -> proc_macro2::Span {
+        self.pat.span()
     }
 }
 
@@ -77,8 +81,9 @@ fn parse_arg(arg: &Arg, message: &Ident, proc_ident: &Ident) -> syn::Result<Toke
         ));
     }
 
+    let arg_span = arg.span();
     // this way tauri knows how to deserialize the different types of the args
-    Ok(quote!(::tauri::ipc::CommandArg::from_command(
+    Ok(quote_spanned!(arg_span=> ::tauri::ipc::CommandArg::from_command(
       ::tauri::ipc::CommandItem {
         name: stringify!(#proc_ident),
         key: #key,

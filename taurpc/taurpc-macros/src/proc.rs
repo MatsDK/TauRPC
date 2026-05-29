@@ -1,4 +1,5 @@
 use super::extend_errors;
+use proc_macro2::Span;
 use syn::{
     braced,
     ext::IdentExt,
@@ -27,6 +28,8 @@ pub struct IpcMethod {
     pub args: Vec<Arg>,
     pub generics: Generics,
     pub attrs: MethodAttrs,
+    /// Span of the method signature, used for better error reporting
+    pub span: Span,
 }
 
 impl Parse for Procedures {
@@ -107,7 +110,7 @@ impl Parse for IpcMethod {
     fn parse(input: ParseStream) -> parse::Result<Self> {
         let attrs = MethodAttrs::parse(input)?;
 
-        <Token![async]>::parse(input)?;
+        let async_token = <Token![async]>::parse(input)?;
         <Token![fn]>::parse(input)?;
 
         let ident: Ident = input.parse()?;
@@ -134,12 +137,16 @@ impl Parse for IpcMethod {
         let output = input.parse()?;
         <Token![;]>::parse(input)?;
 
+        // Capture the span from async token (start of signature), fallback to ident span
+        let span = async_token.span;
+
         Ok(IpcMethod {
             ident,
             output,
             args,
             generics,
             attrs,
+            span,
         })
     }
 }
