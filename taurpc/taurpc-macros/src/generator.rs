@@ -38,11 +38,18 @@ impl ProceduresGenerator<'_> {
         } = self;
 
         let fn_types = alias_method_idents.iter().zip(methods).map(
-            |(ident, IpcMethod { output, args, .. })| {
+            |(ident, IpcMethod { output, args, attrs, .. })| {
                 let args = args.iter().filter(|&arg| !arg.skip_type);
                 let fn_ident = fn_ident(trait_ident, ident);
+                let doc_attrs = if attrs.comments.is_empty() {
+                    quote! {}
+                } else {
+                    let lines = attrs.comments.iter().map(|line| quote! { #[doc = #line] });
+                    quote! { #( #lines )* }
+                };
 
                 quote! {
+                    #doc_attrs
                     #[specta::specta]
                     #[allow(non_snake_case, unused_variables)]
                     fn #fn_ident( #( #args ),*) #output {
@@ -69,12 +76,19 @@ impl ProceduresGenerator<'_> {
                 }
                 let ty_doc = format!("The response future returned by [`{trait_ident}::{ident}`].");
                 let future_type_ident = method_fut_ident(ident);
+                let doc_attrs = if attrs.comments.is_empty() {
+                    quote! {}
+                } else {
+                    let lines = attrs.comments.iter().map(|line| quote! { #[doc = #line] });
+                    quote! { #( #lines )* }
+                };
 
                 Some(quote! {
                     #[allow(non_camel_case_types)]
                     #[doc = #ty_doc]
                     type #future_type_ident: std::future::Future<Output = #output_ty> + Send;
 
+                    #doc_attrs
                     fn #ident #generics(self, #( #args ),*) -> Self::#future_type_ident;
                 })
             },

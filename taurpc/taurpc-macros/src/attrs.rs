@@ -106,6 +106,7 @@ pub struct MethodAttrs {
     pub(crate) skip: bool,
     pub(crate) alias: Option<String>,
     pub(crate) is_event: bool,
+    pub(crate) comments: Vec<String>,
 }
 
 impl Parse for MethodAttrs {
@@ -116,6 +117,16 @@ impl Parse for MethodAttrs {
         let mut errors = Ok(());
 
         for attr in attrs {
+            if attr.path().is_ident("doc") {
+                if let syn::Meta::NameValue(meta) = &attr.meta {
+                    if let Expr::Lit(expr_lit) = &meta.value {
+                        if let Lit::Str(lit_str) = &expr_lit.lit {
+                            res.comments.push(lit_str.value().trim().to_string());
+                        }
+                    }
+                }
+                continue;
+            }
             if !attr.path().is_ident("taurpc") {
                 extend_errors!(
                     errors,

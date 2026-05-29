@@ -174,7 +174,21 @@ fn generate_function(
     };
 
     let name = function.name().split_once("_taurpc_fn__").unwrap().1;
-    Ok(format!(r#"{name}: ({args}) => Promise<{return_ty}>"#))
+
+    let docs = function.docs();
+    let jsdoc = if docs.is_empty() {
+        String::new()
+    } else {
+        let lines: Vec<&str> = docs.lines().collect();
+        if lines.len() == 1 {
+            format!("/** {} */ ", lines[0])
+        } else {
+            let body = lines.iter().map(|l| format!(" * {l}")).join("\n");
+            format!("/**\n{body}\n */ ")
+        }
+    };
+
+    Ok(format!(r#"{jsdoc}{name}: ({args}) => Promise<{return_ty}>"#))
 }
 
 fn try_write(file: &mut File, data: &str) {
