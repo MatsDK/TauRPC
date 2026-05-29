@@ -112,7 +112,11 @@ pub fn resolvers(_attr: TokenStream, item: TokenStream) -> TokenStream {
         item.items.push(syn::ImplItem::Type(t));
     }
 
-    quote!(#item).into()
+    quote! {
+        #[allow(non_camel_case_types)]
+        #item
+    }
+    .into()
 }
 
 /// Transform an async method into a sync one that returns a `Pin<Box<Future<Output = ...  >>`.
