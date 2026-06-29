@@ -126,7 +126,7 @@ impl Parse for IpcMethod {
                     return Err(syn::Error::new(
                         err.span(),
                         "only named arguments are allowed",
-                    ))
+                    ));
                 }
             }
         }

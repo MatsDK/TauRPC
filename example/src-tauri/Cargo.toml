@@ -19,6 +19,6 @@ serde_json = "1.0.133"
 tokio = { version = "1", features = ["full"] }
 thiserror = "1.0"
 
-taurpc = { path = "../../taurpc" }
-specta = { version = "=2.0.0-rc.22", features = ["derive", "function"] }
-specta-typescript = { version = "0.0.9", features = [] }
+taurpc = { path = "../../taurpc", features = [] }
+specta = { version = "=2.0.0-rc.24", features = ["derive"] }
+specta-typescript = "0.0.11"
