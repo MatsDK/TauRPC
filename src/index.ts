@@ -1,39 +1,18 @@
 import { Channel, invoke } from '@tauri-apps/api/core'
-import { type EventCallback, listen, UnlistenFn } from '@tauri-apps/api/event'
+import {
+  type EventCallback,
+  listen,
+  type UnlistenFn,
+} from '@tauri-apps/api/event'
+
+export type { UnlistenFn }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RoutesLayer = { [key: string]: (...args: any) => unknown }
+type RoutesLayer = Record<string, any>
 type NestedRoutes = {
-  [route: string]: RoutesLayer | NestedRoutes
+  [route: string]: RoutesLayer
 }
-type Router = NestedRoutes & { ''?: RoutesLayer }
-
-type InvokeFn<
-  TRoutes extends RoutesLayer,
-  TProc extends string,
-> = TRoutes[TProc]
-
-// Helper type to swap the return type of functions returning Promise<T> to void
-type SwapReturnTypeToVoid<T> = T extends (...args: infer A) => Promise<unknown>
-  ? (...args: A) => void
-  : never
-
-type ListenerFn<
-  TRoutes extends RoutesLayer,
-  TProc extends string,
-> = SwapReturnTypeToVoid<TRoutes[TProc]>
-
-type InvokeLayer<
-  TRoutes extends RoutesLayer,
-  TProcedures extends Extract<keyof TRoutes, string> = Extract<
-    keyof TRoutes,
-    string
-  >,
-> = {
-  [TProc in TProcedures]: InvokeFn<TRoutes, TProc> & {
-    on: (listener: ListenerFn<TRoutes, TProc>) => Promise<UnlistenFn>
-  }
-}
+type Router = NestedRoutes
 
 type SplitKeyNested<
   TRouter extends NestedRoutes,
@@ -42,8 +21,7 @@ type SplitKeyNested<
 > = T extends `${infer A}.${infer B}`
   ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
   : {
-    [K in T]: TRouter[TPath] extends RoutesLayer ? InvokeLayer<TRouter[TPath]>
-      : never
+    [K in T]: TRouter[TPath]
   }
 
 type RouterPathsToNestedObject<
@@ -52,9 +30,7 @@ type RouterPathsToNestedObject<
 > = TPath extends `${infer A}.${infer B}`
   ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
   : {
-    [K in TPath]: TRouter[TPath] extends RoutesLayer
-      ? InvokeLayer<TRouter[TPath]>
-      : never
+    [K in TPath]: TRouter[TPath]
   }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,8 +42,7 @@ type ConvertToNestedObject<TRouter extends NestedRoutes> = UnionToIntersection<
 >
 
 type TauRpcProxy<TRouter extends Router> =
-  & (TRouter[''] extends RoutesLayer ? InvokeLayer<TRouter['']>
-    : object)
+  & (TRouter[''] extends RoutesLayer ? TRouter[''] : object)
   & ConvertToNestedObject<Omit<TRouter, ''>>
 
 type Payload = {
@@ -204,7 +179,7 @@ const createEventHandler = (
   listener: ListenFn,
   argsMap: ArgsMap[string],
 ): EventCallback<Payload> => {
-  return (event) => {
+  return (event: any) => {
     if (eventName !== event.payload.event_name) return
 
     const pathSegments = event.payload.event_name.split('.')

@@ -4,8 +4,8 @@
 use std::{sync::Arc, time::Duration};
 use tauri::{AppHandle, EventTarget, Manager, Runtime, WebviewWindow, Window, ipc::Channel};
 use taurpc::Router;
-mod error_router;
-use error_router::ErrorTestingApi;
+pub mod error_router;
+use error_router::{Error, ErrorTestingApi};
 use tokio::{
     sync::{Mutex, oneshot},
     time::sleep,
@@ -24,25 +24,6 @@ struct User {
 }
 
 // create the error type that represents all errors possible in our program
-#[derive(Debug, thiserror::Error, specta::Type)]
-#[specta(type = String)]
-enum Error {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-
-    #[error("Other: `{0}`")]
-    Other(String),
-}
-
-// we must manually implement serde::Serialize
-impl serde::Serialize for Error {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        serializer.serialize_str(self.to_string().as_ref())
-    }
-}
 
 #[taurpc::ipc_type]
 struct Update {

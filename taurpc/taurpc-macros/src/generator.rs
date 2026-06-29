@@ -308,6 +308,8 @@ impl ProceduresGenerator<'_> {
             .iter()
             .map(|ident| fn_ident(trait_ident, ident));
 
+        let is_events = methods.iter().map(|method| method.attrs.is_event);
+
         quote! {
             #[derive(Clone)]
             #vis struct #handler_ident<P> {
@@ -355,13 +357,20 @@ impl ProceduresGenerator<'_> {
                     #serialized_args_map.to_string()
                 }
 
-                fn collect_fn_types(mut types: &mut specta::Types) -> Vec<specta::datatype::Function> {
-                    specta::function::collect_functions![#( #fn_names ),*](&mut types)
+                fn collect_fn_types(mut types: &mut specta::Types) -> Vec<taurpc::TauRpcFunction> {
+                    vec![
+                        #(
+                            taurpc::TauRpcFunction {
+                                function: specta::function::fn_datatype!(#fn_names)(types),
+                                is_event: #is_events,
+                            }
+                        ),*
+                    ]
                 }
             }
 
             impl<R: ::tauri::Runtime, P: #trait_ident + Clone + Send + 'static> taurpc::Exportable<R> for #handler_ident<P> {
-                fn generate_types(&self) -> (specta::Types, std::collections::BTreeMap<String, Vec<specta::datatype::Function>>, std::collections::BTreeMap<String, String>) {
+                fn generate_types(&self) -> (specta::Types, std::collections::BTreeMap<String, Vec<taurpc::TauRpcFunction>>, std::collections::BTreeMap<String, String>) {
                     let mut types = specta::Types::default();
                     let fns_map = std::collections::BTreeMap::from([(<Self as taurpc::TauRpcHandler<R>>::PATH_PREFIX.to_string(), <Self as taurpc::TauRpcHandler<R>>::collect_fn_types(&mut types))]);
                     let args_map_json = std::collections::BTreeMap::from([(<Self as taurpc::TauRpcHandler<R>>::PATH_PREFIX.to_string(), <Self as taurpc::TauRpcHandler<R>>::args_map())]);

@@ -1,19 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { createTauRPCProxy } from './lib/ipc'
-  import { Channel } from '@tauri-apps/api/core'
 
-  let taurpc: ReturnType<typeof createTauRPCProxy>
+  const taurpc = createTauRPCProxy()
   
   let stringStatus = "Waiting..."
   let enumStatus = "Waiting..."
   let structStatus = "Waiting..."
+  let thiserrorStatus = "Waiting..."
   let channelStatus = "Waiting..."
   let channelUpdates: string[] = []
-
-  onMount(() => {
-    taurpc = createTauRPCProxy()
-  })
 
   const testStringError = async (fail: boolean) => {
     stringStatus = "Loading..."
@@ -55,17 +51,26 @@
     }
   }
 
+  const testThiserrorError = async (fail: boolean) => {
+    thiserrorStatus = "Loading..."
+    try {
+      const res = await taurpc.error_testing.test_thiserror_error(fail)
+      thiserrorStatus = res.status === 'error'
+        ? `Backend Error (thiserror stringified): ${res.error}`
+        : `Success: void returned`
+    } catch (e) {
+      thiserrorStatus = `Exception: ${e}`
+    }
+  }
+
   const testChannelError = async (fail: boolean) => {
     channelStatus = "Loading..."
     channelUpdates = []
     
-    const channel = new Channel<string>()
-    channel.onmessage = (msg) => {
-      channelUpdates = [...channelUpdates, msg]
-    }
-
     try {
-      const res = await taurpc.error_testing.test_with_channel(fail, channel)
+      const res = await taurpc.error_testing.test_with_channel(fail, (msg) => {
+        channelUpdates = [...channelUpdates, msg]
+      })
       channelStatus = res.status === 'error'
         ? `Backend Error: ${JSON.stringify(res.error)}`
         : `Success: Process completed`
@@ -97,6 +102,13 @@
     <button on:click={() => testStructError(false)}>Test Success</button>
     <button on:click={() => testStructError(true)}>Test Fail</button>
     <p>Result: <code>{structStatus}</code></p>
+  </div>
+
+  <div class="test-block">
+    <h3>ThisError (Serialized as String)</h3>
+    <button on:click={() => testThiserrorError(false)}>Test Success</button>
+    <button on:click={() => testThiserrorError(true)}>Test Fail</button>
+    <p>Result: <code>{thiserrorStatus}</code></p>
   </div>
 
   <div class="test-block">
