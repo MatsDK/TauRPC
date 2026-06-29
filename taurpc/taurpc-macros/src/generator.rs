@@ -2,7 +2,7 @@ use crate::args::{parse_arg_key, parse_args};
 use crate::{method_fut_ident, proc::IpcMethod};
 
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote, quote_spanned, ToTokens};
+use quote::{ToTokens, format_ident, quote, quote_spanned};
 use std::collections::BTreeMap;
 use syn::{Attribute, Generics, Ident, Type, Visibility, parse_quote};
 
@@ -37,7 +37,16 @@ impl ProceduresGenerator<'_> {
         } = self;
 
         let fn_types = alias_method_idents.iter().zip(methods).map(
-            |(ident, IpcMethod { output, args, attrs, span, .. })| {
+            |(
+                ident,
+                IpcMethod {
+                    output,
+                    args,
+                    attrs,
+                    span,
+                    ..
+                },
+            )| {
                 let args = args.iter().filter(|&arg| !arg.skip_type);
                 let fn_ident = fn_ident(trait_ident, ident);
                 let passthrough_attrs = &attrs.passthrough_attrs;
@@ -253,7 +262,11 @@ impl ProceduresGenerator<'_> {
             |(
                 proc_name,
                 IpcMethod {
-                    ident, args, attrs, span, ..
+                    ident,
+                    args,
+                    attrs,
+                    span,
+                    ..
                 },
             )| {
                 if attrs.is_event {
