@@ -30,10 +30,10 @@ type InvokeLayer<
     string
   >,
 > = {
-  [TProc in TProcedures]: InvokeFn<TRoutes, TProc> & {
-    on: (listener: ListenerFn<TRoutes, TProc>) => Promise<UnlistenFn>
+    [TProc in TProcedures]: InvokeFn<TRoutes, TProc> & {
+      on: (listener: ListenerFn<TRoutes, TProc>) => Promise<UnlistenFn>
+    }
   }
-}
 
 type SplitKeyNested<
   TRouter extends NestedRoutes,
@@ -43,7 +43,7 @@ type SplitKeyNested<
   ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
   : {
     [K in T]: TRouter[TPath] extends RoutesLayer ? InvokeLayer<TRouter[TPath]>
-      : never
+    : never
   }
 
 type RouterPathsToNestedObject<
@@ -53,8 +53,8 @@ type RouterPathsToNestedObject<
   ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
   : {
     [K in TPath]: TRouter[TPath] extends RoutesLayer
-      ? InvokeLayer<TRouter[TPath]>
-      : never
+    ? InvokeLayer<TRouter[TPath]>
+    : never
   }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,13 +76,46 @@ type Payload = {
 }
 type ListenFn = (args: unknown) => void
 type ArgsMap = Record<string, Record<string, string[]>>
+export type ResultMap = Record<string, Record<string, boolean>>
+export type ErrorHandlingMode = 'throw' | 'result'
+
+export type TauRpcResult<T, E> =
+  | { status: 'ok'; data: T }
+  | { status: 'error'; error: E }
+
+export type TypedErrorFn =
+  <T, E>(result: Promise<T>) => Promise<T | TauRpcResult<T, E>>
+
+type CreateTauRPCProxyOptions = {
+  resultMap?: ResultMap
+  errorHandling?: ErrorHandlingMode
+  typedError?: TypedErrorFn
+}
 
 const TAURPC_EVENT_NAME = 'TauRpc_event'
 
+const passthroughTypedError: TypedErrorFn = async (result) => await result
+
+const resultTypedError: TypedErrorFn = async (result) => {
+  try {
+    return { status: 'ok', data: await result }
+  } catch (error) {
+    if (error instanceof Error) throw error
+    return { status: 'error', error: error as never }
+  }
+}
+
+
 const createTauRPCProxy = <TRouter extends Router>(
   args: Record<string, string>,
+  options: CreateTauRPCProxyOptions = {},
 ) => {
   const args_map = parseArgsMap(args)
+  const resultMap = options.resultMap ?? {}
+  const errorHandling = options.errorHandling ?? 'throw'
+  const typedError = options.typedError
+    ?? (errorHandling === 'result' ? resultTypedError : passthroughTypedError)
+
   return nestedProxy(args_map) as TauRpcProxy<TRouter>
 }
 

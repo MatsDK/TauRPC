@@ -24,7 +24,7 @@ import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurp
 "#;
 
 static BOILERPLATE_TS_EXPORT: &str = r#"
-export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
+// export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 export type { InferCommandOutput }
 "#;
 
@@ -39,6 +39,16 @@ pub trait Exportable<R: tauri::Runtime> {
         BTreeMap<String, Vec<Function>>,
         BTreeMap<String, String>,
     );
+}
+
+/// Controls how `Result<T, E>` procedure outputs are represented in generated TypeScript.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ErrorHandlingMode {
+    /// Keep current behavior. Backend errors reject and throw on the frontend.
+    #[default]
+    Throw,
+    /// Wrap `Result<T, E>` returns in `{ status: "ok" | "error" }` on the frontend.
+    Result,
 }
 
 /// A builder for exporting your TauRPC API to a TypeScript file.
@@ -61,13 +71,15 @@ pub trait Exportable<R: tauri::Runtime> {
 pub struct Exporter {
     ts_config: Typescript,
     specta_phases: bool,
+    error_handling: ErrorHandlingMode,
+    typed_error_impl: Cow<'static, str>,
 }
 
 impl Exporter {
     pub fn new() -> Self {
         Self {
-            ts_config: Typescript::default(),
             specta_phases: true,
+            ..Default::default()
         }
     }
 
@@ -86,6 +98,20 @@ impl Exporter {
     /// Disabling phases panics if you have assymetric serde types
     pub fn specta_phases(mut self, enabled: bool) -> Self {
         self.specta_phases = enabled;
+        self
+    }
+
+    /// Configure how generated bindings handle `Result<T, E>` procedure returns.
+    pub fn error_handling(mut self, error_handling: ErrorHandlingMode) -> Self {
+        self.error_handling = error_handling;
+        self
+    }
+
+    /// Replace the generated `typedError` runtime implementation.
+    ///
+    /// The function must be named `typedError` and match the runtime contract.
+    pub fn typed_error_impl(mut self, runtime: impl Into<Cow<'static, str>>) -> Self {
+        self.typed_error_impl = runtime.into();
         self
     }
 
@@ -114,10 +140,39 @@ impl Exporter {
                 );
                 out.push_str(";\n\n");
 
+                let result_map = generate_result_map(&functions, &exporter);
+                out.push_str(r#"const RESULT_MAP = "#);
+                out.push_str(
+                    &serde_json::to_string_pretty(&result_map)
+                        .map_err(|err| Error::framework("error stringify result map", err))?,
+                );
+                out.push_str(";\n\n");
+
                 out.push_str(
                     &generate_functions_router(&functions, &exporter, &format_clone)
                         .map_err(|err| Error::framework("failed to generate router type", err))?,
                 );
+
+                if !self.typed_error_impl.is_empty() {
+                    out.push_str(&self.typed_error_impl);
+                    out.push_str("\n\n");
+                }
+
+                out.push_str(
+                    "export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP, {\n",
+                );
+                out.push_str("  resultMap: RESULT_MAP,\n");
+                out.push_str("  errorHandling: ");
+                out.push_str(match self.error_handling {
+                    ErrorHandlingMode::Throw => "\"throw\"",
+                    ErrorHandlingMode::Result => "\"result\"",
+                });
+                out.push_str(",\n");
+                if !self.typed_error_impl.is_empty() {
+                    out.push_str("  typedError,\n");
+                }
+                out.push_str("})\n");
+
                 out.push_str(BOILERPLATE_TS_EXPORT);
 
                 Ok(out.into())
@@ -319,6 +374,31 @@ fn extract_std_result<'a>(
     }
 
     None
+}
+
+fn generate_result_map(
+    functions: &BTreeMap<String, Vec<Function>>,
+    exporter: &FrameworkExporter,
+) -> BTreeMap<String, BTreeMap<String, bool>> {
+    let mut map = BTreeMap::new();
+    for (path, path_functions) in functions {
+        let mut route_map = BTreeMap::new();
+        for function in path_functions {
+            let name = function
+                .name()
+                .split_once("_taurpc_fn__")
+                .map(|(_, name)| name.to_string())
+                .unwrap_or_else(|| function.name().to_string());
+            route_map.insert(
+                name,
+                function
+                    .result()
+                    .is_some_and(|result| extract_std_result(result, exporter.types).is_some()),
+            );
+        }
+        map.insert(path.clone(), route_map);
+    }
+    map
 }
 
 impl<R: tauri::Runtime> Exportable<R> for crate::Router<R> {

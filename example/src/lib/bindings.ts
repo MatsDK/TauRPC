@@ -39,6 +39,36 @@ const ARGS_MAP = {
   "events": "{\"multiple_args\":[\"arg1\",\"arg2\"],\"state_changed\":[\"new_state\"],\"test_ev\":[],\"vec_test\":[\"args\"]}"
 };
 
+const RESULT_MAP = {
+  "": {
+    "ev": false,
+    "get_app_handle": false,
+    "get_webview_window": false,
+    "get_window": false,
+    "method_with_alias": false,
+    "multiple_args": false,
+    "phase_specific_rename": false,
+    "test_bigint": false,
+    "test_io": false,
+    "test_option": false,
+    "test_result": true,
+    "update_state": false,
+    "vec_test": false,
+    "with_channel": false,
+    "with_sleep": false
+  },
+  "api.ui": {
+    "test_ev": false,
+    "trigger": false
+  },
+  "events": {
+    "multiple_args": false,
+    "state_changed": false,
+    "test_ev": false,
+    "vec_test": false
+  }
+};
+
 export type Router = {
 	"": {
 		ev: (updatedValue: string) => Promise<void>,
@@ -75,7 +105,9 @@ export type Router = {
 		vec_test: (args: string[]) => Promise<void>,
 	},
 };
-
-export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
-export type { InferCommandOutput }
+export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP, {
+  resultMap: RESULT_MAP,
+  errorHandling: "throw",
+})
+export type { InferCommandOutput, TauRpcResult }
 
