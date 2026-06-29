@@ -1,5 +1,6 @@
 import { Channel, invoke } from '@tauri-apps/api/core'
 import {
+  type Event,
   type EventCallback,
   listen,
   type UnlistenFn,
@@ -179,7 +180,7 @@ const createEventHandler = (
   listener: ListenFn,
   argsMap: ArgsMap[string],
 ): EventCallback<Payload> => {
-  return (event: any) => {
+  return (event: Event<Payload>) => {
     if (eventName !== event.payload.event_name) return
 
     const pathSegments = event.payload.event_name.split('.')
