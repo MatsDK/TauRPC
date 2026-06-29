@@ -62,7 +62,6 @@ pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
         event_trigger_ident: &procedures_attrs
             .event_trigger_ident
             .unwrap_or(format_ident!("TauRpc{}EventTrigger", ident)),
-        export_path: procedures_attrs.export_to,
         path_prefix: procedures_attrs.path,
         inputs_ident: &format_ident!("TauRpc{}Inputs", ident),
         outputs_ident: &format_ident!("TauRpc{}Outputs", ident),

@@ -21,7 +21,7 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod export;
-use export::export_types;
+pub use export::{ExportError, Exportable, Exporter};
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.
@@ -30,9 +30,6 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
 
     /// This handler's prefix in the TypeScript router.
     const PATH_PREFIX: &'static str;
-
-    /// Bindings export path optionally specified by the user.
-    const EXPORT_PATH: Option<&'static str>;
 
     /// Handle a single incoming request
     fn handle_incoming_request(self, invoke: Invoke<R>);
@@ -86,25 +83,6 @@ pub fn create_ipc_handler<H, R: Runtime>(
 where
     H: TauRpcHandler<R> + Send + Sync + 'static + Clone,
 {
-    let args_map = BTreeMap::from([(H::PATH_PREFIX.to_string(), H::args_map())]);
-    let mut types = Types::default();
-    let functions = BTreeMap::from([(H::PATH_PREFIX.to_string(), H::collect_fn_types(&mut types))]);
-
-    // Only export in development mode and export_path not none
-    if tauri::is_dev()
-        && let Some(export_path) = H::EXPORT_PATH
-    {
-        export_types(
-            export_path,
-            args_map,
-            specta_typescript::Typescript::default(),
-            functions,
-            types,
-            true,
-        )
-        .unwrap();
-    }
-
     move |invoke: Invoke<R>| {
         procedures.clone().handle_incoming_request(invoke);
         true
@@ -218,13 +196,10 @@ impl<RT: Runtime> EventTrigger<RT> {
 /// ```
 #[derive(Default)]
 pub struct Router<R: Runtime> {
-    types: Types,
-    handlers: HashMap<String, Sender<Arc<Invoke<R>>>>,
-    export_path: Option<&'static str>,
-    args_map_json: BTreeMap<String, String>,
-    fns_map: BTreeMap<String, Vec<Function>>,
-    export_config: specta_typescript::Typescript,
-    specta_phases: bool,
+    pub(crate) types: Types,
+    pub(crate) handlers: HashMap<String, Sender<Arc<Invoke<R>>>>,
+    pub(crate) args_map_json: BTreeMap<String, String>,
+    pub(crate) fns_map: BTreeMap<String, Vec<Function>>,
 }
 
 impl<R: Runtime> Router<R> {
@@ -233,35 +208,8 @@ impl<R: Runtime> Router<R> {
             types: Types::default(),
             handlers: HashMap::new(),
             fns_map: BTreeMap::new(),
-            export_path: None,
             args_map_json: BTreeMap::new(),
-            export_config: specta_typescript::Typescript::default(),
-            specta_phases: true,
         }
-    }
-
-    /// Overwrite `specta`'s default TypeScript export options, look at the docs for
-    /// `specta_typescript::Typescript` for all the configuration options.
-    ///
-    /// Example:
-    /// ```rust,ignore
-    /// let router = taurpc::Router::new()
-    ///     .export_config(
-    ///         specta_typescript::Typescript::default()
-    ///             .header("// My header"),
-    ///     )
-    ///     .merge(ApiImpl.into_handler());
-    /// ```
-    pub fn export_config(mut self, config: specta_typescript::Typescript) -> Self {
-        self.export_config = config;
-        self
-    }
-
-    /// Enable or disable `specta_phases` for splitting types into `Serialize` and `Deserialize` phases.
-    /// This is enabled by default.
-    pub fn specta_phases(mut self, enabled: bool) -> Self {
-        self.specta_phases = enabled;
-        self
     }
 
     /// Add routes to the router, accepts a struct for which a `#[taurpc::procedures]` trait is implemented
@@ -272,10 +220,6 @@ impl<R: Runtime> Router<R> {
     ///     .merge(EventsImpl.into_handler());
     /// ```
     pub fn merge<H: TauRpcHandler<R>>(mut self, handler: H) -> Self {
-        if H::EXPORT_PATH.is_some() {
-            self.export_path = H::EXPORT_PATH;
-        }
-
         self.args_map_json
             .insert(H::PATH_PREFIX.to_string(), H::args_map());
         self.fns_map.insert(
@@ -297,21 +241,6 @@ impl<R: Runtime> Router<R> {
     ///     .expect("error while running tauri application");
     /// ```
     pub fn into_handler(self) -> impl Fn(Invoke<R>) -> bool {
-        // Only export in development mode and export_path not none
-        if tauri::is_dev()
-            && let Some(export_path) = self.export_path
-        {
-            export_types(
-                export_path,
-                self.args_map_json.clone(),
-                self.export_config.clone(),
-                self.fns_map.clone(),
-                self.types.clone(),
-                self.specta_phases,
-            )
-            .unwrap();
-        }
-
         move |invoke: Invoke<R>| self.on_command(invoke)
     }
 

@@ -34,7 +34,9 @@ export type User = {
 
 import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
 const ARGS_MAP = {
-  "": "{\"ev\":[\"updated_value\"],\"get_app_handle\":[],\"get_webview_window\":[],\"get_window\":[],\"method_with_alias\":[],\"multiple_args\":[\"arg\",\"arg2\"],\"phase_specific_rename\":[\"input\"],\"test_bigint\":[\"num\"],\"test_io\":[\"_user\"],\"test_option\":[],\"test_result\":[\"user\"],\"update_state\":[\"new_value\"],\"vec_test\":[\"arg\"],\"with_channel\":[\"on_event\"],\"with_sleep\":[]}"
+  "": "{\"ev\":[\"updated_value\"],\"get_app_handle\":[],\"get_webview_window\":[],\"get_window\":[],\"method_with_alias\":[],\"multiple_args\":[\"arg\",\"arg2\"],\"phase_specific_rename\":[\"input\"],\"test_bigint\":[\"num\"],\"test_io\":[\"_user\"],\"test_option\":[],\"test_result\":[\"user\"],\"update_state\":[\"new_value\"],\"vec_test\":[\"arg\"],\"with_channel\":[\"on_event\"],\"with_sleep\":[]}",
+  "api.ui": "{\"test_ev\":[],\"trigger\":[]}",
+  "events": "{\"multiple_args\":[\"arg1\",\"arg2\"],\"state_changed\":[\"new_state\"],\"test_ev\":[],\"vec_test\":[\"args\"]}"
 };
 
 export type Router = {
@@ -54,6 +56,16 @@ export type Router = {
 		vec_test: (arg: string[]) => Promise<void>,
 		with_channel: (onEvent: (response: Update) => void) => Promise<void>,
 		with_sleep: () => Promise<void>,
+	},
+	"api.ui": {
+		test_ev: () => Promise<void>,
+		trigger: () => Promise<void>,
+	},
+	events: {
+		multiple_args: (arg1: number, arg2: string[]) => Promise<void>,
+		state_changed: (newState: string) => Promise<void>,
+		test_ev: () => Promise<void>,
+		vec_test: (args: string[]) => Promise<void>,
 	},
 };
 

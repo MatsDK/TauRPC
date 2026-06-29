@@ -54,7 +54,7 @@ struct PhaseSpecificRename {
 }
 
 // #[taurpc::procedures(event_trigger = ApiEventTrigger)]
-#[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../src/lib/bindings.ts")]
+#[taurpc::procedures(event_trigger = ApiEventTrigger)]
 trait Api {
     async fn update_state(app_handle: AppHandle<impl Runtime>, new_value: String);
 
@@ -89,7 +89,6 @@ trait Api {
 
     async fn with_channel(on_event: Channel<Update>);
 
-    // Requires "specta_phases" feature on TauRPC for now
     async fn phase_specific_rename(input: PhaseSpecificRename) -> PhaseSpecificRename;
 }
 
@@ -164,13 +163,12 @@ impl Api for ApiImpl {
         }
     }
 
-    // Requires "specta_phases" feature on TauRPC for now
     async fn phase_specific_rename(self, input: PhaseSpecificRename) -> PhaseSpecificRename {
         input
     }
 }
 
-#[taurpc::procedures(path = "events", export_to = "../src/lib/bindings.ts")]
+#[taurpc::procedures(path = "events")]
 trait Events {
     #[taurpc(event)]
     async fn test_ev();
@@ -191,7 +189,7 @@ struct EventsImpl;
 #[taurpc::resolvers]
 impl Events for EventsImpl {}
 
-#[taurpc::procedures(path = "api.ui", export_to = "../src/lib/bindings.ts")]
+#[taurpc::procedures(path = "api.ui")]
 trait UiApi {
     async fn trigger();
 
@@ -241,7 +239,6 @@ async fn main() {
     });
 
     let router = Router::new()
-        .export_config(specta_typescript::Typescript::default().header("// My header"))
         .merge(
             ApiImpl {
                 state: Arc::new(Mutex::new("state".to_string())),
@@ -251,15 +248,25 @@ async fn main() {
         .merge(EventsImpl.into_handler())
         .merge(UiApiImpl.into_handler());
 
+    #[cfg(debug_assertions)]
+    taurpc::Exporter::new()
+        .ts_config(specta_typescript::Typescript::default().header("// My header"))
+        .export(&router, "../src/lib/bindings.ts")
+        .unwrap();
+
     // Without router
+    // let handler = ApiImpl {
+    //     state: Arc::new(Mutex::new("state".to_string())),
+    // }
+    // .into_handler();
+    //
+    // #[cfg(debug_assertions)]
+    // taurpc::Exporter::new()
+    //     .export(&handler, "../src/lib/bindings.ts")
+    //     .unwrap();
+    //
     // tauri::Builder::default()
-    //     .invoke_handler(router.into_handler())
-    //     // .invoke_handler(taurpc::create_ipc_handler(
-    //     //     ApiImpl {
-    //     //         state: Arc::new(Mutex::new("state".to_string())),
-    //     //     }
-    //     //     .into_handler(),
-    //     // ))
+    //     .invoke_handler(handler)
     //     .setup(|app| {
     //         tx.send(app.handle().clone()).unwrap();
     //         Ok(())
@@ -279,17 +286,4 @@ async fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-#[tokio::test]
-async fn generate_bindings() {
-    let _ = Router::<tauri::Wry>::new()
-        .export_config(specta_typescript::Typescript::default().header("// My header"))
-        .merge(
-            ApiImpl {
-                state: Arc::new(Mutex::new("state".to_string())),
-            }
-            .into_handler(),
-        )
-        .into_handler();
 }
