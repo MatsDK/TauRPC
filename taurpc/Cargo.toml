@@ -14,9 +14,6 @@ rust-version = "1.85"
 
 [features]
 default = []
-# Allow types to be split for `Serialization` and `Deserialization` to give better type-safety.
-# This is opt-in at the moment as it's very new!
-specta_phases = []
 
 [package.metadata."docs.rs"]
 all-features = true
@@ -33,9 +30,10 @@ heck = "0.5.0"
 itertools = "0.14.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
-specta = { version = "=2.0.0-rc.24", features = ["std", "derive", "function"] }
-specta-typescript = "0.0.11"
-specta-serde = "0.0.11"
+specta = { version = "=2.0.0-rc.25", features = ["std", "derive", "function"] }
+specta-typescript = "0.0.12"
+specta-serde = "0.0.12"
 tauri = { version = "2.10.2", features = ["specta"] }
 taurpc-macros = { path = "./taurpc-macros", version = "=0.7.1" }
 tokio = { version = "1", features = ["full"] }
+specta-util = "0.0.12"

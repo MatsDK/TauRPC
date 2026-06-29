@@ -100,6 +100,7 @@ where
             specta_typescript::Typescript::default(),
             functions,
             types,
+            true,
         )
         .unwrap();
     }
@@ -223,6 +224,7 @@ pub struct Router<R: Runtime> {
     args_map_json: BTreeMap<String, String>,
     fns_map: BTreeMap<String, Vec<Function>>,
     export_config: specta_typescript::Typescript,
+    specta_phases: bool,
 }
 
 impl<R: Runtime> Router<R> {
@@ -234,6 +236,7 @@ impl<R: Runtime> Router<R> {
             export_path: None,
             args_map_json: BTreeMap::new(),
             export_config: specta_typescript::Typescript::default(),
+            specta_phases: true,
         }
     }
 
@@ -251,6 +254,13 @@ impl<R: Runtime> Router<R> {
     /// ```
     pub fn export_config(mut self, config: specta_typescript::Typescript) -> Self {
         self.export_config = config;
+        self
+    }
+
+    /// Enable or disable `specta_phases` for splitting types into `Serialize` and `Deserialize` phases.
+    /// This is enabled by default.
+    pub fn specta_phases(mut self, enabled: bool) -> Self {
+        self.specta_phases = enabled;
         self
     }
 
@@ -297,6 +307,7 @@ impl<R: Runtime> Router<R> {
                 self.export_config.clone(),
                 self.fns_map.clone(),
                 self.types.clone(),
+                self.specta_phases,
             )
             .unwrap();
         }

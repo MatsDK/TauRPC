@@ -3,25 +3,38 @@
 
 export type Error = string;
 
+export type PhaseSpecificRename = PhaseSpecificRename_Serialize | PhaseSpecificRename_Deserialize;
+
+export type PhaseSpecificRename_Deserialize = {
+	deserialized_value: string,
+};
+
+export type PhaseSpecificRename_Serialize = {
+	serialized_value: string,
+};
+
+export type Result<T, E> = {
+	ok: T,
+	err: E,
+};
+
 export type Update = {
 	progress: number,
 };
 
-//Doc comments are also generated
+/** Doc comments are also generated */
 export type User = {
-	// The user's id
+	/**  The user's id */
 	uid: number,
-	// The user's first name
+	/**  The user's first name */
 	first_name: string,
-	// The user's last name
+	/**  The user's last name */
 	last_name: string,
 };
 
 import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
 const ARGS_MAP = {
-  "": "{\"ev\":[\"updated_value\"],\"get_app_handle\":[],\"get_webview_window\":[],\"get_window\":[],\"method_with_alias\":[],\"multiple_args\":[\"arg\",\"arg2\"],\"test_bigint\":[\"num\"],\"test_io\":[\"_user\"],\"test_option\":[],\"test_result\":[\"user\"],\"update_state\":[\"new_value\"],\"vec_test\":[\"arg\"],\"with_channel\":[\"on_event\"],\"with_sleep\":[]}",
-  "api.ui": "{\"test_ev\":[],\"trigger\":[]}",
-  "events": "{\"multiple_args\":[\"arg1\",\"arg2\"],\"state_changed\":[\"new_state\"],\"test_ev\":[],\"vec_test\":[\"args\"]}"
+  "": "{\"ev\":[\"updated_value\"],\"get_app_handle\":[],\"get_webview_window\":[],\"get_window\":[],\"method_with_alias\":[],\"multiple_args\":[\"arg\",\"arg2\"],\"phase_specific_rename\":[\"input\"],\"test_bigint\":[\"num\"],\"test_io\":[\"_user\"],\"test_option\":[],\"test_result\":[\"user\"],\"update_state\":[\"new_value\"],\"vec_test\":[\"arg\"],\"with_channel\":[\"on_event\"],\"with_sleep\":[]}"
 };
 
 export type Router = {
@@ -32,6 +45,7 @@ export type Router = {
 		get_window: () => Promise<void>,
 		method_with_alias: () => Promise<void>,
 		multiple_args: (arg: string[], arg2: string) => Promise<void>,
+		phase_specific_rename: (input: PhaseSpecificRename_Deserialize) => Promise<PhaseSpecificRename_Serialize>,
 		test_bigint: (num: number) => Promise<number>,
 		test_io: (user: User) => Promise<User>,
 		test_option: () => Promise<null>,
@@ -40,16 +54,6 @@ export type Router = {
 		vec_test: (arg: string[]) => Promise<void>,
 		with_channel: (onEvent: (response: Update) => void) => Promise<void>,
 		with_sleep: () => Promise<void>,
-	},
-	"api.ui": {
-		test_ev: () => Promise<void>,
-		trigger: () => Promise<void>,
-	},
-	events: {
-		multiple_args: (arg1: number, arg2: string[]) => Promise<void>,
-		state_changed: (newState: string) => Promise<void>,
-		test_ev: () => Promise<void>,
-		vec_test: (args: string[]) => Promise<void>,
 	},
 };
 

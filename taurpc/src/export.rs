@@ -1,10 +1,11 @@
 use heck::ToLowerCamelCase;
 use specta::{
-    ResolvedTypes, Types,
-    datatype::{DataType, Field, Fields, Function, Primitive, Reference, Struct},
+    Format, Type, Types,
+    datatype::{DataType, Field, Function, NamedReferenceType, Primitive, Reference, Struct},
 };
 use specta_serde::Phase;
 use specta_typescript::{Error, Exporter, FrameworkExporter, Typescript, define};
+use specta_util::Remapper;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -28,6 +29,64 @@ export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 export type { InferCommandOutput }
 "#;
 
+/// Applies `specta_serde` format + also remaps `DataType`'s and does other transformations!
+#[derive(Debug, Clone)]
+struct SpectaFormat {
+    specta_phases_enabled: bool,
+    remapper: Remapper,
+}
+
+impl SpectaFormat {
+    fn new(specta_phases_enabled: bool) -> Self {
+        let mut remapper = Remapper::new();
+
+        // Always cast bigints to number for TauRPC
+        let number = <specta_typescript::Number as Type>::definition(&mut Types::default());
+        remapper = remapper
+            .rule(DataType::Primitive(Primitive::usize), number.clone())
+            .rule(DataType::Primitive(Primitive::isize), number.clone())
+            .rule(DataType::Primitive(Primitive::u64), number.clone())
+            .rule(DataType::Primitive(Primitive::i64), number.clone())
+            .rule(DataType::Primitive(Primitive::u128), number.clone())
+            .rule(DataType::Primitive(Primitive::i128), number.clone())
+            .rule(
+                <specta_typescript::BigInt as Type>::definition(&mut Types::default()),
+                number,
+            );
+
+        Self {
+            specta_phases_enabled,
+            remapper,
+        }
+    }
+}
+
+impl Format for SpectaFormat {
+    fn map_types(&'_ self, types: &Types) -> Result<Cow<'_, Types>, specta::FormatError> {
+        let types = if self.specta_phases_enabled {
+            specta_serde::PhasesFormat.map_types(types)
+        } else {
+            specta_serde::Format.map_types(types)
+        }?;
+
+        Ok(Cow::Owned(self.remapper.remap_types(types.into_owned())))
+    }
+
+    fn map_type(
+        &'_ self,
+        types: &Types,
+        dt: &DataType,
+    ) -> Result<Cow<'_, DataType>, specta::FormatError> {
+        let dt = if self.specta_phases_enabled {
+            specta_serde::PhasesFormat.map_type(types, dt)?
+        } else {
+            specta_serde::Format.map_type(types, dt)?
+        };
+
+        Ok(Cow::Owned(self.remapper.remap_dt(dt.into_owned())))
+    }
+}
+
 /// Export the generated TS types with the code necessary for generating the client proxy.
 ///
 /// By default, if the `export_to` attribute was not specified on the procedures macro, there will
@@ -37,19 +96,11 @@ pub(super) fn export_types(
     args_map: BTreeMap<String, String>,
     ts: Typescript,
     functions: BTreeMap<String, Vec<Function>>,
-    mut types: Types,
+    types: Types,
+    specta_phases: bool,
 ) -> Result<(), Error> {
-    // TODO: Maybe default to `true` once this is more stable.
-    // Maybe use a runtime configuration system?
-    let specta_phases_enabled = cfg!(feature = "specta_phases");
-
-    types.iter_mut(|ndt| rewrite_bigints_in_datatype(ndt.ty_mut()));
-    let types = if specta_phases_enabled {
-        specta_serde::apply_phases(types)
-    } else {
-        specta_serde::apply(types)
-    }
-    .map_err(|err| Error::framework("Specta Serde validation failed", err))?;
+    let format = SpectaFormat::new(specta_phases);
+    let format_clone = format.clone();
 
     Exporter::from(ts)
         .framework_prelude(FRAMEWORK_HEADER)
@@ -67,14 +118,14 @@ pub(super) fn export_types(
             out.push_str(";\n\n");
 
             out.push_str(
-                &generate_functions_router(&functions, &exporter)
+                &generate_functions_router(&functions, &exporter, &format_clone)
                     .map_err(|err| Error::framework("failed to generate router type", err))?,
             );
             out.push_str(BOILERPLATE_TS_EXPORT);
 
             Ok(out.into())
         })
-        .export_to(export_path, &types)?;
+        .export_to(export_path, &types, format)?;
 
     if export_path.ends_with("node_modules\\.taurpc\\index.ts") {
         let package_json_path = Path::new(export_path)
@@ -92,6 +143,7 @@ pub(super) fn export_types(
 fn generate_functions_router(
     functions: &BTreeMap<String, Vec<Function>>,
     exporter: &FrameworkExporter,
+    format: &SpectaFormat,
 ) -> Result<String, Error> {
     let mut router = Struct::named();
 
@@ -102,7 +154,7 @@ fn generate_functions_router(
 
         let mut path_router = Struct::named();
         for (_, function) in function_names_and_funcs {
-            let (name, field) = generate_function_field(function, exporter)?;
+            let (name, field) = generate_function_field(function, exporter, format)?;
             path_router = path_router.field(name, field);
         }
 
@@ -116,14 +168,13 @@ fn generate_functions_router(
 fn generate_function_field(
     function: &Function,
     exporter: &FrameworkExporter,
+    format: &SpectaFormat,
 ) -> Result<(String, Field), Error> {
-    validate_exported_command(function, exporter.types)?;
-
     let args = function
         .args()
         .iter()
         .map(|(name, typ)| {
-            render_reference_dt_for_phase(typ, Phase::Deserialize, exporter)
+            render_reference_dt_for_phase(typ, Phase::Deserialize, exporter, format)
                 .map(|ty| format!("{}: {ty}", name.to_lower_camel_case()))
         })
         .collect::<Result<Vec<_>, _>>()?
@@ -131,9 +182,9 @@ fn generate_function_field(
 
     let return_ty = if let Some(result) = function.result() {
         if let Some((dt_ok, _dt_err)) = extract_std_result(result, exporter.types) {
-            render_reference_dt_for_phase(dt_ok, Phase::Serialize, exporter)?
+            render_reference_dt_for_phase(dt_ok, Phase::Serialize, exporter, format)?
         } else {
-            render_reference_dt_for_phase(result, Phase::Serialize, exporter)?
+            render_reference_dt_for_phase(result, Phase::Serialize, exporter, format)?
         }
     } else {
         "void".to_string()
@@ -150,16 +201,20 @@ fn generate_function_field(
 // Also handles Tauri channel references.
 fn render_reference_dt(dt: &DataType, exporter: &FrameworkExporter) -> Result<String, Error> {
     if let DataType::Reference(Reference::Named(r)) = dt
-        && let Some(ndt) = r.get(exporter.types.as_types())
-        && ndt.name() == "TAURI_CHANNEL"
-        && ndt.module_path().starts_with("tauri::")
+        && let Some(ndt) = exporter.types.get(r)
+        && ndt.name == "TAURI_CHANNEL"
+        && ndt.module_path.starts_with("tauri::")
     {
-        let generic = if let Some((_, dt)) = r.generics().first() {
-            match &dt {
-                DataType::Reference(r) => exporter.reference(r)?,
-                dt => exporter.inline(dt)?,
+        let generic = if let NamedReferenceType::Reference { generics, .. } = &r.inner {
+            if let Some((_, dt)) = generics.first() {
+                match &dt {
+                    DataType::Reference(r) => exporter.reference(r)?,
+                    dt => exporter.inline(dt)?,
+                }
+                .into()
+            } else {
+                Cow::Borrowed("never")
             }
-            .into()
         } else {
             Cow::Borrowed("never")
         };
@@ -174,13 +229,14 @@ fn render_reference_dt(dt: &DataType, exporter: &FrameworkExporter) -> Result<St
 
 fn extract_std_result<'a>(
     dt: &'a DataType,
-    types: &'a ResolvedTypes,
+    types: &'a Types,
 ) -> Option<(&'a DataType, &'a DataType)> {
     if let DataType::Reference(Reference::Named(r)) = dt
-        && let Some(ndt) = r.get(types.as_types())
-        && ndt.name() == "Result"
-        && (ndt.module_path() == "std::result" || ndt.module_path() == "core::result")
-        && let [(_, ok), (_, err), ..] = r.generics()
+        && let Some(ndt) = types.get(r)
+        && ndt.name == "Result"
+        && (ndt.module_path == "std::result" || ndt.module_path == "core::result")
+        && let NamedReferenceType::Reference { generics, .. } = &r.inner
+        && let [(_, ok), (_, err), ..] = generics.as_slice()
     {
         return Some((ok, err));
     }
@@ -188,116 +244,18 @@ fn extract_std_result<'a>(
     None
 }
 
-fn validate_exported_command(command: &Function, types: &ResolvedTypes) -> Result<(), Error> {
-    for (position, (name, dt)) in command.args().iter().enumerate() {
-        specta_serde::validate(dt, types).map_err(|err| {
-            Error::framework(
-                format!(
-                    "Specta Serde validation failed for command '{}' param #{} ('{}')",
-                    command.name(),
-                    position + 1,
-                    name
-                ),
-                err,
-            )
-        })?;
-    }
-
-    if let Some(result) = command.result() {
-        specta_serde::validate(result, types).map_err(|err| {
-            Error::framework(
-                format!(
-                    "Specta Serde validation failed for command '{}' result",
-                    command.name()
-                ),
-                err,
-            )
-        })?;
-    }
-
-    Ok(())
-}
-
 fn render_reference_dt_for_phase(
     dt: &DataType,
     phase: Phase,
     exporter: &FrameworkExporter,
+    format: &SpectaFormat,
 ) -> Result<String, Error> {
-    let dt =
-        specta_serde::select_phase_datatype(&rewrite_bigints_for_export(dt), exporter.types, phase);
+    let dt1 = specta_serde::select_phase_datatype(dt, exporter.types, phase);
+    let dt = format.remapper.remap_dt(dt1.clone());
+    println!(
+        "PHASE: {:?}\n   ORIGINAL: {:?}\n   RESOLVED: {:?}",
+        phase, dt, dt1
+    );
 
     render_reference_dt(&dt, exporter)
-}
-
-fn rewrite_bigints_for_export(dt: &DataType) -> DataType {
-    let mut dt = dt.clone();
-    rewrite_bigints_in_datatype(&mut dt);
-    dt
-}
-
-/// This rewrites any large number types to a smaller type.
-/// The newest version of Specta's Typescript exporter will always error on these (and the previous solution which was `BigIntExportBehaviour` has been removed).
-/// The recommendations for handling this now are documented here: https://github.com/specta-rs/specta/blob/d578bc055b7c5e6573d1cd723e7be56d33c28e5c/specta-typescript/src/error.rs#L11
-///
-// TODO: I (@oscartbeaumont) am going to do a follow up PR to support BigInt's properly in the future but this requires upstream work in Tauri so it's not possible at the moment.
-fn rewrite_bigints_in_datatype(dt: &mut DataType) {
-    fn rewrite_bigints_in_fields(fields: &mut Fields) {
-        match fields {
-            Fields::Unit => {}
-            Fields::Unnamed(fields) => {
-                for field in fields.fields_mut() {
-                    if let Some(ty) = field.ty_mut() {
-                        rewrite_bigints_in_datatype(ty);
-                    }
-                }
-            }
-            Fields::Named(fields) => {
-                for (_, field) in fields.fields_mut() {
-                    if let Some(ty) = field.ty_mut() {
-                        rewrite_bigints_in_datatype(ty);
-                    }
-                }
-            }
-        }
-    }
-
-    match dt {
-        DataType::Primitive(primitive) => match primitive {
-            Primitive::usize
-            | Primitive::isize
-            | Primitive::u64
-            | Primitive::i64
-            | Primitive::u128
-            | Primitive::i128 => {
-                *dt = define("number").into();
-            }
-            Primitive::f128 => {
-                *dt = DataType::Primitive(Primitive::f64);
-            }
-            _ => {}
-        },
-        DataType::List(list) => rewrite_bigints_in_datatype(list.ty_mut()),
-        DataType::Map(map) => {
-            rewrite_bigints_in_datatype(map.key_ty_mut());
-            rewrite_bigints_in_datatype(map.value_ty_mut());
-        }
-        DataType::Struct(strct) => rewrite_bigints_in_fields(strct.fields_mut()),
-        DataType::Enum(enm) => {
-            for (_, variant) in enm.variants_mut() {
-                rewrite_bigints_in_fields(variant.fields_mut());
-            }
-        }
-        DataType::Tuple(tuple) => {
-            for item in tuple.elements_mut() {
-                rewrite_bigints_in_datatype(item);
-            }
-        }
-        DataType::Nullable(inner) => rewrite_bigints_in_datatype(inner),
-        DataType::Reference(Reference::Named(reference)) => {
-            for (_, generic) in reference.generics_mut() {
-                rewrite_bigints_in_datatype(generic);
-            }
-        }
-        DataType::Reference(Reference::Generic(_)) | DataType::Reference(Reference::Opaque(_)) => {}
-    }
 }
