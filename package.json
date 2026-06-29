@@ -46,9 +46,6 @@
     "tsx": "^3.12.7",
     "typescript": "^5.0.4"
   },
-  "dependencies": {
-    "@tauri-apps/api": "^2.0.2"
-  },
   "tsup": {
     "entry": [
       "src/index.ts"

@@ -21,7 +21,7 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod export;
-pub use export::{ExportError, Exportable, Exporter};
+pub use export::{ErrorHandlingMode, ExportError, Exportable, Exporter};
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.

@@ -20,12 +20,12 @@ static PACKAGE_JSON: &str = r#"
 "#;
 
 static BOILERPLATE_TS_IMPORT: &str = r#"
-import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurpc'
+import { createTauRPCProxy as createProxy, type InferCommandOutput, type TauRpcResult } from 'taurpc'
 "#;
 
 static BOILERPLATE_TS_EXPORT: &str = r#"
 // export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
-export type { InferCommandOutput }
+export type { InferCommandOutput, TauRpcResult }
 "#;
 
 pub type ExportError = Error;
@@ -133,9 +133,10 @@ impl Exporter {
                 out.push_str(&exporter.render_types()?);
                 out.push_str(BOILERPLATE_TS_IMPORT);
 
+                let parsed_args_map = generate_args_map(&args_map)?;
                 out.push_str(r#"const ARGS_MAP = "#);
                 out.push_str(
-                    &serde_json::to_string_pretty(&args_map)
+                    &serde_json::to_string_pretty(&parsed_args_map)
                         .map_err(|err| Error::framework("error stringify argument map", err))?,
                 );
                 out.push_str(";\n\n");
@@ -149,8 +150,13 @@ impl Exporter {
                 out.push_str(";\n\n");
 
                 out.push_str(
-                    &generate_functions_router(&functions, &exporter, &format_clone)
-                        .map_err(|err| Error::framework("failed to generate router type", err))?,
+                    &generate_functions_router(
+                        &functions,
+                        &exporter,
+                        &format_clone,
+                        self.error_handling,
+                    )
+                    .map_err(|err| Error::framework("failed to generate router type", err))?,
                 );
 
                 if !self.typed_error_impl.is_empty() {
@@ -158,9 +164,8 @@ impl Exporter {
                     out.push_str("\n\n");
                 }
 
-                out.push_str(
-                    "export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP, {\n",
-                );
+                out.push_str("export const createTauRPCProxy = () => createProxy<Router>({\n");
+                out.push_str("  argsMap: ARGS_MAP,\n");
                 out.push_str("  resultMap: RESULT_MAP,\n");
                 out.push_str("  errorHandling: ");
                 out.push_str(match self.error_handling {
@@ -262,6 +267,7 @@ fn generate_functions_router(
     functions: &BTreeMap<String, Vec<Function>>,
     exporter: &FrameworkExporter,
     format: &SpectaFormat,
+    error_handling: ErrorHandlingMode,
 ) -> Result<String, Error> {
     let mut router = Struct::named();
 
@@ -272,7 +278,8 @@ fn generate_functions_router(
 
         let mut path_router = Struct::named();
         for (_, function) in function_names_and_funcs {
-            let (name, field) = generate_function_field(function, exporter, format)?;
+            let (name, field) =
+                generate_function_field(function, exporter, format, error_handling)?;
             path_router = path_router.field(name, field);
         }
 
@@ -287,6 +294,7 @@ fn generate_function_field(
     function: &Function,
     exporter: &FrameworkExporter,
     format: &SpectaFormat,
+    error_handling: ErrorHandlingMode,
 ) -> Result<(String, Field), Error> {
     let args = function
         .args()
@@ -299,8 +307,15 @@ fn generate_function_field(
         .join(", ");
 
     let return_ty = if let Some(result) = function.result() {
-        if let Some((dt_ok, _dt_err)) = extract_std_result(result, exporter.types) {
-            render_reference_dt_for_phase(dt_ok, Phase::Serialize, exporter, format)?
+        if let Some((dt_ok, dt_err)) = extract_std_result(result, exporter.types) {
+            let ok_str = render_reference_dt_for_phase(dt_ok, Phase::Serialize, exporter, format)?;
+            if error_handling == ErrorHandlingMode::Result {
+                let err_str =
+                    render_reference_dt_for_phase(dt_err, Phase::Serialize, exporter, format)?;
+                format!("TauRpcResult<{}, {}>", ok_str, err_str)
+            } else {
+                ok_str
+            }
         } else {
             render_reference_dt_for_phase(result, Phase::Serialize, exporter, format)?
         }
@@ -399,6 +414,18 @@ fn generate_result_map(
         map.insert(path.clone(), route_map);
     }
     map
+}
+
+fn generate_args_map(
+    args_map_json: &BTreeMap<String, String>,
+) -> Result<BTreeMap<String, serde_json::Value>, Error> {
+    let mut parsed_args_map = std::collections::BTreeMap::new();
+    for (path, args) in args_map_json {
+        let parsed: serde_json::Value = serde_json::from_str(args)
+            .map_err(|err| Error::framework("error parsing argument map json", err))?;
+        parsed_args_map.insert(path.clone(), parsed);
+    }
+    Ok(parsed_args_map)
 }
 
 impl<R: tauri::Runtime> Exportable<R> for crate::Router<R> {

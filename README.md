@@ -167,7 +167,7 @@ let router = taurpc::Router::new()
 In this mode, procedures returning `Result<T, E>` are typed as:
 
 ```ts
-Promise<{ status: "ok"; data: T } | { status: "error"; error: E }>
+Promise<{ status: 'ok'; data: T } | { status: 'error'; error: E }>
 ```
 
 You can also provide a custom `typedError` runtime implementation:
@@ -187,7 +187,6 @@ let router = taurpc::Router::new()
     .typed_error_impl(TYPED_ERROR_IMPL)
     .merge(ApiImpl.into_handler());
 ```
-
 
 # Extra options for procedures
 

@@ -6,6 +6,7 @@
     type Router,
   } from './lib/ipc'
   import { onMount, onDestroy } from 'svelte'
+  import ErrorTesting from './ErrorTesting.svelte'
 
   let value = ''
   let state = ''
@@ -70,4 +71,6 @@
 
   <br />
   Current State (uppercase): {state}
+
+  <ErrorTesting />
 </main>

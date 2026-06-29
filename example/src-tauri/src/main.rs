@@ -256,6 +256,7 @@ async fn main() {
     #[cfg(debug_assertions)]
     taurpc::Exporter::new()
         .ts_config(specta_typescript::Typescript::default().header("// My header"))
+        .error_handling(taurpc::ErrorHandlingMode::Throw)
         .export(&router, "../src/lib/bindings.ts")
         .unwrap();
 
