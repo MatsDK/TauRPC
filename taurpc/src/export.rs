@@ -30,6 +30,7 @@ export type { InferCommandOutput }
 
 pub type ExportError = Error;
 
+/// A trait implemented by types that can generate TypeScript bindings
 pub trait Exportable<R: tauri::Runtime> {
     fn generate_types(
         &self,
@@ -40,6 +41,22 @@ pub trait Exportable<R: tauri::Runtime> {
     );
 }
 
+/// A builder for exporting your TauRPC API to a TypeScript file.
+///
+/// This struct allows you to configure how the TypeScript bindings are generated,
+/// such as providing custom header comments, or configuring `specta` features.
+///
+/// # Examples
+/// ```rust,ignore
+/// #[cfg(debug_assertions)]
+/// taurpc::Exporter::new()
+///     .ts_config(
+///         specta_typescript::Typescript::default()
+///             .header("// My custom header")
+///     )
+///     .export(&router, "../src/lib/bindings.ts")
+///     .unwrap();
+/// ```
 #[derive(Default)]
 pub struct Exporter {
     ts_config: Typescript,
@@ -54,16 +71,25 @@ impl Exporter {
         }
     }
 
+    /// Provide custom configuration for the `specta_typescript` exporter.
     pub fn ts_config(mut self, config: Typescript) -> Self {
         self.ts_config = config;
         self
     }
 
+    /// Enables or disables the generation of `specta` phase-separated types.
+    ///
+    /// When enabled (the default), `specta` generates separate types for serialization
+    /// and deserialization only when the types diverge (for example,
+    /// if you use `#[serde(rename(serialize = "...", deserialize = "..."))]`).
+    ///
+    /// Disabling phases panics if you have assymetric serde types
     pub fn specta_phases(mut self, enabled: bool) -> Self {
         self.specta_phases = enabled;
         self
     }
 
+    /// Exports the generated TypeScript bindings to the specified file path.
     pub fn export<R: tauri::Runtime>(
         self,
         exportable: &impl Exportable<R>,
@@ -117,12 +143,12 @@ impl Exporter {
     }
 }
 
-
 /// Applies `specta_serde` format + also remaps `DataType`'s and does other transformations!
 #[derive(Debug, Clone)]
 struct SpectaFormat {
     specta_phases_enabled: bool,
     remapper: Remapper,
+    // semantic_types:
 }
 
 impl SpectaFormat {
@@ -234,6 +260,18 @@ fn generate_function_field(
     ))
 }
 
+fn render_reference_dt_for_phase(
+    dt: &DataType,
+    phase: Phase,
+    exporter: &FrameworkExporter,
+    format: &SpectaFormat,
+) -> Result<String, Error> {
+    let dt1 = specta_serde::select_phase_datatype(dt, exporter.types, phase);
+    let dt = format.remapper.remap_dt(dt1);
+
+    render_reference_dt(&dt, exporter)
+}
+
 // Render a `DataType` as a reference (or fallback to inline).
 // Also handles Tauri channel references.
 fn render_reference_dt(dt: &DataType, exporter: &FrameworkExporter) -> Result<String, Error> {
@@ -279,18 +317,6 @@ fn extract_std_result<'a>(
     }
 
     None
-}
-
-fn render_reference_dt_for_phase(
-    dt: &DataType,
-    phase: Phase,
-    exporter: &FrameworkExporter,
-    format: &SpectaFormat,
-) -> Result<String, Error> {
-    let dt1 = specta_serde::select_phase_datatype(dt, exporter.types, phase);
-    let dt = format.remapper.remap_dt(dt1);
-
-    render_reference_dt(&dt, exporter)
 }
 
 impl<R: tauri::Runtime> Exportable<R> for crate::Router<R> {
