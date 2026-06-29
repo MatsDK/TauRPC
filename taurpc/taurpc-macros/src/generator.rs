@@ -4,13 +4,12 @@ use crate::{method_fut_ident, proc::IpcMethod};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::collections::BTreeMap;
-use syn::{parse_quote, Attribute, Generics, Ident, Type, Visibility};
+use syn::{Attribute, Generics, Ident, Type, Visibility, parse_quote};
 
 pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
     pub handler_ident: &'a Ident,
     pub event_trigger_ident: &'a Ident,
-    pub export_path: Option<String>,
     pub path_prefix: String,
     pub inputs_ident: &'a Ident,
     pub outputs_ident: &'a Ident,
@@ -256,7 +255,6 @@ impl ProceduresGenerator<'_> {
             vis,
             alias_method_idents,
             methods,
-            ref export_path,
             ref path_prefix,
             ..
         } = self;
@@ -307,11 +305,6 @@ impl ProceduresGenerator<'_> {
             });
 
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
-        let export_path = match export_path {
-            Some(path) => quote! { Some(#path) },
-            None => quote! { None },
-        };
-
         let fn_names = alias_method_idents
             .iter()
             .map(|ident| fn_ident(trait_ident, ident));
@@ -326,7 +319,6 @@ impl ProceduresGenerator<'_> {
             impl<R: ::tauri::Runtime, P: #trait_ident + Clone + Send + 'static> taurpc::TauRpcHandler<R> for #handler_ident<P> {
                 const TRAIT_NAME: &'static str = stringify!(#trait_ident);
                 const PATH_PREFIX: &'static str = #path_prefix;
-                const EXPORT_PATH: Option<&'static str> = #export_path;
 
                 fn handle_incoming_request(self, #invoke: tauri::ipc::Invoke<R>) {
                     #[allow(unused_variables)]
@@ -364,8 +356,17 @@ impl ProceduresGenerator<'_> {
                     #serialized_args_map.to_string()
                 }
 
-                fn collect_fn_types(mut types_map: &mut specta::TypeCollection) -> Vec<specta::datatype::Function> {
-                    specta::function::collect_functions![#( #fn_names ),*](&mut types_map)
+                fn collect_fn_types(mut types: &mut specta::Types) -> Vec<specta::datatype::Function> {
+                    specta::function::collect_functions![#( #fn_names ),*](&mut types)
+                }
+            }
+
+            impl<R: ::tauri::Runtime, P: #trait_ident + Clone + Send + 'static> taurpc::Exportable<R> for #handler_ident<P> {
+                fn generate_types(&self) -> (specta::Types, std::collections::BTreeMap<String, Vec<specta::datatype::Function>>, std::collections::BTreeMap<String, String>) {
+                    let mut types = specta::Types::default();
+                    let fns_map = std::collections::BTreeMap::from([(<Self as taurpc::TauRpcHandler<R>>::PATH_PREFIX.to_string(), <Self as taurpc::TauRpcHandler<R>>::collect_fn_types(&mut types))]);
+                    let args_map_json = std::collections::BTreeMap::from([(<Self as taurpc::TauRpcHandler<R>>::PATH_PREFIX.to_string(), <Self as taurpc::TauRpcHandler<R>>::args_map())]);
+                    (types, fns_map, args_map_json)
                 }
             }
         }

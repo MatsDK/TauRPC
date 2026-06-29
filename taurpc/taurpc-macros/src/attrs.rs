@@ -1,16 +1,15 @@
 use super::extend_errors;
 use proc_macro2::Ident;
 use syn::{
+    Attribute, Expr, Lit, LitStr, MetaNameValue, Token,
     parse::{Parse, ParseStream},
     spanned::Spanned,
-    Attribute, Expr, Lit, LitStr, MetaNameValue, Token,
 };
 
 /// Attributes added on the procedures trait itself, `#[taurpc::procedures( ... )]`.
 #[derive(Debug, Default)]
 pub struct ProceduresAttrs {
     pub event_trigger_ident: Option<Ident>,
-    pub export_to: Option<String>,
     pub path: String,
 }
 
@@ -46,23 +45,6 @@ impl Parse for ProceduresAttrs {
 
                     let ident = p.path.get_ident().unwrap();
                     result.event_trigger_ident = Some(ident.clone());
-                }
-            } else if meta.path.is_ident("export_to") {
-                if let Expr::Lit(p) = meta.value {
-                    match p.lit {
-                        Lit::Str(str) => result.export_to = Some(str.value()),
-                        _ => {
-                            extend_errors!(
-                                errors,
-                                syn::Error::new(p.span(), "export_to should be a str")
-                            );
-                        }
-                    }
-                } else {
-                    extend_errors!(
-                        errors,
-                        syn::Error::new(meta.path.span(), "export_to should be a str")
-                    );
                 }
             } else if meta.path.is_ident("path") {
                 if let Expr::Lit(p) = meta.value {

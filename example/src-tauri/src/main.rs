@@ -2,10 +2,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{sync::Arc, time::Duration};
-use tauri::{ipc::Channel, AppHandle, EventTarget, Manager, Runtime, WebviewWindow, Window};
+use tauri::{AppHandle, EventTarget, Manager, Runtime, WebviewWindow, Window, ipc::Channel};
 use taurpc::Router;
 use tokio::{
-    sync::{oneshot, Mutex},
+    sync::{Mutex, oneshot},
     time::sleep,
 };
 
@@ -23,14 +23,10 @@ struct User {
 
 // create the error type that represents all errors possible in our program
 #[derive(Debug, thiserror::Error, specta::Type)]
-#[serde(tag = "type", content = "data")]
+#[specta(type = String)]
 enum Error {
     #[error(transparent)]
-    Io(
-        #[from]
-        #[serde(skip)]
-        std::io::Error,
-    ),
+    Io(#[from] std::io::Error),
 
     #[error("Other: `{0}`")]
     Other(String),
@@ -51,8 +47,14 @@ struct Update {
     progress: u8,
 }
 
+#[taurpc::ipc_type]
+struct PhaseSpecificRename {
+    #[serde(rename(serialize = "serialized_value", deserialize = "deserialized_value"))]
+    value: String,
+}
+
 // #[taurpc::procedures(event_trigger = ApiEventTrigger)]
-#[taurpc::procedures(event_trigger = ApiEventTrigger, export_to = "../src/lib/bindings.ts")]
+#[taurpc::procedures(event_trigger = ApiEventTrigger)]
 trait Api {
     async fn update_state(app_handle: AppHandle<impl Runtime>, new_value: String);
 
@@ -86,6 +88,8 @@ trait Api {
     async fn test_bigint(num: i64) -> i64;
 
     async fn with_channel(on_event: Channel<Update>);
+
+    async fn phase_specific_rename(input: PhaseSpecificRename) -> PhaseSpecificRename;
 }
 
 #[derive(Clone)]
@@ -158,9 +162,13 @@ impl Api for ApiImpl {
             on_event.send(Update { progress }).unwrap();
         }
     }
+
+    async fn phase_specific_rename(self, input: PhaseSpecificRename) -> PhaseSpecificRename {
+        input
+    }
 }
 
-#[taurpc::procedures(path = "events", export_to = "../src/lib/bindings.ts")]
+#[taurpc::procedures(path = "events")]
 trait Events {
     #[taurpc(event)]
     async fn test_ev();
@@ -181,7 +189,7 @@ struct EventsImpl;
 #[taurpc::resolvers]
 impl Events for EventsImpl {}
 
-#[taurpc::procedures(path = "api.ui", export_to = "../src/lib/bindings.ts")]
+#[taurpc::procedures(path = "api.ui")]
 trait UiApi {
     async fn trigger();
 
@@ -231,13 +239,6 @@ async fn main() {
     });
 
     let router = Router::new()
-        .export_config(
-            specta_typescript::Typescript::default()
-                .header("// My header\n\n")
-                // Make sure prettier is installed before using this.
-                // .formatter(specta_typescript::formatter::prettier)
-                .bigint(specta_typescript::BigIntExportBehavior::String),
-        )
         .merge(
             ApiImpl {
                 state: Arc::new(Mutex::new("state".to_string())),
@@ -247,15 +248,25 @@ async fn main() {
         .merge(EventsImpl.into_handler())
         .merge(UiApiImpl.into_handler());
 
+    #[cfg(debug_assertions)]
+    taurpc::Exporter::new()
+        .ts_config(specta_typescript::Typescript::default().header("// My header"))
+        .export(&router, "../src/lib/bindings.ts")
+        .unwrap();
+
     // Without router
+    // let handler = ApiImpl {
+    //     state: Arc::new(Mutex::new("state".to_string())),
+    // }
+    // .into_handler();
+    //
+    // #[cfg(debug_assertions)]
+    // taurpc::Exporter::new()
+    //     .export(&handler, "../src/lib/bindings.ts")
+    //     .unwrap();
+    //
     // tauri::Builder::default()
-    //     .invoke_handler(router.into_handler())
-    //     // .invoke_handler(taurpc::create_ipc_handler(
-    //     //     ApiImpl {
-    //     //         state: Arc::new(Mutex::new("state".to_string())),
-    //     //     }
-    //     //     .into_handler(),
-    //     // ))
+    //     .invoke_handler(handler)
     //     .setup(|app| {
     //         tx.send(app.handle().clone()).unwrap();
     //         Ok(())

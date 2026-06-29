@@ -17,8 +17,8 @@ First, add the following crates to your `Cargo.toml`:
 [dependencies]
 taurpc = "0.7.1"
 
-specta = { version = "=2.0.0-rc.22", features = ["derive"] }
-# specta-typescript = "0.0.9"
+specta = { version = "=2.0.0-rc.24", features = ["derive"] }
+# specta-typescript = "0.0.11"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -241,14 +241,15 @@ All available options can be found in [specta_typescript's docs](https://docs.rs
 let router = Router::new()
     .export_config(
         specta_typescript::Typescript::default()
-            .header("// My header\n")
-            .bigint(specta_typescript::BigIntExportBehavior::String),
+            .header("// My header"),
             // Make sure you have the specified formatter installed on your system.
             .formatter(specta_typescript::formatter::prettier)
     )
     .merge(ApiImpl.into_handler())
     .merge(EventsImpl.into_handler());
 ```
+
+TauRPC currently exports Rust bigint-like integers (`i64`, `u64`, `i128`, `u128`, `isize`, `usize`) as TypeScript `number` values. This keeps the generated bindings simple, but values outside JavaScript's safe integer range can lose precision.
 
 # Calling the frontend
 
