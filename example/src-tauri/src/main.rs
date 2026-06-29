@@ -2,10 +2,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{sync::Arc, time::Duration};
-use tauri::{ipc::Channel, AppHandle, EventTarget, Manager, Runtime, WebviewWindow, Window};
+use tauri::{AppHandle, EventTarget, Manager, Runtime, WebviewWindow, Window, ipc::Channel};
 use taurpc::Router;
 use tokio::{
-    sync::{oneshot, Mutex},
+    sync::{Mutex, oneshot},
     time::sleep,
 };
 

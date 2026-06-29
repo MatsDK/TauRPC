@@ -1,10 +1,10 @@
 use generator::ProceduresGenerator;
 use proc::{IpcMethod, Procedures};
 use proc_macro::{self, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
-    parse_macro_input, parse_quote, parse_quote_spanned, spanned::Spanned, Ident, ImplItem,
-    ImplItemFn, ImplItemType, ItemImpl, ItemStruct, ReturnType, Type,
+    Ident, ImplItem, ImplItemFn, ImplItemType, ItemImpl, ItemStruct, ReturnType, Type,
+    parse_macro_input, parse_quote, parse_quote_spanned, spanned::Spanned,
 };
 
 mod args;

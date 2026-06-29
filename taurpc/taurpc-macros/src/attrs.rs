@@ -1,9 +1,9 @@
 use super::extend_errors;
 use proc_macro2::Ident;
 use syn::{
+    Attribute, Expr, Lit, LitStr, MetaNameValue, Token,
     parse::{Parse, ParseStream},
     spanned::Spanned,
-    Attribute, Expr, Lit, LitStr, MetaNameValue, Token,
 };
 
 /// Attributes added on the procedures trait itself, `#[taurpc::procedures( ... )]`.
