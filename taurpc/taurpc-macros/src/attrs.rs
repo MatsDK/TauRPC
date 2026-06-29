@@ -109,7 +109,6 @@ impl Parse for MethodAttrs {
                         }
                     }
                 }
-                continue;
             }
             if !attr.path().is_ident("taurpc") {
                 // Forward non-taurpc attributes (like #[allow(...)], #[cfg(...)], etc.) to generated code

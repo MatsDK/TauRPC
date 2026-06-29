@@ -40,16 +40,9 @@ impl ProceduresGenerator<'_> {
             |(ident, IpcMethod { output, args, attrs, span, .. })| {
                 let args = args.iter().filter(|&arg| !arg.skip_type);
                 let fn_ident = fn_ident(trait_ident, ident);
-                let doc_attrs = if attrs.comments.is_empty() {
-                    quote! {}
-                } else {
-                    let lines = attrs.comments.iter().map(|line| quote! { #[doc = #line] });
-                    quote! { #( #lines )* }
-                };
                 let passthrough_attrs = &attrs.passthrough_attrs;
 
                 quote_spanned! {*span=>
-                    #doc_attrs
                     #( #passthrough_attrs )*
                     #[specta::specta]
                     #[allow(non_snake_case, unused_variables)]
@@ -78,12 +71,6 @@ impl ProceduresGenerator<'_> {
                 }
                 let ty_doc = format!("The response future returned by [`{trait_ident}::{ident}`].");
                 let future_type_ident = method_fut_ident(ident);
-                let doc_attrs = if attrs.comments.is_empty() {
-                    quote! {}
-                } else {
-                    let lines = attrs.comments.iter().map(|line| quote! { #[doc = #line] });
-                    quote! { #( #lines )* }
-                };
                 let passthrough_attrs = &attrs.passthrough_attrs;
 
                 Some(quote_spanned! {*span=>
@@ -91,7 +78,6 @@ impl ProceduresGenerator<'_> {
                     #[doc = #ty_doc]
                     type #future_type_ident: std::future::Future<Output = #output_ty> + Send;
 
-                    #doc_attrs
                     #( #passthrough_attrs )*
                     fn #ident #generics(self, #( #args ),*) -> Self::#future_type_ident;
                 })
