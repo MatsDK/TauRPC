@@ -92,6 +92,7 @@ const nestedProxy = (
 ) => {
   return new window.Proxy({}, {
     get(_target, p, _receiver): object {
+      console.log(p, path)
       const method_name = p.toString()
       const nested_path = [...path, method_name]
       const args_map = args_maps[path.join('.')]
