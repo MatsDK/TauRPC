@@ -6,6 +6,9 @@
     type Router,
   } from './lib/ipc'
   import { onMount, onDestroy } from 'svelte'
+  import ErrorTesting from './ErrorTesting.svelte'
+
+  const taurpc = createTauRPCProxy()
 
   let value = ''
   let state = ''
@@ -38,10 +41,8 @@
   }
 
   let unlisten: UnlistenFn[] = []
-  let taurpc: ReturnType<typeof createTauRPCProxy>
 
   onMount(async () => {
-    taurpc = createTauRPCProxy()
     unlisten.push(
       await taurpc.events.vec_test.on((new_state) => {
         console.log('state updated', new_state)
@@ -70,4 +71,6 @@
 
   <br />
   Current State (uppercase): {state}
+
+  <ErrorTesting />
 </main>

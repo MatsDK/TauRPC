@@ -1,39 +1,19 @@
 import { Channel, invoke } from '@tauri-apps/api/core'
-import { type EventCallback, listen, UnlistenFn } from '@tauri-apps/api/event'
+import {
+  type Event,
+  type EventCallback,
+  listen,
+  type UnlistenFn,
+} from '@tauri-apps/api/event'
+
+export type { UnlistenFn }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RoutesLayer = { [key: string]: (...args: any) => unknown }
+type RoutesLayer = Record<string, any>
 type NestedRoutes = {
-  [route: string]: RoutesLayer | NestedRoutes
+  [route: string]: RoutesLayer
 }
-type Router = NestedRoutes & { ''?: RoutesLayer }
-
-type InvokeFn<
-  TRoutes extends RoutesLayer,
-  TProc extends string,
-> = TRoutes[TProc]
-
-// Helper type to swap the return type of functions returning Promise<T> to void
-type SwapReturnTypeToVoid<T> = T extends (...args: infer A) => Promise<unknown>
-  ? (...args: A) => void
-  : never
-
-type ListenerFn<
-  TRoutes extends RoutesLayer,
-  TProc extends string,
-> = SwapReturnTypeToVoid<TRoutes[TProc]>
-
-type InvokeLayer<
-  TRoutes extends RoutesLayer,
-  TProcedures extends Extract<keyof TRoutes, string> = Extract<
-    keyof TRoutes,
-    string
-  >,
-> = {
-  [TProc in TProcedures]: InvokeFn<TRoutes, TProc> & {
-    on: (listener: ListenerFn<TRoutes, TProc>) => Promise<UnlistenFn>
-  }
-}
+type Router = NestedRoutes
 
 type SplitKeyNested<
   TRouter extends NestedRoutes,
@@ -42,8 +22,7 @@ type SplitKeyNested<
 > = T extends `${infer A}.${infer B}`
   ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
   : {
-    [K in T]: TRouter[TPath] extends RoutesLayer ? InvokeLayer<TRouter[TPath]>
-      : never
+    [K in T]: TRouter[TPath]
   }
 
 type RouterPathsToNestedObject<
@@ -52,9 +31,7 @@ type RouterPathsToNestedObject<
 > = TPath extends `${infer A}.${infer B}`
   ? { [K in A]: SplitKeyNested<TRouter, TPath, B> }
   : {
-    [K in TPath]: TRouter[TPath] extends RoutesLayer
-      ? InvokeLayer<TRouter[TPath]>
-      : never
+    [K in TPath]: TRouter[TPath]
   }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,8 +43,7 @@ type ConvertToNestedObject<TRouter extends NestedRoutes> = UnionToIntersection<
 >
 
 type TauRpcProxy<TRouter extends Router> =
-  & (TRouter[''] extends RoutesLayer ? InvokeLayer<TRouter['']>
-    : object)
+  & (TRouter[''] extends RoutesLayer ? TRouter[''] : object)
   & ConvertToNestedObject<Omit<TRouter, ''>>
 
 type Payload = {
@@ -76,60 +52,96 @@ type Payload = {
 }
 type ListenFn = (args: unknown) => void
 type ArgsMap = Record<string, Record<string, string[]>>
+export type ResultMap = Record<string, Record<string, boolean>>
+export type ErrorHandlingMode = 'throw' | 'result'
+
+export type TauRpcResult<T, E> =
+  | { status: 'ok'; data: T }
+  | { status: 'error'; error: E }
+
+export type TypedErrorFn = <T, E>(
+  result: Promise<T>,
+) => Promise<T | TauRpcResult<T, E>>
+
+type CreateTauRPCProxyOptions = {
+  argsMap: ArgsMap
+  resultMap?: ResultMap
+  errorHandling?: ErrorHandlingMode
+  typedError?: TypedErrorFn
+}
 
 const TAURPC_EVENT_NAME = 'TauRpc_event'
 
+const passthroughTypedError: TypedErrorFn = async (result) => await result
+
+const resultTypedError: TypedErrorFn = async (result) => {
+  try {
+    return { status: 'ok', data: await result }
+  } catch (error) {
+    if (error instanceof Error) throw error
+    return { status: 'error', error: error as never }
+  }
+}
+
 const createTauRPCProxy = <TRouter extends Router>(
-  args: Record<string, string>,
+  options: CreateTauRPCProxyOptions,
 ) => {
-  const args_map = parseArgsMap(args)
-  return nestedProxy(args_map) as TauRpcProxy<TRouter>
+  const argsMap = options.argsMap
+  const resultMap = options.resultMap ?? {}
+  const errorHandling = options.errorHandling ?? 'throw'
+  const typedError = options.typedError
+    ?? (errorHandling === 'result' ? resultTypedError : passthroughTypedError)
+
+  return nestedProxy({ argsMap, resultMap, typedError }) as TauRpcProxy<TRouter>
 }
 
 const nestedProxy = (
-  args_maps: ArgsMap,
+  options: { argsMap: ArgsMap; resultMap: ResultMap; typedError: TypedErrorFn },
   path: string[] = [],
 ) => {
   return new window.Proxy({}, {
     get(_target, p, _receiver): object {
-      const method_name = p.toString()
-      const nested_path = [...path, method_name]
-      const args_map = args_maps[path.join('.')]
-      if (method_name === 'then') return {}
+      const methodName = p.toString()
+      const nestedPath = [...path, methodName]
+      const methodArgs = options.argsMap[path.join('.')]
+      if (methodName === 'then') return {}
 
-      if (args_map && method_name in args_map) {
+      if (methodArgs && methodName in methodArgs) {
         return new window.Proxy(() => {
           // Empty fn
         }, {
           get: (_target, prop, _receiver) => {
             if (prop !== 'on') return
 
-            const event_name = nested_path.join('.')
+            const eventName = nestedPath.join('.')
             return async (listener: (args: unknown) => void) => {
               return await listen(
                 TAURPC_EVENT_NAME,
-                createEventHandlder(event_name, listener, args_map),
+                createEventHandler(eventName, listener, methodArgs),
               )
             }
           },
           apply(_target, _thisArg, args) {
-            return handleProxyCall(
-              nested_path.join('.'),
+            const isResult = options.resultMap[path.join('.')]?.[methodName]
+              ?? false
+            const promise = handleProxyCall(
+              nestedPath.join('.'),
               args,
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              args_map[method_name]!,
+              methodArgs[methodName]!,
             )
+            return isResult ? options.typedError(promise) : promise
           },
         })
       } else if (
-        nested_path.join('.') in args_maps
-        || Object.keys(args_maps).some(path =>
-          path.startsWith(`${nested_path.join('.')}.`)
+        nestedPath.join('.') in options.argsMap
+        || Object.keys(options.argsMap).some(path =>
+          path.startsWith(`${nestedPath.join('.')}.`)
         )
       ) {
-        return nestedProxy(args_maps, nested_path)
+        return nestedProxy(options, nestedPath)
       } else {
-        throw new Error(`'${nested_path.join('.')}' not found`)
+        throw new Error(`'${nestedPath.join('.')}' not found`)
       }
     },
   })
@@ -138,44 +150,44 @@ const nestedProxy = (
 const handleProxyCall = async (
   path: string,
   args: unknown[],
-  procedure_args: string[],
+  procedureArgs: string[],
 ) => {
-  const args_object: Record<string, unknown> = {}
+  const argsObject: Record<string, unknown> = {}
 
-  for (let idx = 0; idx < procedure_args.length; idx++) {
-    const arg_name = procedure_args[idx]
-    if (!arg_name) throw new Error('Received invalid arguments')
+  for (let idx = 0; idx < procedureArgs.length; idx++) {
+    const argName = procedureArgs[idx]
+    if (!argName) throw new Error('Received invalid arguments')
 
     const arg = args[idx]
     if (typeof arg == 'function') {
       const channel = new Channel()
       channel.onmessage = arg as typeof channel.onmessage
-      args_object[arg_name] = channel
+      argsObject[argName] = channel
     } else {
-      args_object[arg_name] = arg
+      argsObject[argName] = arg
     }
   }
 
   const response = await invoke(
     `TauRPC__${path}`,
-    args_object,
+    argsObject,
   )
   return response
 }
 
-const createEventHandlder = (
-  event_name: string,
+const createEventHandler = (
+  eventName: string,
   listener: ListenFn,
-  args_map: ArgsMap[string],
+  argsMap: ArgsMap[string],
 ): EventCallback<Payload> => {
-  return (event) => {
-    if (event_name !== event.payload.event_name) return
+  return (event: Event<Payload>) => {
+    if (eventName !== event.payload.event_name) return
 
-    const path_segments = event.payload.event_name.split('.')
-    const ev = path_segments.pop()
+    const pathSegments = event.payload.event_name.split('.')
+    const ev = pathSegments.pop()
     if (!ev) return
 
-    const args = args_map[ev]
+    const args = argsMap[ev]
     if (!args) return
 
     if (args.length === 1) {
@@ -188,17 +200,6 @@ const createEventHandlder = (
       listener(event.payload.event.input_type)
     }
   }
-}
-
-const parseArgsMap = (args: Record<string, string>) => {
-  const args_map: Record<string, Record<string, string[]>> = {}
-  Object.entries(args).map(
-    ([path, args]) => {
-      args_map[path] = JSON.parse(args) as Record<string, string[]>
-    },
-  )
-
-  return args_map
 }
 
 export type InferCommandOutput<

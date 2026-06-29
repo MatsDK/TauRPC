@@ -4,6 +4,8 @@
 use std::{sync::Arc, time::Duration};
 use tauri::{AppHandle, EventTarget, Manager, Runtime, WebviewWindow, Window, ipc::Channel};
 use taurpc::Router;
+pub mod error_router;
+use error_router::{Error, ErrorTestingApi};
 use tokio::{
     sync::{Mutex, oneshot},
     time::sleep,
@@ -22,25 +24,6 @@ struct User {
 }
 
 // create the error type that represents all errors possible in our program
-#[derive(Debug, thiserror::Error, specta::Type)]
-#[specta(type = String)]
-enum Error {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-
-    #[error("Other: `{0}`")]
-    Other(String),
-}
-
-// we must manually implement serde::Serialize
-impl serde::Serialize for Error {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        serializer.serialize_str(self.to_string().as_ref())
-    }
-}
 
 #[taurpc::ipc_type]
 struct Update {
@@ -61,12 +44,10 @@ trait Api {
 
     #[doc = "Get window"]
     async fn get_window<R: Runtime>(window: Window<R>);
-    // async fn get_window<R: Runtime>(#[window] win: Window<R>);
 
     async fn get_webview_window<R: Runtime>(webview_window: WebviewWindow<R>);
 
     async fn get_app_handle<R: Runtime>(app_handle: AppHandle<R>);
-    // async fn get_app_handle(#[app_handle] ah: AppHandle<impl Runtime>);
 
     async fn test_io(_user: User) -> User;
 
@@ -251,11 +232,13 @@ async fn main() {
             .into_handler(),
         )
         .merge(EventsImpl.into_handler())
-        .merge(UiApiImpl.into_handler());
+        .merge(UiApiImpl.into_handler())
+        .merge(error_router::ErrorTestingApiImpl.into_handler());
 
     #[cfg(debug_assertions)]
     taurpc::Exporter::new()
         .ts_config(specta_typescript::Typescript::default().header("// My header"))
+        .error_handling(taurpc::ErrorHandlingMode::Result)
         .export(&router, "../src/lib/bindings.ts")
         .unwrap();
 

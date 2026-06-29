@@ -15,8 +15,8 @@ importers:
         specifier: ^2.3.5
         version: 2.3.5
       taurpc:
-        specifier: ^1.8.1
-        version: 1.8.1
+        specifier: link:..
+        version: link:..
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^3.1.2
@@ -702,9 +702,6 @@ packages:
     resolution: {integrity: sha512-eeEgGc2DtiUil5ANdtd8vPwt9AgaMdnuUFnPft9F5oMvU/FHu5IHFic+p1dR/UOB7XU2mX2yHW+NcTch4DCh5Q==}
     engines: {node: '>=16'}
 
-  taurpc@1.8.1:
-    resolution: {integrity: sha512-qfR1ekhXApjbnWAqyE5qpDa/oMmKBwjNNDuqjYn7sO+ChI5qwQ4J/fS+00dVLE3I0lbZDizyY8ObSFBz3MRerQ==}
-
   to-regex-range@5.0.1:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
     engines: {node: '>=8.0'}
@@ -1313,10 +1310,6 @@ snapshots:
       locate-character: 3.0.0
       magic-string: 0.30.21
       periscopic: 3.1.0
-
-  taurpc@1.8.1:
-    dependencies:
-      '@tauri-apps/api': 2.11.1
 
   to-regex-range@5.0.1:
     dependencies:

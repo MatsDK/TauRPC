@@ -7,9 +7,7 @@
 pub extern crate serde;
 pub extern crate specta;
 use specta::Types;
-use specta::datatype::Function;
 pub use specta_typescript::Typescript;
-
 use std::collections::{BTreeMap, HashMap};
 use std::{fmt::Debug, sync::Arc};
 use tokio::sync::broadcast::Sender;
@@ -21,7 +19,13 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 pub use taurpc_macros::{ipc_type, procedures, resolvers};
 
 mod export;
-pub use export::{ExportError, Exportable, Exporter};
+pub use export::{ErrorHandlingMode, ExportError, Exportable, Exporter};
+
+#[derive(Debug, Clone)]
+pub struct TauRpcFunction {
+    pub function: specta::datatype::Function,
+    pub is_event: bool,
+}
 
 /// A trait, which is automatically implemented by `#[taurpc::procedures]`, that is used for handling incoming requests
 /// and the type generation.
@@ -43,7 +47,7 @@ pub trait TauRpcHandler<R: Runtime>: Sized {
     fn args_map() -> String;
 
     /// Returns all of the functions for exporting, all referenced types will be added to `types`.
-    fn collect_fn_types(types: &mut Types) -> Vec<Function>;
+    fn collect_fn_types(types: &mut Types) -> Vec<TauRpcFunction>;
 }
 
 /// Creates a handler that allows your IPCs to be called from the frontend with the coresponding
@@ -199,7 +203,7 @@ pub struct Router<R: Runtime> {
     pub(crate) types: Types,
     pub(crate) handlers: HashMap<String, Sender<Arc<Invoke<R>>>>,
     pub(crate) args_map_json: BTreeMap<String, String>,
-    pub(crate) fns_map: BTreeMap<String, Vec<Function>>,
+    pub(crate) fns_map: BTreeMap<String, Vec<TauRpcFunction>>,
 }
 
 impl<R: Runtime> Router<R> {
