@@ -28,6 +28,96 @@ export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)
 export type { InferCommandOutput }
 "#;
 
+pub type ExportError = Error;
+
+pub trait Exportable<R: tauri::Runtime> {
+    fn generate_types(
+        &self,
+    ) -> (
+        Types,
+        BTreeMap<String, Vec<Function>>,
+        BTreeMap<String, String>,
+    );
+}
+
+#[derive(Default)]
+pub struct Exporter {
+    ts_config: Typescript,
+    specta_phases: bool,
+}
+
+impl Exporter {
+    pub fn new() -> Self {
+        Self {
+            ts_config: Typescript::default(),
+            specta_phases: true,
+        }
+    }
+
+    pub fn ts_config(mut self, config: Typescript) -> Self {
+        self.ts_config = config;
+        self
+    }
+
+    pub fn specta_phases(mut self, enabled: bool) -> Self {
+        self.specta_phases = enabled;
+        self
+    }
+
+    pub fn export<R: tauri::Runtime>(
+        self,
+        exportable: &impl Exportable<R>,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<(), Error> {
+        let (types, functions, args_map) = exportable.generate_types();
+        let format = SpectaFormat::new(self.specta_phases);
+        let format_clone = format.clone();
+
+        TsExporter::from(self.ts_config)
+            .framework_prelude(FRAMEWORK_HEADER)
+            .framework_runtime(move |mut exporter| {
+                let mut out = String::new();
+
+                out.push_str(&exporter.render_types()?);
+                out.push_str(BOILERPLATE_TS_IMPORT);
+
+                out.push_str(r#"const ARGS_MAP = "#);
+                out.push_str(
+                    &serde_json::to_string_pretty(&args_map)
+                        .map_err(|err| Error::framework("error stringify argument map", err))?,
+                );
+                out.push_str(";\n\n");
+
+                out.push_str(
+                    &generate_functions_router(&functions, &exporter, &format_clone)
+                        .map_err(|err| Error::framework("failed to generate router type", err))?,
+                );
+                out.push_str(BOILERPLATE_TS_EXPORT);
+
+                Ok(out.into())
+            })
+            .export_to(path.as_ref(), &types, format)?;
+
+        if path
+            .as_ref()
+            .to_string_lossy()
+            .ends_with("node_modules\\.taurpc\\index.ts")
+        {
+            let package_json_path = path
+                .as_ref()
+                .parent()
+                .ok_or(Error::framework("", "Failed to create 'package.json' path"))?
+                .join("package.json");
+
+            std::fs::write(package_json_path, PACKAGE_JSON)
+                .map_err(|err| Error::framework("Failed to create 'package.json' file", err))?
+        }
+
+        Ok(())
+    }
+}
+
+
 /// Applies `specta_serde` format + also remaps `DataType`'s and does other transformations!
 #[derive(Debug, Clone)]
 struct SpectaFormat {
@@ -201,95 +291,6 @@ fn render_reference_dt_for_phase(
     let dt = format.remapper.remap_dt(dt1);
 
     render_reference_dt(&dt, exporter)
-}
-
-pub type ExportError = Error;
-
-pub trait Exportable<R: tauri::Runtime> {
-    fn generate_types(
-        &self,
-    ) -> (
-        Types,
-        BTreeMap<String, Vec<Function>>,
-        BTreeMap<String, String>,
-    );
-}
-
-#[derive(Default)]
-pub struct Exporter {
-    ts_config: Typescript,
-    specta_phases: bool,
-}
-
-impl Exporter {
-    pub fn new() -> Self {
-        Self {
-            ts_config: Typescript::default(),
-            specta_phases: true,
-        }
-    }
-
-    pub fn ts_config(mut self, config: Typescript) -> Self {
-        self.ts_config = config;
-        self
-    }
-
-    pub fn specta_phases(mut self, enabled: bool) -> Self {
-        self.specta_phases = enabled;
-        self
-    }
-
-    pub fn export<R: tauri::Runtime>(
-        self,
-        exportable: &impl Exportable<R>,
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<(), Error> {
-        let (types, functions, args_map) = exportable.generate_types();
-        let format = SpectaFormat::new(self.specta_phases);
-        let format_clone = format.clone();
-
-        TsExporter::from(self.ts_config)
-            .framework_prelude(FRAMEWORK_HEADER)
-            .framework_runtime(move |mut exporter| {
-                let mut out = String::new();
-
-                out.push_str(&exporter.render_types()?);
-                out.push_str(BOILERPLATE_TS_IMPORT);
-
-                out.push_str(r#"const ARGS_MAP = "#);
-                out.push_str(
-                    &serde_json::to_string_pretty(&args_map)
-                        .map_err(|err| Error::framework("error stringify argument map", err))?,
-                );
-                out.push_str(";\n\n");
-
-                out.push_str(
-                    &generate_functions_router(&functions, &exporter, &format_clone)
-                        .map_err(|err| Error::framework("failed to generate router type", err))?,
-                );
-                out.push_str(BOILERPLATE_TS_EXPORT);
-
-                Ok(out.into())
-            })
-            .export_to(path.as_ref(), &types, format)?;
-
-        if path
-            .as_ref()
-            .to_string_lossy()
-            .ends_with("node_modules\\.taurpc\\index.ts")
-        {
-            let package_json_path = path
-                .as_ref()
-                .parent()
-                .ok_or(Error::framework("", "Failed to create 'package.json' path"))?
-                .join("package.json");
-
-            std::fs::write(package_json_path, PACKAGE_JSON)
-                .map_err(|err| Error::framework("Failed to create 'package.json' file", err))?
-        }
-
-        Ok(())
-    }
 }
 
 impl<R: tauri::Runtime> Exportable<R> for crate::Router<R> {
