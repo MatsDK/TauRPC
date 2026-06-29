@@ -21,7 +21,6 @@
     await taurpc.get_app_handle()
 
     await taurpc.with_channel((update) => {
-      console.log('Channel update')
       console.log(update.progress)
     })
 
