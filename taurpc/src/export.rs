@@ -254,10 +254,12 @@ fn generate_function_field(
     };
 
     let name = function.name().split_once("_taurpc_fn__").unwrap().1;
-    Ok((
-        name.to_string(),
-        Field::new(define(format!("({args}) => Promise<{return_ty}>")).into()),
-    ))
+
+    let mut field = Field::new(DataType::Reference(define(format!(
+        "({args}) => Promise<{return_ty}>"
+    ))));
+    field.docs = function.docs.clone();
+    Ok((name.to_string(), field))
 }
 
 fn render_reference_dt_for_phase(

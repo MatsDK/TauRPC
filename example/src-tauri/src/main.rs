@@ -56,8 +56,10 @@ struct PhaseSpecificRename {
 // #[taurpc::procedures(event_trigger = ApiEventTrigger)]
 #[taurpc::procedures(event_trigger = ApiEventTrigger)]
 trait Api {
+    /// Update the state
     async fn update_state(app_handle: AppHandle<impl Runtime>, new_value: String);
 
+    #[doc = "Get window"]
     async fn get_window<R: Runtime>(window: Window<R>);
     // async fn get_window<R: Runtime>(#[window] win: Window<R>);
 
@@ -70,6 +72,7 @@ trait Api {
 
     async fn test_option() -> Option<()>;
 
+    /// test result
     async fn test_result(user: User) -> Result<User, Error>;
 
     // #[taurpc(skip)]
@@ -89,6 +92,8 @@ trait Api {
 
     async fn with_channel(on_event: Channel<Update>);
 
+    /// Phase specific renames
+    /// Different name for serialize and deserialize
     async fn phase_specific_rename(input: PhaseSpecificRename) -> PhaseSpecificRename;
 }
 

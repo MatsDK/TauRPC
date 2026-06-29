@@ -44,14 +44,21 @@ export type Router = {
 		ev: (updatedValue: string) => Promise<void>,
 		get_app_handle: () => Promise<void>,
 		get_webview_window: () => Promise<void>,
+		/** Get window */
 		get_window: () => Promise<void>,
 		method_with_alias: () => Promise<void>,
 		multiple_args: (arg: string[], arg2: string) => Promise<void>,
+		/**
+		 *  Phase specific renames
+		 *  Different name for serialize and deserialize
+		 */
 		phase_specific_rename: (input: PhaseSpecificRename_Deserialize) => Promise<PhaseSpecificRename_Serialize>,
 		test_bigint: (num: number) => Promise<number>,
 		test_io: (user: User) => Promise<User>,
 		test_option: () => Promise<null>,
+		/**  test result */
 		test_result: (user: User) => Promise<User>,
+		/**  Update the state */
 		update_state: (newValue: string) => Promise<void>,
 		vec_test: (arg: string[]) => Promise<void>,
 		with_channel: (onEvent: (response: Update) => void) => Promise<void>,

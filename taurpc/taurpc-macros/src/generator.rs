@@ -2,7 +2,7 @@ use crate::args::{parse_arg_key, parse_args};
 use crate::{method_fut_ident, proc::IpcMethod};
 
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{ToTokens, format_ident, quote};
+use quote::{ToTokens, format_ident, quote, quote_spanned};
 use std::collections::BTreeMap;
 use syn::{Attribute, Generics, Ident, Type, Visibility, parse_quote};
 
@@ -37,11 +37,22 @@ impl ProceduresGenerator<'_> {
         } = self;
 
         let fn_types = alias_method_idents.iter().zip(methods).map(
-            |(ident, IpcMethod { output, args, .. })| {
+            |(
+                ident,
+                IpcMethod {
+                    output,
+                    args,
+                    attrs,
+                    span,
+                    ..
+                },
+            )| {
                 let args = args.iter().filter(|&arg| !arg.skip_type);
                 let fn_ident = fn_ident(trait_ident, ident);
+                let passthrough_attrs = &attrs.passthrough_attrs;
 
-                quote! {
+                quote_spanned! {*span=>
+                    #( #passthrough_attrs )*
                     #[specta::specta]
                     #[allow(non_snake_case, unused_variables)]
                     fn #fn_ident( #( #args ),*) #output {
@@ -58,6 +69,7 @@ impl ProceduresGenerator<'_> {
                     args,
                     generics,
                     attrs,
+                    span,
                     ..
                 },
                 output_ty,
@@ -68,12 +80,14 @@ impl ProceduresGenerator<'_> {
                 }
                 let ty_doc = format!("The response future returned by [`{trait_ident}::{ident}`].");
                 let future_type_ident = method_fut_ident(ident);
+                let passthrough_attrs = &attrs.passthrough_attrs;
 
-                Some(quote! {
+                Some(quote_spanned! {*span=>
                     #[allow(non_camel_case_types)]
                     #[doc = #ty_doc]
                     type #future_type_ident: std::future::Future<Output = #output_ty> + Send;
 
+                    #( #passthrough_attrs )*
                     fn #ident #generics(self, #( #args ),*) -> Self::#future_type_ident;
                 })
             },
@@ -248,19 +262,24 @@ impl ProceduresGenerator<'_> {
             |(
                 proc_name,
                 IpcMethod {
-                    ident, args, attrs, ..
+                    ident,
+                    args,
+                    attrs,
+                    span,
+                    ..
                 },
             )| {
                 if attrs.is_event {
                     return None;
                 }
                 let args = parse_args(args, &message, ident).unwrap();
+                let method_call = quote_spanned!(*span=> #trait_ident::#ident(
+                    self.methods, #( #args.unwrap() ),*
+                ));
 
                 Some(quote! { stringify!(#proc_name) => {
                     #resolver.respond_async_serialized(async move {
-                        let res = #trait_ident::#ident(
-                            self.methods, #( #args.unwrap() ),*
-                        );
+                        let res = #method_call;
                         let kind = (&res).async_kind();
                         kind.future(res).await
                     });
@@ -387,6 +406,7 @@ impl ProceduresGenerator<'_> {
                         args,
                         generics,
                         attrs,
+                        span,
                         ..
                     },
                 )| {
@@ -397,8 +417,10 @@ impl ProceduresGenerator<'_> {
 
                     let args = args.iter().filter(|arg| !arg.skip_type).collect::<Vec<_>>();
                     let arg_pats = args.iter().map(|arg| arg.pat()).collect::<Vec<_>>();
+                    let passthrough_attrs = &attrs.passthrough_attrs;
 
-                    Some(quote! {
+                    Some(quote_spanned! {*span=>
+                        #( #passthrough_attrs )*
                         #[allow(unused)]
                         #vis fn #ident #generics(&self, #( #args ),*) -> tauri::Result<()> {
                             let proc_name = stringify!(#alias_ident);
