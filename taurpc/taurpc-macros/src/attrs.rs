@@ -88,6 +88,7 @@ pub struct MethodAttrs {
     pub(crate) skip: bool,
     pub(crate) alias: Option<String>,
     pub(crate) is_event: bool,
+    /// The doc comments on the method, joined into a single string.
     pub(crate) comments: Vec<String>,
     /// Attributes to forward to the generated code (e.g., #[allow(...)])
     pub(crate) passthrough_attrs: Vec<Attribute>,
@@ -105,7 +106,7 @@ impl Parse for MethodAttrs {
                 if let syn::Meta::NameValue(meta) = &attr.meta {
                     if let Expr::Lit(expr_lit) = &meta.value {
                         if let Lit::Str(lit_str) = &expr_lit.lit {
-                            res.comments.push(lit_str.value().trim().to_string());
+                            res.comments.push(lit_str.value());
                         }
                     }
                 }

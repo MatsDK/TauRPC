@@ -4,7 +4,7 @@ use crate::{method_fut_ident, proc::IpcMethod};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{ToTokens, format_ident, quote, quote_spanned};
 use std::collections::BTreeMap;
-use syn::{Attribute, Generics, Ident, Type, Visibility, parse_quote};
+use syn::{Attribute, Generics, Ident, ReturnType, Type, Visibility, parse_quote};
 
 pub struct ProceduresGenerator<'a> {
     pub trait_ident: &'a Ident,
@@ -32,35 +32,8 @@ impl ProceduresGenerator<'_> {
             generics,
             attrs,
             method_output_types,
-            alias_method_idents,
             ..
         } = self;
-
-        let fn_types = alias_method_idents.iter().zip(methods).map(
-            |(
-                ident,
-                IpcMethod {
-                    output,
-                    args,
-                    attrs,
-                    span,
-                    ..
-                },
-            )| {
-                let args = args.iter().filter(|&arg| !arg.skip_type);
-                let fn_ident = fn_ident(trait_ident, ident);
-                let passthrough_attrs = &attrs.passthrough_attrs;
-
-                quote_spanned! {*span=>
-                    #( #passthrough_attrs )*
-                    #[specta::specta]
-                    #[allow(non_snake_case, unused_variables)]
-                    fn #fn_ident( #( #args ),*) #output {
-                        unimplemented!();
-                    }
-                }
-            },
-        );
 
         let types_and_fns = methods.iter().zip(method_output_types.iter()).filter_map(
             |(
@@ -113,8 +86,6 @@ impl ProceduresGenerator<'_> {
                     #handler_ident { methods: self }
                 }
             }
-
-            #( #fn_types )*
         }
     }
 
@@ -337,11 +308,57 @@ impl ProceduresGenerator<'_> {
             });
 
         let serialized_args_map = serde_json::to_string(&args_map).unwrap();
-        let fn_names = alias_method_idents
-            .iter()
-            .map(|ident| fn_ident(trait_ident, ident));
 
-        let is_events = methods.iter().map(|method| method.attrs.is_event);
+        // Generate the type information for each procedure, used for the TypeScript bindings.
+        let fn_types = alias_method_idents.iter().zip(methods).map(
+            |(
+                proc_name,
+                IpcMethod {
+                    args,
+                    output,
+                    attrs,
+                    ..
+                },
+            )| {
+                let args = args
+                    .iter()
+                    .filter(|&arg| !arg.skip_type)
+                    .map(|arg| {
+                        let arg_name = parse_arg_key(arg).unwrap();
+                        let ty = arg.ty();
+
+                        quote! {
+                            (
+                                ::std::borrow::Cow::Borrowed(#arg_name),
+                                <#ty as taurpc::specta::Type>::definition(types),
+                            )
+                        }
+                    });
+
+                // A procedure without a return type is rendered as `void` on the frontend.
+                let result = match output {
+                    ReturnType::Default => quote!(None),
+                    ReturnType::Type(_, ty) => {
+                        quote!(Some(<#ty as taurpc::specta::Type>::definition(types)))
+                    }
+                };
+
+                let docs = attrs.comments.join("\n");
+                let is_event = attrs.is_event;
+
+                quote! {
+                    taurpc::TauRpcFunction {
+                        function: taurpc::Function::new(
+                            stringify!(#proc_name),
+                            vec![#( #args ),*],
+                            #result,
+                            #docs,
+                        ),
+                        is_event: #is_event,
+                    }
+                }
+            },
+        );
 
         quote! {
             #[derive(Clone)]
@@ -390,21 +407,16 @@ impl ProceduresGenerator<'_> {
                     #serialized_args_map.to_string()
                 }
 
-                fn collect_fn_types(mut types: &mut specta::Types) -> Vec<taurpc::TauRpcFunction> {
+                fn collect_fn_types(mut types: &mut taurpc::specta::Types) -> Vec<taurpc::TauRpcFunction> {
                     vec![
-                        #(
-                            taurpc::TauRpcFunction {
-                                function: specta::function::fn_datatype!(#fn_names)(types),
-                                is_event: #is_events,
-                            }
-                        ),*
+                        #( #fn_types ),*
                     ]
                 }
             }
 
             impl<P: #trait_ident + Clone + Send + 'static> taurpc::Exportable for #handler_ident<P> {
-                fn generate_types(&self) -> (specta::Types, std::collections::BTreeMap<String, Vec<taurpc::TauRpcFunction>>, std::collections::BTreeMap<String, String>) {
-                    let mut types = specta::Types::default();
+                fn generate_types(&self) -> (taurpc::specta::Types, std::collections::BTreeMap<String, Vec<taurpc::TauRpcFunction>>, std::collections::BTreeMap<String, String>) {
+                    let mut types = taurpc::specta::Types::default();
                     let fns_map = std::collections::BTreeMap::from([(<Self as taurpc::TauRpcHandler<::tauri::Wry>>::PATH_PREFIX.to_string(), <Self as taurpc::TauRpcHandler<::tauri::Wry>>::collect_fn_types(&mut types))]);
                     let args_map_json = std::collections::BTreeMap::from([(<Self as taurpc::TauRpcHandler<::tauri::Wry>>::PATH_PREFIX.to_string(), <Self as taurpc::TauRpcHandler<::tauri::Wry>>::args_map())]);
                     (types, fns_map, args_map_json)
@@ -508,8 +520,4 @@ impl ToTokens for ProceduresGenerator<'_> {
             self.impl_event_trigger(),
         ])
     }
-}
-
-fn fn_ident(trait_ident: &Ident, fn_ident: &Ident) -> Ident {
-    format_ident!("{trait_ident}_taurpc_fn__{fn_ident}")
 }
