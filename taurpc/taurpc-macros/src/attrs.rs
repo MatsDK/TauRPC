@@ -89,6 +89,9 @@ pub struct MethodAttrs {
     pub(crate) alias: Option<String>,
     pub(crate) is_event: bool,
     /// The doc comments on the method, joined into a single string.
+    ///
+    /// Only literal `#[doc = "..."]` attributes are collected. Docs behind a `#[cfg_attr]` can't be
+    /// evaluated at macro time, so they are missing from the generated bindings.
     pub(crate) comments: Vec<String>,
     /// Attributes to forward to the generated code (e.g., #[allow(...)])
     pub(crate) passthrough_attrs: Vec<Attribute>,

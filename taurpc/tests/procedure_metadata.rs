@@ -1,12 +1,17 @@
-//! The procedure metadata is built by the `#[taurpc::procedures]` macro, so this
-//! makes sure it matches what the exporter used to get out of `specta::function`.
+//! The procedure metadata is built by the `#[taurpc::procedures]` macro rather than
+//! `specta::function`, so these assert the exact values that end up in the bindings.
 
+use taurpc::specta::datatype::{DataType, Primitive, Reference};
 use taurpc::{Exportable, TauRpcFunction};
 
 #[taurpc::procedures]
 trait Api {
     /// Update the state
     async fn update_state(new_value: String);
+
+    ///
+    /// Leading blank doc line
+    async fn blank_first_line();
 
     #[taurpc(alias = "renamed")]
     fn renamed(amount: i32) -> i32;
@@ -22,6 +27,8 @@ struct ApiImpl;
 impl Api for ApiImpl {
     async fn update_state(self, _new_value: String) {}
 
+    async fn blank_first_line(self) {}
+
     fn renamed(self, amount: i32) -> i32 {
         amount
     }
@@ -36,39 +43,81 @@ fn procedure<'a>(procedures: &'a [TauRpcFunction], name: &str) -> &'a TauRpcFunc
 
 #[test]
 fn collects_procedure_metadata() {
-    let (mut types, procedures, args_map) = ApiImpl.into_handler().generate_types();
+    let (types, procedures, args_map) = ApiImpl.into_handler().generate_types();
     let procedures = &procedures[""];
 
     let names = procedures
         .iter()
         .map(|procedure| procedure.function.name())
         .collect::<Vec<_>>();
-    assert_eq!(names, ["update_state", "renamed", "state_changed"]);
+    assert_eq!(
+        names,
+        [
+            "update_state",
+            "blank_first_line",
+            "renamed",
+            "state_changed"
+        ]
+    );
 
     let update_state = procedure(procedures, "update_state");
+    let [(arg_name, arg_type)] = update_state.function.args() else {
+        panic!("expected a single argument");
+    };
+    assert_eq!(arg_name, "new_value");
+    // The argument type is a reference that has been registered in `Types`.
+    let DataType::Reference(Reference::Named(reference)) = arg_type else {
+        panic!("expected a named reference, got {arg_type:?}");
+    };
     assert_eq!(
-        update_state
-            .function
-            .args()
-            .iter()
-            .map(|(name, _)| name.as_ref())
-            .collect::<Vec<_>>(),
-        ["new_value"]
+        types.get(reference).map(|named| &*named.name),
+        Some("String")
     );
     assert_eq!(update_state.function.result(), None);
-    assert!(update_state.function.docs().contains("Update the state"));
+    // The leading space is what ends up in the generated JSDoc, so keep it exact.
+    assert_eq!(update_state.function.docs(), " Update the state");
     assert!(!update_state.is_event);
+
+    // A leading blank `///` line is dropped rather than becoming a blank JSDoc line.
+    assert_eq!(
+        procedure(procedures, "blank_first_line").function.docs(),
+        " Leading blank doc line"
+    );
 
     let renamed = procedure(procedures, "renamed");
     assert_eq!(
         renamed.function.result(),
-        Some(&<i32 as taurpc::specta::Type>::definition(&mut types))
+        Some(&DataType::Primitive(Primitive::i32))
     );
 
     assert!(procedure(procedures, "state_changed").is_event);
 
     assert_eq!(
         args_map[""],
-        r#"{"renamed":["amount"],"state_changed":["new_state"],"update_state":["new_value"]}"#
+        concat!(
+            r#"{"blank_first_line":[],"renamed":["amount"],"state_changed":["new_state"],"#,
+            r#""update_state":["new_value"]}"#
+        )
+    );
+}
+
+#[test]
+fn renders_procedure_docs_in_the_bindings() {
+    let path = std::env::temp_dir().join("taurpc-procedure-metadata-bindings.ts");
+    taurpc::Exporter::new()
+        .export(&ApiImpl.into_handler(), &path)
+        .unwrap();
+    let bindings = std::fs::read_to_string(&path).unwrap();
+    std::fs::remove_file(&path).unwrap();
+
+    assert!(bindings.contains("/**  Update the state */"), "{bindings}");
+    // A leading blank `///` line doesn't become a blank line in the JSDoc.
+    assert!(
+        bindings.contains("/**  Leading blank doc line */"),
+        "{bindings}"
+    );
+    assert!(
+        bindings.contains("update_state: (newValue: string) => Promise<void>"),
+        "{bindings}"
     );
 }

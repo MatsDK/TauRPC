@@ -340,7 +340,18 @@ impl ProceduresGenerator<'_> {
                     }
                 };
 
-                let docs = attrs.comments.join("\n");
+                // Mirrors how `#[specta::specta]` folded doc comments, including dropping a
+                // leading blank `///` line, so the generated docs stay unchanged.
+                let docs = attrs
+                    .comments
+                    .iter()
+                    .fold(String::new(), |mut docs, comment| {
+                        if !docs.is_empty() {
+                            docs.push('\n');
+                        }
+                        docs.push_str(comment);
+                        docs
+                    });
                 let is_event = attrs.is_event;
 
                 quote! {

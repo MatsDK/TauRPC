@@ -42,6 +42,9 @@ pub fn ipc_type(_attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 /// Generates the necessary structs and enums for handling calls and generating TS-types.
+///
+/// Doc comments on the methods are included in the generated TypeScript. Docs added through
+/// `#[cfg_attr(..., doc = "...")]` are not, as the macro can't evaluate conditional attributes.
 #[proc_macro_attribute]
 pub fn procedures(attrs: TokenStream, item: TokenStream) -> TokenStream {
     let procedures_attrs = parse_macro_input!(attrs as ProceduresAttrs);
