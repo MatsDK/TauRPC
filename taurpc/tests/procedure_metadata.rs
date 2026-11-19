@@ -14,7 +14,7 @@ trait Api {
     async fn blank_first_line();
 
     #[taurpc(alias = "renamed")]
-    fn renamed(amount: i32) -> i32;
+    fn original(amount: i32) -> i32;
 
     #[taurpc(event)]
     async fn state_changed(new_state: String);
@@ -29,7 +29,7 @@ impl Api for ApiImpl {
 
     async fn blank_first_line(self) {}
 
-    fn renamed(self, amount: i32) -> i32 {
+    fn original(self, amount: i32) -> i32 {
         amount
     }
 }
@@ -89,6 +89,12 @@ fn collects_procedure_metadata() {
         renamed.function.result(),
         Some(&DataType::Primitive(Primitive::i32))
     );
+    // The metadata uses the alias, not the Rust method name.
+    assert!(
+        procedures
+            .iter()
+            .all(|procedure| procedure.function.name() != "original")
+    );
 
     assert!(procedure(procedures, "state_changed").is_event);
 
@@ -103,7 +109,7 @@ fn collects_procedure_metadata() {
 
 #[test]
 fn renders_procedure_docs_in_the_bindings() {
-    let path = std::env::temp_dir().join("taurpc-procedure-metadata-bindings.ts");
+    let path = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("bindings.ts");
     taurpc::Exporter::new()
         .export(&ApiImpl.into_handler(), &path)
         .unwrap();
@@ -120,4 +126,9 @@ fn renders_procedure_docs_in_the_bindings() {
         bindings.contains("update_state: (newValue: string) => Promise<void>"),
         "{bindings}"
     );
+    assert!(
+        bindings.contains("renamed: (amount: number) => Promise<number>"),
+        "{bindings}"
+    );
+    assert!(!bindings.contains("original:"), "{bindings}");
 }

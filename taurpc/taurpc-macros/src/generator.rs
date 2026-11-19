@@ -333,10 +333,11 @@ impl ProceduresGenerator<'_> {
                 });
 
                 // A procedure without a return type is rendered as `void` on the frontend.
+                // The paths are fully qualified so a `Some`/`None` in the user's scope can't shadow them.
                 let result = match output {
-                    ReturnType::Default => quote!(None),
+                    ReturnType::Default => quote!(::core::option::Option::None),
                     ReturnType::Type(_, ty) => {
-                        quote!(Some(<#ty as taurpc::specta::Type>::definition(types)))
+                        quote!(::core::option::Option::Some(<#ty as taurpc::specta::Type>::definition(types)))
                     }
                 };
 

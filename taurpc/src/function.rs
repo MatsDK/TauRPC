@@ -38,12 +38,16 @@ impl Function {
         &self.name
     }
 
-    /// The name and type of each procedure argument that is sent from the frontend.
+    /// The name and type of each procedure argument.
+    ///
+    /// Procedure arguments are sent from the frontend; event arguments are sent to it.
     pub fn args(&self) -> &[(Cow<'static, str>, DataType)] {
         &self.args
     }
 
-    /// The return type of the procedure, or `None` if it returns nothing.
+    /// The return type of the procedure, or `None` if it has no return type.
+    ///
+    /// Events don't return a value, so their result is never rendered in the bindings.
     pub fn result(&self) -> Option<&DataType> {
         self.result.as_ref()
     }
