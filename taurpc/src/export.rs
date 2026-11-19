@@ -300,9 +300,9 @@ fn generate_function_field(
     format: &SpectaFormat,
     error_handling: ErrorHandlingMode,
 ) -> Result<(String, Field), Error> {
-    let specta_fn = &function.function;
+    let procedure = &function.function;
 
-    let args = specta_fn
+    let args = procedure
         .args()
         .iter()
         .map(|(name, typ)| {
@@ -319,7 +319,7 @@ fn generate_function_field(
 
     let return_ty = if function.is_event {
         "void".to_string()
-    } else if let Some(result) = specta_fn.result() {
+    } else if let Some(result) = procedure.result() {
         if let Some((dt_ok, dt_err)) = extract_std_result(result, exporter.types) {
             let ok_str = render_reference_dt_for_phase(dt_ok, Phase::Serialize, exporter, format)?;
             if error_handling == ErrorHandlingMode::Result {
@@ -336,7 +336,7 @@ fn generate_function_field(
         "void".to_string()
     };
 
-    let name = specta_fn.name().split_once("_taurpc_fn__").unwrap().1;
+    let name = procedure.name();
 
     let field_type = if function.is_event {
         format!("{{ on: (listener: ({args}) => void) => Promise<UnlistenFn> }}")
@@ -345,7 +345,7 @@ fn generate_function_field(
     };
 
     let mut field = Field::new(DataType::Reference(define(field_type).into()));
-    field.docs = specta_fn.docs.clone();
+    field.docs = procedure.docs().to_owned().into();
     Ok((name.to_string(), field))
 }
 
@@ -438,12 +438,7 @@ fn generate_result_map(
         let mut result_fns = BTreeMap::new();
 
         for function in path_functions {
-            let function_name = function
-                .function
-                .name()
-                .split_once("_taurpc_fn__")
-                .unwrap()
-                .1;
+            let function_name = function.function.name();
             let result_type = if let Some(result) = function.function.result() {
                 extract_std_result(result, exporter.types).is_some()
             } else {

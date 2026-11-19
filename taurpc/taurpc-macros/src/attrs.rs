@@ -88,6 +88,11 @@ pub struct MethodAttrs {
     pub(crate) skip: bool,
     pub(crate) alias: Option<String>,
     pub(crate) is_event: bool,
+    /// The doc comments on the method, one entry per `#[doc]` attribute, which the generated
+    /// bindings join together.
+    ///
+    /// Only literal `#[doc = "..."]` attributes are collected. Docs behind `#[cfg_attr]` or
+    /// `include_str!` can't be evaluated at macro time, so they are missing from the bindings.
     pub(crate) comments: Vec<String>,
     /// Attributes to forward to the generated code (e.g., #[allow(...)])
     pub(crate) passthrough_attrs: Vec<Attribute>,
@@ -105,7 +110,7 @@ impl Parse for MethodAttrs {
                 if let syn::Meta::NameValue(meta) = &attr.meta {
                     if let Expr::Lit(expr_lit) = &meta.value {
                         if let Lit::Str(lit_str) = &expr_lit.lit {
-                            res.comments.push(lit_str.value().trim().to_string());
+                            res.comments.push(lit_str.value());
                         }
                     }
                 }

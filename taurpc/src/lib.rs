@@ -21,9 +21,15 @@ pub use taurpc_macros::{ipc_type, procedures, resolvers};
 mod export;
 pub use export::{ErrorHandlingMode, ExportError, Exportable, Exporter};
 
+mod function;
+pub use function::Function;
+
+/// The type information for a single procedure, which is used for generating the TypeScript bindings.
 #[derive(Debug, Clone)]
 pub struct TauRpcFunction {
-    pub function: specta::datatype::Function,
+    /// The type information for the procedure.
+    pub function: Function,
+    /// Whether the procedure is an event, which is triggered from the backend.
     pub is_event: bool,
 }
 
