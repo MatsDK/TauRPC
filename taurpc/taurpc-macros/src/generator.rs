@@ -320,20 +320,17 @@ impl ProceduresGenerator<'_> {
                     ..
                 },
             )| {
-                let args = args
-                    .iter()
-                    .filter(|&arg| !arg.skip_type)
-                    .map(|arg| {
-                        let arg_name = parse_arg_key(arg).unwrap();
-                        let ty = arg.ty();
+                let args = args.iter().filter(|&arg| !arg.skip_type).map(|arg| {
+                    let arg_name = parse_arg_key(arg).unwrap();
+                    let ty = arg.ty();
 
-                        quote! {
-                            (
-                                ::std::borrow::Cow::Borrowed(#arg_name),
-                                <#ty as taurpc::specta::Type>::definition(types),
-                            )
-                        }
-                    });
+                    quote! {
+                        (
+                            ::std::borrow::Cow::Borrowed(#arg_name),
+                            <#ty as taurpc::specta::Type>::definition(types),
+                        )
+                    }
+                });
 
                 // A procedure without a return type is rendered as `void` on the frontend.
                 let result = match output {
